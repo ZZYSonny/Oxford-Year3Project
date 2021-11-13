@@ -1,0 +1,140 @@
+--Def thread
+datatype ThreadIDWithNull = S1 | S2 | R1 | R2 | Null
+ThreadID = diff(ThreadIDWithNull, {Null})
+
+--------- Synchronized
+channel enter,exit,notify,notifyAll,wake,wait: ThreadID
+
+--cur: thread current running in the sync block
+--hadNotify: in 
+--waiting: list of threads waiting 
+Synchronized(cur, hadNotify, waiting, towake) =
+  --current thread notify
+  (cur!=Null) & notify.cur -> ( 
+    Synchronized(cur, True, waiting, towake)
+  ) []
+  --current thread notifyAll
+  (cur!=Null) & notifyAll.cur -> ( 
+    Synchronized(cur, True, {}, union(towake, waiting))
+  ) []
+  --current running threads exits
+  (cur!=Null) & exit.cur -> (
+    SynchronizedWakeNext(cur, hadNotify, waiting, towake)
+  ) []
+  --current thread waits
+  (cur!=Null) & wait.cur -> ( 
+    SynchronizedWakeNext(Null, hadNotify, union(waiting, {cur}), towake)
+  ) []
+  --Other thread entering
+  (cur==Null) & enter?t -> (
+    wake.t -> Synchronized(t, False, waiting, towake)
+  )
+
+SynchronizedWakeNext(cur, hadNotify, waiting, towake) = 
+  --if there was a notifyAll
+  if towake!={} then (
+    wake?nxt:towake -> Synchronized(nxt, False, waiting, diff(towake, {nxt}))
+  --if there was no notify, or notified but no waiting threads
+  ) else if (not hadNotify) or (waiting=={}) then (
+    Synchronized(Null, False, waiting, {})
+  ) else (
+    --otherwise pick one from waiting
+    wake?nxt:waiting -> Synchronized(nxt, False, diff(waiting,{nxt}),{})
+  ) 
+
+ChanSynchronized = Synchronized(Null, False, {}, {})
+
+--------- A generic variable
+datatype Data = A | B
+isA(x) = x==A
+isB(x) = x==B
+
+Var(getChan, setChan)(value) =
+  getChan?_!value -> Var(getChan, setChan)(value)
+  [] setChan?_?value1 -> Var(getChan, setChan)(value1)
+
+channel getData, setData: ThreadID . Data
+VarData = Var(getData, setData)(A)
+
+channel getFull, setFull: ThreadID . Bool
+VarFull = Var(getFull, setFull)(False)
+
+--------- Filter Chan
+channel return: ThreadID . Data
+Send(me, x) = 
+  --enter 
+  enter.me -> 
+  wake.me ->
+  Send1(me,x)
+Send1(me, x) = 
+  getFull.me?full ->
+  if full then wait!me -> wake.me -> Send1(me, x)
+  else Send2(me,x)
+Send2(me,x) =
+  setData!me!x ->
+  setFull!me!True ->
+  notifyAll!me ->
+  Send3(me,x)
+Send3(me,x) = 
+  getFull.me?full ->
+  if full then wait!me -> wake.me -> Send3(me,x)
+  else exit!me -> SKIP
+
+
+Receive(me, f) = 
+  enter.me -> 
+  wake.me ->
+  Receive1(me, f)
+Receive1(me, f) =
+  getFull.me?full ->
+  getData.me?data ->
+  if (not full) or (not f(data)) then (
+    wait!me -> wake.me ->
+    Receive1(me, f)
+  ) else Receive2(me, f, data)
+Receive2(me, f, ans) =
+  setFull.me!False ->
+  notifyAll!me ->
+  return.me.ans ->
+  exit!me ->
+  SKIP
+
+
+syncSet =
+  {| enter,exit,notify,notifyAll,wake,wait,
+     getData, setData,
+     getFull, setFull |}
+
+Repeat(P) = P;Repeat(P)
+
+--My test senarios for FilterChan uses 2 sender process and 2 receiver process. 
+--First sender repeatedly call send(A). Second sender repeatedly call send(B).
+--First receiver receives only A (also repeatedly). Second receiver receives only B.
+
+System = 
+  (
+    Repeat(Send(S1, A)) ||| 
+    Repeat(Send(S2, B)) ||| 
+    Repeat(Receive(R1, isA)) |||
+    Repeat(Receive(R2, isB))
+  ) 
+  [| syncSet |] 
+  (ChanSynchronized ||| VarData ||| VarFull)
+
+--Check that R1 always receives A and R2 always receives B
+
+System1 = System \ syncSet
+System2 = return.R1.A -> System2
+  [] return.R2.B -> System2
+
+assert System1 [T= System2
+assert System2 [T= System1
+
+--Check whenever a process returns some
+System3 = System \ {| enter,exit,notify,notifyAll,wake,wait,
+     getData,
+     getFull, setFull |}
+System4 = setData.S1.A -> return.R1.A -> System4
+  [] setData.S2.B -> return.R2.B -> System4
+assert System3 [T= System4
+assert System4 [T= System3
