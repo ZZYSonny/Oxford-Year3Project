@@ -1,0 +1,4 @@
+module A
+exports
+   X = 1
+endmodule

@@ -1,0 +1,12 @@
+datatype A = a | b | c
+channel in,out: A
+
+--P = (in?x:A -> SKIP); (out!x -> STOP)
+--variable x not in scope
+P = 
+  in?x:A -> 
+  let xx = x within 
+  SKIP;
+  out!x->
+  STOP
+--is OK

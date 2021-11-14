@@ -1,0 +1,11 @@
+module VariableMin(TypeValue, initialValue)
+  Var(value) =
+    getValue!value -> Var(value)
+    [] 
+    setValue?value -> Var(value)  
+exports
+  runwith(P) = Var(initialValue) [|{|
+      getValue, setValue
+    |}|] P
+  channel getValue, setValue: TypeValue
+endmodule
