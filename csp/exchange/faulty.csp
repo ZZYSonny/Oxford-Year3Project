@@ -1,0 +1,218 @@
+module VariableMin(TypeValue, initialValue)
+  Var(value) =
+    getValue!value -> Var(value)
+    [] 
+    setValue?value -> Var(value)
+  
+  chanset = {|
+    getValue, setValue
+  |}
+
+exports
+  runwith(hide,P) = 
+    if hide then (Var(initialValue) [| chanset |] P) \ chanset
+    else Var(initialValue) [| chanset |] P
+  
+  channel getValue, setValue: TypeValue
+endmodule
+
+
+module ModuleMonitor(TypeThreadID)
+  channel
+    Notify, NotifyAll, Exit, Wait,
+    WaitNotify, WaitEnter,
+    MonitorWake, SpuriousWake: TypeThreadID
+
+  chanset = {|
+    Notify, NotifyAll, Exit, Wait,
+    WaitNotify, WaitEnter,
+    MonitorWake, SpuriousWake
+  |}
+
+  repeat(ch, s) =
+    if s=={} then SKIP
+    else ch?a:s -> repeat(ch, diff(s, {a}))
+
+  active(cur, waiting) =
+    --current running thread notify
+    Notify.cur -> (
+      if waiting=={} then 
+        --do nothing if no thread is waiting
+        active(cur, {})
+      else
+        --wakeup a process
+        MonitorWake?a:waiting -> 
+        active(cur, diff(waiting, {a}))
+    ) []
+    --current running thread notifyAll
+    NotifyAll.cur -> (
+      repeat(WaitNotify, waiting);
+      active(cur, {})
+    ) []
+    --current running thread exit
+    Exit.cur -> (
+      inactive(waiting)
+    ) []
+    --current running thread wait
+    Wait.cur -> (
+      inactive(union(waiting,{cur}))
+    ) []
+    waiting!={} & SpuriousWake?a:waiting -> (
+      active(cur, diff(waiting, {a}))
+    )
+
+  inactive(waiting) = 
+    WaitEnter?a -> (
+      active(a, waiting)
+    ) []
+    waiting!={} & SpuriousWake?a:waiting -> (
+      inactive(diff(waiting, {a}))
+    )
+
+exports
+  runwith(hide,P) = 
+    if hide then (inactive({}) [|chanset|] P) \ chanset
+    else inactive({}) [|chanset|] P
+
+  --java-like synchronized function
+  synchronized(me, P)=
+    WaitEnter.me ->
+    P;
+    Exit.me ->
+    SKIP
+
+  --notify()
+  notify(me) = 
+    Notify.me ->
+    SKIP
+  --notifyAll()
+  notifyAll(me) =
+    NotifyAll.me ->
+    SKIP
+  --exit()
+  exit(me) =
+    Exit.me ->
+    SKIP
+  --wait()
+  wait(me) =
+    Wait.me -> ((
+        WaitNotify.me ->
+        WaitEnter.me ->
+        SKIP
+      ) [] (
+        SpuriousWake.me ->
+        WaitEnter.me ->
+        SKIP
+      )
+    )
+  --while(cond) wait()
+  --typeof(cond) = (ktrue, kfalse) -> Proc
+  whileWait(me,cond) =
+    cond(
+      --if cond evaluates to true, wait and run loop again
+      wait(me);whileWait(me, cond), 
+      --if cond evaluates to false, exit
+      SKIP
+    )
+endmodule
+
+
+datatype TypeThreadID = TA | TB | TC
+datatype TypeData = A | B | C
+datatype TypeStep = Step0 | Step1 | Step2
+instance Monitor = ModuleMonitor(TypeThreadID)
+instance Step = VariableMin(TypeStep, Step0)
+instance Data = VariableMin(TypeData, A)
+
+channel return : TypeThreadID.TypeData.TypeData
+
+exchange(me,datasend) = Monitor::synchronized(me,
+  --if(step == 0)
+  Step::getValue?step -> if step==Step0 then (
+    --data = x;
+    Data::setValue!datasend -> 
+    --step = 1;
+    Step::setValue!Step1 ->
+    --while(step == 1) wait()
+    Monitor::whileWait(me, \ktrue,kfalse @
+      Step::getValue?step ->
+      if step==Step1 then ktrue else kfalse
+    );
+    --step = 0
+    Step::setValue!Step0 ->
+    --data
+    Data::getValue?res ->
+    --return
+    return.me.datasend.res -> 
+    SKIP
+  )else(
+    --val result = data;
+    Data::getValue?res ->
+    let result=res within
+    --data = x;
+    Data::setValue!datasend ->
+    --step = 0; 
+    Step::setValue!Step0 ->
+    --notifyAll()
+    Monitor::notifyAll(me);
+    --result
+    return.me.datasend.result ->
+    SKIP
+  )
+)
+
+repeat(P) = P; repeat(P)
+
+hide=True
+
+System1 = 
+  Monitor::runwith(hide,
+  Step::runwith(hide,
+  Data::runwith(hide,
+    exchange(TA,A) |||
+    exchange(TB,B)
+  )))
+
+spec1 = 
+  return.TA.A.B -> return.TB.B.A -> STOP []
+  return.TB.B.A -> return.TA.A.B -> STOP
+
+assert spec1 [T= System1
+assert System1 [T= spec1
+
+
+System2 = 
+  Monitor::runwith(hide,
+  Step::runwith(hide,
+  Data::runwith(hide,
+    repeat(exchange(TA,A)) |||
+    repeat(exchange(TB,B))
+  )))
+
+spec2 = 
+  return.TA.A.B -> return.TB.B.A -> spec2 []
+  return.TB.B.A -> return.TA.A.B -> spec2
+
+assert spec2 [T= System2
+assert System2 [T= spec2
+
+System3 = 
+  Monitor::runwith(hide,
+  Step::runwith(hide,
+  Data::runwith(hide,
+    repeat(exchange(TA,A)) |||
+    repeat(exchange(TB,B)) |||
+    repeat(exchange(TC,C))
+  )))
+
+spec3 = 
+  return.TA.A.B -> return.TB.B.A -> spec3 []
+  return.TB.B.A -> return.TA.A.B -> spec3 []
+  return.TA.A.C -> return.TC.C.A -> spec3 []
+  return.TC.C.A -> return.TA.A.C -> spec3 []
+  return.TB.B.C -> return.TC.C.B -> spec3 []
+  return.TC.C.B -> return.TB.B.C -> spec3
+
+assert spec3 [T= System3
+assert System3 [T= spec3
+

@@ -12,9 +12,9 @@ Summary of this week
     - There is no way to avoid process outside `synchronized` block to run `wait`, `notify` etc.
 
 
-Some minor questions
+Some questions
 - It is probably something on Programming Language side, but I think in CSP-M, there is a simple way to pass variables between "A;B".
-  - This may be useful for `ChanCounter`.
+  - This may be useful for `ChanCounter` (to return the value of counter)
 ```hs
 P = (in?x:A -> SKIP); (out!x -> STOP)
 --variable x not in scope
@@ -27,5 +27,15 @@ P =
   STOP
 --is OK
 --Lambda with x as parameter also works.
+
+P1 = 
+  in?x:A ->
+  P2(x)
+
+P2(x) =
+  SKIP;
+  out!x -> 
+  STOP
 ```
+- I am thinking about changing the type of `synchronized` to `threadID -> (\MonitorObject -> Proc)`. So `notify` can only happen inside synchronized block. Also, this avoids passing `me` every time I use functions in the monitor. 
 - Is there a style or naming conventions you would suggest? Now I am having channels, variables from parameters, functions names. And it is a bit hard to distinguish them.

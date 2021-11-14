@@ -14,6 +14,8 @@ module ModuleMonitor(TypeThreadID)
     if s=={} then SKIP
     else ch?a:s -> repeat(ch, diff(s, {a}))
 
+  --cur is current active running thread
+  --waiting is a set of threads waiting to be notified
   active(cur, waiting) =
     --current running thread notify
     Notify.cur -> (
@@ -38,19 +40,26 @@ module ModuleMonitor(TypeThreadID)
     Wait.cur -> (
       inactive(union(waiting,{cur}))
     ) []
+    --spurious wakeup
     waiting!={} & SpuriousWake?a:waiting -> (
       active(cur, diff(waiting, {a}))
     )
 
+  --when no active thread is running
   inactive(waiting) = 
+    --pick a thread that is ready to enter
     WaitEnter?a -> (
       active(a, waiting)
     ) []
+    --spurious wakeup
     waiting!={} & SpuriousWake?a:waiting -> (
       inactive(diff(waiting, {a}))
     )
 
 exports
+  --Given a process that uses the monitor
+  --Return the process synchronized with the monitor server process
+  --If hide is true, monitor channels are hidden
   runwith(hide,P) = 
     if hide then (inactive({}) [|chanset|] P) \ chanset
     else inactive({}) [|chanset|] P
@@ -61,7 +70,6 @@ exports
     P;
     Exit.me ->
     SKIP
-
   --notify()
   notify(me) = 
     Notify.me ->
