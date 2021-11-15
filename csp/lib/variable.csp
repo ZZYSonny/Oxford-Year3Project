@@ -2,10 +2,16 @@ module VariableMin(TypeValue, initialValue)
   Var(value) =
     getValue!value -> Var(value)
     [] 
-    setValue?value -> Var(value)  
+    setValue?value -> Var(value)
+  
+  chanset = {|
+    getValue, setValue
+  |}
+
 exports
-  runwith(P) = Var(initialValue) [|{|
-      getValue, setValue
-    |}|] P
+  runwith(hide,P) = 
+    if hide then (Var(initialValue) [| chanset |] P) \ chanset
+    else Var(initialValue) [| chanset |] P
+  
   channel getValue, setValue: TypeValue
 endmodule
