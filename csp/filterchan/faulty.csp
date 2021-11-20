@@ -1,3 +1,4 @@
+include "../lib/common.csp"
 include "../lib/monitor_dbg.csp"
 include "../lib/variable.csp"
 
@@ -48,14 +49,12 @@ receive(me, p) = Monitor::synchronized(me,
   Monitor::notifyAll(me)
 )
 
-repeat(P) = P; repeat(P)
-
 hide=True
 
 System1 = 
-  Monitor::runwith(hide,
-  Full::runwith(hide,
-  Data::runwith(hide,
+  Monitor::runWith(hide,
+  Full::runWith(hide,
+  Data::runWith(hide,
     send(S1,A) |||
     send(S2,B) ||| 
     receive(R1,isA) |||
@@ -73,9 +72,9 @@ assert spec1 [T= System1
 assert System1 [T= spec1
 
 System2 = 
-  Monitor::runwith(hide,
-  Full::runwith(hide,
-  Data::runwith(hide,
+  Monitor::runWith(hide,
+  Full::runWith(hide,
+  Data::runWith(hide,
     repeat(send(S1,A)) |||
     repeat(send(S2,B)) ||| 
     repeat(receive(R1,isA)) |||

@@ -10,6 +10,8 @@ module ModuleMonitor(TypeThreadID)
     MonitorWake, SpuriousWake
   |}
 
+  --A list of event for every event e in s
+  --
   repeat(ch, s) =
     if s=={} then SKIP
     else ch?a:s -> repeat(ch, diff(s, {a}))
@@ -60,7 +62,7 @@ exports
   --Given a process that uses the monitor
   --Return the process synchronized with the monitor server process
   --If hide is true, monitor channels are hidden
-  runwith(hide,P) = 
+  runWith(hide,P) = 
     if hide then (inactive({}) [|chanset|] P) \ chanset
     else inactive({}) [|chanset|] P
 
@@ -70,18 +72,17 @@ exports
     P;
     Exit.me ->
     SKIP
+
   --notify()
   notify(me) = 
     Notify.me ->
     SKIP
+
   --notifyAll()
   notifyAll(me) =
     NotifyAll.me ->
     SKIP
-  --exit()
-  exit(me) =
-    Exit.me ->
-    SKIP
+
   --wait()
   wait(me) =
     Wait.me -> ((
@@ -94,13 +95,7 @@ exports
         SKIP
       )
     )
-  --while(cond) wait()
-  --typeof(cond) = (ktrue, kfalse) -> Proc
+  
   whileWait(me,cond) =
-    cond(
-      --if cond evaluates to true, wait and run loop again
-      wait(me);whileWait(me, cond), 
-      --if cond evaluates to false, exit
-      SKIP
-    )
+    while(cond)(wait(me);SKIP)
 endmodule

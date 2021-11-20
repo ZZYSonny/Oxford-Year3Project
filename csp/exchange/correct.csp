@@ -1,3 +1,4 @@
+include "../lib/common.csp"
 include "../lib/monitor_dbg.csp"
 include "../lib/variable.csp"
 
@@ -56,14 +57,12 @@ exchange(me,datasend) = Monitor::synchronized(me,
   )
 )
 
-repeat(P) = P; repeat(P)
-
 hide=True
 
 System1 = 
-  Monitor::runwith(hide,
-  Step::runwith(hide,
-  Data::runwith(hide,
+  Monitor::runWith(hide,
+  Step::runWith(hide,
+  Data::runWith(hide,
     exchange(TA,A) |||
     exchange(TB,B)
   )))
@@ -77,9 +76,9 @@ assert System1 [T= spec1
 
 
 System2 = 
-  Monitor::runwith(hide,
-  Step::runwith(hide,
-  Data::runwith(hide,
+  Monitor::runWith(hide,
+  Step::runWith(hide,
+  Data::runWith(hide,
     repeat(exchange(TA,A)) |||
     repeat(exchange(TB,B))
   )))
@@ -92,9 +91,9 @@ assert spec2 [T= System2
 assert System2 [T= spec2
 
 System3 = 
-  Monitor::runwith(hide,
-  Step::runwith(hide,
-  Data::runwith(hide,
+  Monitor::runWith(hide,
+  Step::runWith(hide,
+  Data::runWith(hide,
     repeat(exchange(TA,A)) |||
     repeat(exchange(TB,B)) |||
     repeat(exchange(TC,C))

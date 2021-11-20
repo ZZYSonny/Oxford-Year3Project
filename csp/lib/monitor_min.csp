@@ -10,10 +10,6 @@ module ModuleMonitor(TypeThreadID)
     MonitorWake, SpuriousWake
   |}
 
-  repeat(e, n) =
-    if n==0 then SKIP
-    else e -> repeat(e, n-1)
-
   active(nwaiting) = 
     --current running thread notify
     Notify -> (
@@ -27,7 +23,7 @@ module ModuleMonitor(TypeThreadID)
     ) []
     --current running thread notifyAll
     NotifyAll -> (
-      repeat(WaitEnter, nwaiting);
+      repeatN(WaitEnter, nwaiting);
       active(0)
     ) []
     --current running thread exit
@@ -51,7 +47,7 @@ module ModuleMonitor(TypeThreadID)
     )
 
 exports
-  runwith(hide,P) = 
+  runWith(hide,P) = 
     if hide then (inactive({}) [|chanset|] P) \ chanset
     else inactive({}) [|chanset|] P
 
@@ -66,14 +62,12 @@ exports
   notify(me) = 
     Notify ->
     SKIP
+
   --notifyAll()
   notifyAll(me) =
     NotifyAll ->
     SKIP
-  --exit()
-  exit(me) =
-    Exit ->
-    SKIP
+
   --wait()
   wait(me) =
     Wait -> ((
@@ -86,13 +80,9 @@ exports
         SKIP
       )
     )
+
   --while(cond) wait()
   --typeof(cond) = (ktrue, kfalse) -> Proc
   whileWait(me,cond) =
-    cond(
-      --if cond evaluates to true, wait and run loop again
-      wait(me);whileWait(me, cond), 
-      --if cond evaluates to false, exit
-      SKIP
-    )
+    while(cond)(wait(me)->SKIP)
 endmodule

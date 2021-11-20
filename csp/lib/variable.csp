@@ -9,7 +9,7 @@ module VariableMin(TypeValue, initialValue)
   |}
 
 exports
-  runwith(hide,P) = 
+  runWith(hide,P) = 
     if hide then (Var(initialValue) [| chanset |] P) \ chanset
     else Var(initialValue) [| chanset |] P
   

@@ -1,0 +1,16 @@
+--while(cond){body}
+--Due to the limitation of CSPM, cond is written in a continuation style
+--(ktrue, kfalse) -> Proc
+while(cond)(body) = 
+  cond(
+    body;while(cond)(body),
+    SKIP
+  )
+
+
+repeat(P) = P; repeat(P)
+
+repeatN(e,n)= 
+  if n==0 then SKIP
+  else e -> repeatN(e,n-1)
+
