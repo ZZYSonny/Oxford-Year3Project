@@ -1,0 +1,52 @@
+include "faulty.csp"
+hide = True
+
+channel Sync: TypeThreadID. TypeData. TypeData. TypeThreadID. TypeData. TypeData
+-- Thread1: thread identity, function parameter, function return
+-- Thread2: thread identity, function parameter, function return
+
+-- Spec Process. 
+Spec = Sync?ta?aparam?areturn?tb:diff(TypeThreadID,{ta})!areturn!aparam -> Spec
+
+Linearizer(All,ta)=
+  Call!ta?aparam -> ((
+      Sync!ta!aparam?areturn?tb:diff(All,{ta})?bparam?breturn ->
+      Return!ta!areturn ->
+      Linearizer(All,ta)
+    )[](
+      Sync?tb:diff(All,{ta})?bparam?breturn!ta!aparam?areturn ->
+      Return!ta!areturn ->
+      Linearizer(All,ta)
+  ))
+Linearizer1(All,ta)=
+  Linearizer(All,ta) |||
+  repeat(Sync?tb:diff(TypeThreadID,{ta})?bparam?breturn?tc:diff(All,{ta})?cparam?creturn->SKIP)
+Linearizers(All)= ([|{|Sync|}|] me:All @ Linearizer1(All,me))
+
+
+--Test for three threads
+System2 = 
+  Monitor::runWith(hide,hide,
+  Step::runWith(hide,
+  Data::runWith(hide,
+    repeat(exchange(TA,A)) |||
+    repeat(exchange(TB,B))
+  )))
+--Linearizer for two threads
+All2 = {TA, TB}
+Spec2 = (Linearizers(All2) [|{|Sync|}|] Spec) \ {|Sync|}
+assert Spec2 [T= System2
+
+
+System3 = 
+  Monitor::runWith(hide,hide,
+  Step::runWith(hide,
+  Data::runWith(hide,
+    repeat(exchange(TA,A)) |||
+    repeat(exchange(TB,B)) |||
+    repeat(exchange(TC,C))
+  )))
+--Linearizer for two threads
+All3 = {TA, TB, TC}
+Spec3 = (Linearizers(All3) [|{|Sync|}|] Spec) \ {|Sync|}
+assert Spec3 [T= System3

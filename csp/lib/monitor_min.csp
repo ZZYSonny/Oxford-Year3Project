@@ -48,7 +48,7 @@ module ModuleMonitor(TypeThreadID)
 
 exports
   runWith(hide,P) = 
-    if hide then (inactive({}) [|chanset|] P) \ chanset
+    if hide then (inactive({}) [|chanset|] P) \ diff(chanset,{|SpuriousWake|})
     else inactive({}) [|chanset|] P
 
   --java-like synchronized function

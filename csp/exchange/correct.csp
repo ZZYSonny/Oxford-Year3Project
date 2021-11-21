@@ -1,112 +1,47 @@
-include "../lib/common.csp"
-include "../lib/monitor_dbg.csp"
-include "../lib/variable.csp"
-
-
-datatype TypeThreadID = TA | TB | TC
-datatype TypeData = A | B | C
-datatype TypeStep = Step0 | Step1 | Step2
-instance Monitor = ModuleMonitor(TypeThreadID)
-instance Step = VariableMin(TypeStep, Step0)
-instance Data = VariableMin(TypeData, A)
-
-channel return : TypeThreadID.TypeData.TypeData
+include "common.csp"
 
 exchange(me,datasend) = Monitor::synchronized(me,
+  --Start event for Linearizer
+  Call.me.datasend->
   --while(step == 2) wait()
   Monitor::whileWait(me, \ktrue,kfalse @
     Step::getValue?step ->
-    if step==Step2 then ktrue else kfalse
+    if step==2 then ktrue else kfalse
   );
   --if(step == 0)
-  Step::getValue?step -> if step==Step0 then (
+  Step::getValue?step -> if step==0 then (
     --data = x;
     Data::setValue!datasend -> 
     --step = 1;
-    Step::setValue!Step1 ->
+    Step::setValue!1 ->
     --while(step == 1) wait()
     Monitor::whileWait(me, \ktrue,kfalse @
       Step::getValue?step ->
-      if step==Step1 then ktrue else kfalse
+      if step==1 then ktrue else kfalse
     );
     --assert(step == 2)
     Step::getValue?step ->
-    if step!=Step2 then STOP else
+    if step!=2 then STOP else
     --step = 0
-    Step::setValue!Step0 ->
+    Step::setValue!0 ->
     --notifyAll()
     Monitor::notifyAll(me);
     --data
     Data::getValue?res ->
     --return
-    return.me.datasend.res -> 
+    Return.me.res -> 
     SKIP
   )else(
     --val result = data;
-    Data::getValue?res ->
-    let result=res within
+    Data::getValue?res -> (
     --data = x;
     Data::setValue!datasend ->
     --step = 2; 
-    Step::setValue!Step2 ->
+    Step::setValue!2 ->
     --notifyAll()
     Monitor::notifyAll(me);
     --result
-    return.me.datasend.result ->
+    Return.me.res ->
     SKIP
-  )
+  ))
 )
-
-hide=True
-
-System1 = 
-  Monitor::runWith(hide,
-  Step::runWith(hide,
-  Data::runWith(hide,
-    exchange(TA,A) |||
-    exchange(TB,B)
-  )))
-
-spec1 = 
-  return.TA.A.B -> return.TB.B.A -> STOP []
-  return.TB.B.A -> return.TA.A.B -> STOP
-
-assert spec1 [T= System1
-assert System1 [T= spec1
-
-
-System2 = 
-  Monitor::runWith(hide,
-  Step::runWith(hide,
-  Data::runWith(hide,
-    repeat(exchange(TA,A)) |||
-    repeat(exchange(TB,B))
-  )))
-
-spec2 = 
-  return.TA.A.B -> return.TB.B.A -> spec2 []
-  return.TB.B.A -> return.TA.A.B -> spec2
-
-assert spec2 [T= System2
-assert System2 [T= spec2
-
-System3 = 
-  Monitor::runWith(hide,
-  Step::runWith(hide,
-  Data::runWith(hide,
-    repeat(exchange(TA,A)) |||
-    repeat(exchange(TB,B)) |||
-    repeat(exchange(TC,C))
-  )))
-
-spec3 = 
-  return.TA.A.B -> return.TB.B.A -> spec3 []
-  return.TB.B.A -> return.TA.A.B -> spec3 []
-  return.TA.A.C -> return.TC.C.A -> spec3 []
-  return.TC.C.A -> return.TA.A.C -> spec3 []
-  return.TB.B.C -> return.TC.C.B -> spec3 []
-  return.TC.C.B -> return.TB.B.C -> spec3
-
-assert spec3 [T= System3
-assert System3 [T= spec3
-
