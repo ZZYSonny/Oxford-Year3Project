@@ -67,13 +67,19 @@ exports
     let hideset1 = if hideSpurious then hideset0 else diff(hideset0,{|SpuriousWake|}) within
     (inactive({}) [|chanset|] P) \ hideset1
   
-
-
   --java-like synchronized function
   synchronized(me, P)=
     WaitEnter.me ->
     P;
     Exit.me ->
+    SKIP
+
+  enter(me) = 
+    WaitEnter.me ->
+    SKIP
+
+  exit(me) =
+    Exit.me -> 
     SKIP
 
   --notify()
