@@ -1,4 +1,4 @@
-include "correct.csp"
+include "faulty.csp"
 hide = True
 
 channel Sync: TypeThreadID. TypeData. TypeData. TypeThreadID. TypeData. TypeData
@@ -8,6 +8,7 @@ channel Sync: TypeThreadID. TypeData. TypeData. TypeThreadID. TypeData. TypeData
 -- Spec Process. 
 Spec = Sync?ta?aparam?areturn?tb:diff(TypeThreadID,{ta})!areturn!aparam -> Spec
 
+--Linearizer for a process, only accept Sync event regarding me between Call and Return
 Lin0(All,me)=
   let others=diff(All,{me}) within
   Call!me?meparam -> ((
@@ -19,23 +20,30 @@ Lin0(All,me)=
       Return!me!mereturn ->
       Lin0(All,me)
   ))
+--Linearizer for a process, but also accept Sync event that does not involve the process
 Lin1(All,me)= Lin0(All,me) |||
   let others=diff(All,{me}) within repeatP(
     Sync?o1:others?p1?r1?o2:others?p2?r2->SKIP
   )
+--generate a linearizer for all processes
 Linearizers(All)= ([|{|Sync|}|] me:All @ Lin1(All,me))
 
---Test for three threads
+----------------------------------
+--Test for two process
+--Where one always exchange A
+--The second always exchange B
 System1 = runWith(True,
   repeat(exchange(TA,A)) |||
   repeat(exchange(TB,B))
 )
---Linearizer for two threads
-All1 = {TA, TB}
-Spec1 = (Linearizers(All1) [|{|Sync|}|] Spec) \ {|Sync|}
+Spec1 = (Linearizers({TA, TB}) [|{|Sync|}|] Spec) \ {|Sync|}
 assert Spec1 [T= System1
 
-
+----------------------------------
+--Test for three process
+--Where one always exchange A
+--The second always exchange B
+--The third always exchange C
 System2 = runWith(True,
   repeat(exchange(TA,A)) |||
   repeat(exchange(TB,B)) |||
@@ -47,20 +55,16 @@ assert Spec2 [T= System2
 
 
 
+----------------------------------
+--Test for three process
+--Where each non determinisitcally choose A,B,C to exchange
 
 --Behavior of each process
---They non-deterministic choose a data to exchange
 worker(me) = |~| data:TypeData @ exchange(me,data);worker(me)
---Generate a set of workers
-workers(All) = ||| me:All @ worker(me)
---Test for Three threads
 All3 = {TA, TB, TC}
-System3 = 
-  Monitor::runWith(hide,hide,
-  Step::runWith(hide,
-  Data::runWith(hide,
-    workers(All3)
-  )))
+System3 = runWith(hide,
+  ||| me:All3 @ worker(me)
+)
 Spec3 = (Linearizers(All3) [|{|Sync|}|] Spec) \ {|Sync|}
 assert Spec3 [T= System3
 --assert System3 [T= Spec3
