@@ -45,3 +45,10 @@ receive(me, p) =
   Return!me!(RecvReturn.result) ->
   SKIP
 )
+
+runWith(hide, p) =
+  Monitor::runWith(hide,hide,
+  Full::runWith(hide,
+  Data::runWith(hide,
+    p
+  )))

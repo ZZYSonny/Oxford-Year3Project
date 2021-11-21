@@ -1,15 +1,5 @@
-include "./faulty.csp"
+include "./correct.csp"
 hide = True
---System1 = 
---  Monitor::runWith(hide,hide,
---  Full::runWith(hide,
---  Data::runWith(hide,
---    send(S1,A) |||
---    send(S2,B) ||| 
---    receive(R1,IsA) |||
---    receive(R2,IsB)
---  )))
-
 channel Sync: TypeThreadID.TypeParam.TypeReturn.TypeThreadID.TypeParam.TypeReturn
 
 Spec = |~| x: TypeData @ |~| p: findPred(x) @
@@ -36,26 +26,41 @@ Lin1(All,me) = Lin0(All,me) |||
   )
 Linearizers(All)= ([|{|Sync|}|] me:All @ Lin1(All,me))
 
+----------------------------------
 --Test for 1 sender and 1 receiver
-System1 = 
-  Monitor::runWith(hide,hide,
-  Full::runWith(hide,
-  Data::runWith(hide,
-    repeatP(send(S1,A)) |||
-    repeatP(receive(R1,IsA))
-  )))
+--Where the sender always send A
+--The receiver always receive A
+System1 = runWith(True,
+  repeatP(send(S1,A)) |||
+  repeatP(receive(R1,IsA))
+)
 Spec1 = (Linearizers({S1,R1}) [|{|Sync|}|] Spec) \ {|Sync|}
 assert Spec1 [T= System1
 
---Test for 1 sender and 1 receiver
-System2 = 
-  Monitor::runWith(hide,hide,
-  Full::runWith(hide,
-  Data::runWith(hide,
-    repeatP(send(S1,A)) |||
-    repeatP(send(S2,B)) |||
-    repeatP(receive(R1,IsA)) |||
-    repeatP(receive(R2,IsB))
-  )))
+----------------------------------
+--Test for 2 sender and 2 receiver
+--Where one sender always send A, the other always send B
+--One receiver always receive A, the other always receive B
+System2 = runWith(True,
+  repeatP(send(S1,A)) |||
+  repeatP(send(S2,B)) |||
+  repeatP(receive(R1,IsA)) |||
+  repeatP(receive(R2,IsB))
+)
 Spec2 = (Linearizers({S1,S2,R1,R2}) [|{|Sync|}|] Spec) \ {|Sync|}
 assert Spec2 [T= System2
+
+----------------------------------
+--Test for 2 sender and 2 receiver
+--Where two sender non deterministically send A or B
+--Two receiver non deterministically receive A or B
+senderWorker(me) = repeatP(|~| x:TypeData @ send(me,x);SKIP)
+receiverWorker(me) = repeatP(|~| p:TypePred @ receive(me,p);SKIP)
+System3 = runWith(True,
+  senderWorker(S1) |||
+  senderWorker(S2) |||
+  receiverWorker(R1) |||
+  receiverWorker(R2)
+)
+Spec3 = (Linearizers({S1,S2,R1,R2}) [|{|Sync|}|] Spec) \ {|Sync|}
+assert Spec3 [T= System3
