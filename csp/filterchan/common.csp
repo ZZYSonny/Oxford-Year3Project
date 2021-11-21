@@ -1,0 +1,24 @@
+include "../lib/common.csp"
+include "../lib/monitor_dbg.csp"
+include "../lib/variable.csp"
+
+datatype TypeThreadID = S1 | S2 | R1 | R2
+datatype TypeData = A | B | C
+datatype TypePred = IsA | IsB | IsC
+
+--applyPred(f)(x)=f(x)
+applyPred(IsA)(x)=x==A
+applyPred(IsB)(x)=x==B
+applyPred(IsC)(x)=x==C
+
+--findPred(x) = {function f|f(x)=true} 
+findPred(A)={IsA}
+findPred(B)={IsB}
+findPred(C)={IsC}
+
+--Type of parameter
+datatype TypeParam = SendParam.TypeData | RecvParam.TypePred
+--Type of function return
+datatype TypeReturn = SendReturn | RecvReturn.TypeData
+channel Call: TypeThreadID. TypeParam
+channel Return: TypeThreadID. TypeReturn

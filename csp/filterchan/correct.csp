@@ -1,66 +1,47 @@
-include "../lib/common.csp"
-include "../lib/monitor_dbg.csp"
-include "../lib/variable.csp"
-
---Def thread
-datatype TypeThreadID = S1 | S2 | R1 | R2
-datatype TypeData = A | B
-
-isA(x) = x==A
-isB(x) = x==B
+include "./common.csp"
 
 instance Monitor = ModuleMonitor(TypeThreadID)
 instance Full = VariableMin(Bool, False)
 instance Data = VariableMin(TypeData, A)
 
-datatype TypeParam = SendParam.TypeData | RecvParam.{isA,isB}
-datatype TypeReturn = SendReturn | RecvReturn.TypeData
-channel Call: TypeThreadID. TypeParam
-channel Return: TypeThreadID. TypeReturn
-
-
 --------- Filter Chan
 
-send(me, x) = Monitor::synchronized(me,
-  Call.me.(SendParam.x) ->
-  --while(full) wait()
-  Monitor::whileWait(me, \ktrue,kfalse @
-    Full::getValue?full ->
-    if full then ktrue else kfalse
+send(me, x) = 
+  Call!me!(SendParam.x) ->
+  Monitor::synchronized(me,
+    --while(full) wait()
+    Monitor::whileWait(me, \ktrue,kfalse @
+      Full::getValue?full ->
+      if full then ktrue else kfalse
+    );
+    --data = x; full = true; notifyAll()
+    Data::setValue!x ->
+    Full::setValue!True ->
+    Monitor::notifyAll(me);
+    --while(full) wait()
+    Monitor::whileWait(me, \ktrue,kfalse @
+      Full::getValue?full ->
+      if full then ktrue else kfalse
+    )
   );
-  --data = x; full = true; notifyAll()
-  Data::setValue!x ->
-  Full::setValue!True ->
-  Monitor::notifyAll(me);
-  --while(full) wait()
-  Monitor::whileWait(me, \ktrue,kfalse @
-    Full::getValue?full ->
-    if full then ktrue else kfalse
-  )
+  Return!me!SendReturn ->
+  SKIP
+
+receive(me, p) = 
+  Call!me!(RecvParam.p) ->
+  Monitor::enter(me);
+    --while(!full || !p(data)) wait()
+    Monitor::whileWait(me, \ktrue,kfalse @
+      Full::getValue?full ->
+      Data::getValue?data ->
+      if (not full) or (not applyPred(p)(data)) then ktrue else kfalse
+    );
+    --val result = data; full = false
+    Full::setValue!False ->
+    Data::getValue?result ->(
+    --notifyAll()
+    Monitor::notifyAll(me);
+  Monitor::exit(me);
+  Return!me!(RecvReturn.result) ->
+  SKIP
 )
-
-receive(me, p) = Monitor::synchronized(me,
-  --while(!full || !p(data)) wait()
-  Monitor::whileWait(me, \ktrue,kfalse @
-    Full::getValue?full ->
-    Data::getValue?data ->
-    if (not full) or (not p(data)) then ktrue else kfalse
-  );
-  --val result = data; full = false
-  Full::setValue!False ->
-  Data::getValue?result ->
-  --notifyAll()
-  Monitor::notifyAll(me)
-)
-
-hide=True
-
-System1 = 
-  Monitor::runWith(hide,
-  Full::runWith(hide,
-  Data::runWith(hide,
-    send(S1,A) |||
-    send(S2,B) ||| 
-    receive(R1,isA) |||
-    receive(R2,isB)
-  )))
