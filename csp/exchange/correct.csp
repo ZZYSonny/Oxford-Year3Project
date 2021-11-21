@@ -27,7 +27,7 @@ exchange(me,datasend) =
       );
       --assert(step == 2)
       Step::getValue?step ->
-      if step!=2 then STOP else
+      if step!=2 then div else
       --step = 0
       Step::setValue!0 ->
       --notifyAll()

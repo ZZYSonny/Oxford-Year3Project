@@ -16,3 +16,7 @@ repeatN(e,n)=
   if n==0 then SKIP
   else e -> repeatN(e,n-1)
 
+channel DivChan
+div0 = DivChan -> div0
+div = div0 \ {|DivChan|}
+assertOrDiv(cond)=cond(div,SKIP)
