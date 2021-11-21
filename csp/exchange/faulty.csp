@@ -1,5 +1,9 @@
 include "common.csp"
 
+instance Monitor = ModuleMonitor(TypeThreadID)
+instance Step = VariableMin({0,1,2}, 0)
+instance Data = VariableMin(TypeData, A)
+
 exchange(me,datasend) = 
   Monitor::enter(me);
     --Start event for Linearizer
@@ -39,3 +43,10 @@ exchange(me,datasend) =
       Return.me.res -> 
       SKIP
     ))
+
+runWith(hide,p)=
+  Monitor::runWith(hide,hide,
+  Step::runWith(hide,
+  Data::runWith(hide,
+    p
+  )))

@@ -1,4 +1,4 @@
-include "faulty.csp"
+include "correct.csp"
 hide = True
 
 channel Sync: TypeThreadID. TypeData. TypeData. TypeThreadID. TypeData. TypeData
@@ -8,45 +8,59 @@ channel Sync: TypeThreadID. TypeData. TypeData. TypeThreadID. TypeData. TypeData
 -- Spec Process. 
 Spec = Sync?ta?aparam?areturn?tb:diff(TypeThreadID,{ta})!areturn!aparam -> Spec
 
-Linearizer(All,ta)=
-  Call!ta?aparam -> ((
-      Sync!ta!aparam?areturn?tb:diff(All,{ta})?bparam?breturn ->
-      Return!ta!areturn ->
-      Linearizer(All,ta)
+Lin0(All,me)=
+  let others=diff(All,{me}) within
+  Call!me?meparam -> ((
+      Sync!me!meparam?mereturn?other:others?oparam?oreturn ->
+      Return!me!mereturn ->
+      Lin0(All,me)
     )[](
-      Sync?tb:diff(All,{ta})?bparam?breturn!ta!aparam?areturn ->
-      Return!ta!areturn ->
-      Linearizer(All,ta)
+      Sync?other:others?oparam?oreturn!me!meparam?mereturn ->
+      Return!me!mereturn ->
+      Lin0(All,me)
   ))
-Linearizer1(All,ta)=
-  Linearizer(All,ta) |||
-  repeat(Sync?tb:diff(TypeThreadID,{ta})?bparam?breturn?tc:diff(All,{ta})?cparam?creturn->SKIP)
-Linearizers(All)= ([|{|Sync|}|] me:All @ Linearizer1(All,me))
-
+Lin1(All,me)= Lin0(All,me) |||
+  let others=diff(All,{me}) within repeatP(
+    Sync?o1:others?p1?r1?o2:others?p2?r2->SKIP
+  )
+Linearizers(All)= ([|{|Sync|}|] me:All @ Lin1(All,me))
 
 --Test for three threads
-System2 = 
-  Monitor::runWith(hide,hide,
-  Step::runWith(hide,
-  Data::runWith(hide,
-    repeat(exchange(TA,A)) |||
-    repeat(exchange(TB,B))
-  )))
+System1 = runWith(True,
+  repeat(exchange(TA,A)) |||
+  repeat(exchange(TB,B))
+)
 --Linearizer for two threads
-All2 = {TA, TB}
+All1 = {TA, TB}
+Spec1 = (Linearizers(All1) [|{|Sync|}|] Spec) \ {|Sync|}
+assert Spec1 [T= System1
+
+
+System2 = runWith(True,
+  repeat(exchange(TA,A)) |||
+  repeat(exchange(TB,B)) |||
+  repeat(exchange(TC,C))
+)
+All2 = {TA, TB, TC}
 Spec2 = (Linearizers(All2) [|{|Sync|}|] Spec) \ {|Sync|}
 assert Spec2 [T= System2
 
 
+
+
+--Behavior of each process
+--They non-deterministic choose a data to exchange
+worker(me) = |~| data:TypeData @ exchange(me,data);worker(me)
+--Generate a set of workers
+workers(All) = ||| me:All @ worker(me)
+--Test for Three threads
+All3 = {TA, TB, TC}
 System3 = 
   Monitor::runWith(hide,hide,
   Step::runWith(hide,
   Data::runWith(hide,
-    repeat(exchange(TA,A)) |||
-    repeat(exchange(TB,B)) |||
-    repeat(exchange(TC,C))
+    workers(All3)
   )))
---Linearizer for two threads
-All3 = {TA, TB, TC}
 Spec3 = (Linearizers(All3) [|{|Sync|}|] Spec) \ {|Sync|}
 assert Spec3 [T= System3
+--assert System3 [T= Spec3

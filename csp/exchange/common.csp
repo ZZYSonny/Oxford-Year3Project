@@ -5,10 +5,5 @@ include "../lib/variable.csp"
 datatype TypeThreadID = TA | TB | TC
 datatype TypeData = A | B | C
 
-instance Monitor = ModuleMonitor(TypeThreadID)
-instance Step = VariableMin({0,1,2}, 0)
-instance Data = VariableMin(TypeData, A)
-
-
 channel Call : TypeThreadID.TypeData
 channel Return: TypeThreadID.TypeData
