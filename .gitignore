@@ -1,2 +1,8 @@
+# Temporary Markdown
 note
 test
+# VSCode
+.vscode
+# Latex
+_minted-*
+*.synctex.gz

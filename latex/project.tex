@@ -1,0 +1,47 @@
+\documentclass{article}
+\begin{document}
+
+
+\subsection{Converting Scala Program to CSP Model}
+\subsubsection{Shared Variable}
+Shared variable is common in concurrent datatype. For example, to indicate the stage of exchanging in the exchanger. However, CSP does not have a built-in mutable variable feature. To achieve this, there needs to be an extra server process, running in parallel with other worker processes, and synchronizing on two channels \textbf{getChan}, and \textbf{setChan}. 
+
+The server process holds the value of the variable in its parameter. At any point, a worker process can get the variable value by synchronizing on \textbf{getChan} event with the server process. A worker process can also set the value of the variable by synchronizing on \textbf{setChan}. The server process will take and recurse with the new variable value.  
+
+The variable code is written in a modularized way so that other program can define mutable global variable with different names and types in a single line. 
+
+
+\subsubsection{Monitor}
+//TODO: Describing Java Monitor.
+
+//I find the state graph useful for explaining the CSP implementation
+
+Similarly, the implementation of monitor requires a server process, running in parallel with the worker processes. 
+
+\begin{itemize}
+    \item Before a process enters the \textbf{synchronized} block, it may need to wait other process to leave the block, or more concisely, changing from \textbf{Runnable} state to \textbf{Running} state. It must first synchronize with the server process on a \textbf{WaitEnter} event.
+    \item Before the process leaves the synchronized block, it must synchronize on an \textbf{Exit} event, to switch to \textbf{Finished} state.
+    \item The running process may wait until some variable to change. For this, the process must send a \textbf{Wait} event to the server, indicating changing from \textbf{Running} state to \textbf{Waiting} state. Later when resuming from \textbf{Waiting} state, the process first needs to switch to \textbf{Runnable} state with a \textbf{WaitNotify} event, then a \textbf{WaitEnter} event.
+    \item Also inside the block, the running process may send a \textbf{Notify} or \textbf{NotifyAll} event to notify one or all process in waiting state.
+\end{itemize}
+
+The server process should behave differently when there is a \textbf{Running} process or not. When there is no process in \textbf{Running} state, the server process should only non-deterministically pick a process waiting to enter the synchronized block. When there is a process in \textbf{Running} state, the server process should only be willing to accept 
+
+In Java, when a process calls notify, but there is no waiting process to wake up, the function call does nothing. However, if the server process sends a \textbf{Notify} event when no process is waiting, the server process will simply deadlock. Thus, it is essential to prevent the server process doing a \textbf{Notify} event in such case.
+
+One way to achieve this is to maintain a list of waiting processes. When the server process needs to do a \textbf{Notify}, after the running process sends a \textbf{Notify} event, the server process non-deterministically picks a waiting process from the list and send a \textbf{WaitNotify} event. Similarly, for notifyAll, the server process non-deterministically sends \textbf{WaitNotify} to all waiting process. It is also possible to simplify the lists of waiting processes to the number of waiting processes, because when the server sends a \textbf{WaitNotify} event, only waiting processes will be synchronized. 
+
+The monitor may spuriously wake up some processes at some time. For this purpose, the server process may non-deterministically choose to wake up processes whenever possible. //TODO: Livelock.
+
+Now that waiting processes may be waked up spuriously, it becomes helpful to use \textbf{wait} with a while loop like \textbf{while(cond) wait()}, to check if variable has actually been changed. While loop, again, is not in CSP. Also \textbf{cond} is a bit unusual, because when evaluating the condition, the process may need to read global variable. For this reason, a generic while loop is defined. //TODO: While loop
+
+\subsection{Testing}
+\subsubsection{Linearization}
+\subsubsection{Filter Channel}
+A filter channel is like a OneOne channel. Process sending data continues only when the data is taken by some receiver. Process receiving data only takes values from senders that satisfies some predicate, and has not been taken by anyone else. 
+
+//TODO: An example with sync diagram
+
+
+
+\end{document}
