@@ -1,0 +1,58 @@
+include "correct.csp"
+
+hide = True
+channel Sync: TypeThreadID.TypeData.(TypeData.TypeData).TypeThreadID.TypeData.(TypeData.TypeData).TypeThreadID.TypeData.(TypeData.TypeData)
+
+Spec = |~| a: TypeData @ |~| b: TypeData @ |~| c: TypeData @
+  Sync?aid!a!(b.c)?bid:diff(TypeThreadID,{aid})!b!(a.c)?cid:diff(TypeThreadID,{aid,bid})!c!(a.b) ->
+  Spec
+
+--Linearizer for a process
+Lin(All,me)=
+  |~| a: TypeData @ |~| b: TypeData @ |~| c: TypeData @
+  let others=diff(All,{me}) within (
+      --me synchronizes as thread A
+      Call!me!ASync!a ->
+      Sync!me!a!b!c?t2?t2b?t2a?t2c?t3?t3c?t3a?t3b ->
+      Return!me!ASync!b!c ->
+      Lin(All,me)
+    ) [] (
+      --me synchronizes as thread B
+      Call!me!BSync!b ->
+      Sync?t2?t2b?t2a?t2c!me!b!a!c?t3?t3c?t3a?t3b ->
+      Return!me!BSync!a!c ->
+      Lin(All,me)
+    ) [] (
+      --me synchronizes as thread C
+      Call!me!CSync!c ->
+      Sync?t2?t2b?t2a?t2c?t3?t3c?t3a?t3b!me!c!a!b ->
+      Return!me!CSync!a!b ->
+      Lin(All,me)
+    )
+
+--3^12
+--Event used by Lin(All,me)
+--This set is created for alphabetised synchronization
+RelatedSync(All,me)=union({
+  Sync.me.a.b.c.t2.d.e.f.t3.h.i.j,
+  Sync.t2.a.b.c.me.d.e.f.t3.h.i.j,
+  Sync.t2.a.b.c.t3.d.e.f.me.h.i.j| 
+  a<-TypeData, b<-TypeData, c<-TypeData,
+  t2<-All, d<-TypeData, e<-TypeData, f<-TypeData,
+  t3<-All, h<-TypeData, i<-TypeData, j<-TypeData
+},{
+  Call.me.op.a,
+  Return.me.op.b.c|
+  op<-TypeOps,
+  a<-TypeData, b<-TypeData, c<-TypeData
+})
+
+Linearizers(All)= || me: All @ [RelatedSync(All,me)] Lin(All,me)
+
+System1 = runWith(hide,
+    repeat(SyncA(TA,A)) |||
+    repeat(SyncB(TB,B)) |||
+    repeat(SyncC(TC,C))
+)
+Spec1 = (Linearizers({TA, TB, TC}) [|{|Sync|}|] Spec) \ {|Sync|}
+assert Spec1 [T= System1

@@ -1,0 +1,40 @@
+module SignallingSemaphore(TypeThreadID)
+  Signalling = 
+    upChan?id ->
+    Mutex
+
+  Mutex =
+    downChan?id1 ->
+    upChan?id2 ->
+    Mutex
+  
+  chanset = {|
+    upChan, downChan
+  |}
+
+exports
+  runWith(hide,P) = 
+    if hide then (Signalling [| chanset |] P) \ chanset
+    else Signalling [| chanset |] P
+  
+  channel upChan, downChan: TypeThreadID
+endmodule
+
+
+module MutexSemaphore(TypeThreadID)
+  Mutex =
+    downChan?id1 ->
+    upChan?id2 ->
+    Mutex
+  
+  chanset = {|
+    upChan, downChan
+  |}
+
+exports
+  runWith(hide,P) = 
+    if hide then (Mutex [| chanset |] P) \ chanset
+    else Mutex [| chanset |] P
+  
+  channel upChan, downChan: TypeThreadID
+endmodule

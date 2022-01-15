@@ -15,3 +15,25 @@ exports
   
   channel getValue, setValue: TypeValue
 endmodule
+
+
+module VariableDbg(TypeValue)
+  UninitializedVar = 
+    setValue?value -> Var(value)
+
+  Var(value) =
+    getValue!value -> Var(value)
+    [] 
+    setValue?value -> Var(value)
+  
+  chanset = {|
+    getValue, setValue
+  |}
+
+exports
+  runWith(hide,P) = 
+    if hide then (UninitializedVar [| chanset |] P) \ chanset
+    else UninitializedVar [| chanset |] P
+  
+  channel getValue, setValue: TypeValue
+endmodule

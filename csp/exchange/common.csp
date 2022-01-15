@@ -1,9 +1,0 @@
-include "../lib/common.csp"
-include "../lib/monitor_dbg.csp"
-include "../lib/variable.csp"
-
-datatype TypeThreadID = TA | TB | TC
-datatype TypeData = A | B | C
-
-channel Call : TypeThreadID.TypeData
-channel Return: TypeThreadID.TypeData

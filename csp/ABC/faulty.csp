@@ -1,0 +1,83 @@
+include "common.csp"
+
+
+instance VarA = VariableDbg(TypeData) 
+instance VarB = VariableDbg(TypeData)
+instance VarC = VariableDbg(TypeData)
+
+instance aClear = MutexSemaphore(TypeThreadID)
+instance bClear = SignallingSemaphore(TypeThreadID)
+instance cClear = SignallingSemaphore(TypeThreadID)
+instance aSignal = SignallingSemaphore(TypeThreadID)
+instance bSignal = SignallingSemaphore(TypeThreadID)
+instance cSignal = SignallingSemaphore(TypeThreadID)
+
+runWith(hide,p)=
+  VarA::runWith(hide,
+  VarB::runWith(hide,
+  VarC::runWith(hide,
+  aClear::runWith(hide,
+  bClear::runWith(hide,
+  cClear::runWith(hide,
+  aSignal::runWith(hide,
+  bSignal::runWith(hide,
+  cSignal::runWith(hide,
+    p
+  )))))))))
+
+SyncA(me,avalue) =
+  Call!me!ASync!avalue ->
+  --aClear.down
+  aClear::downChan!me ->
+  --a = me
+  VarA::setValue!avalue ->
+  --bClear.up
+  bClear::upChan!me ->
+  --aSignal.down
+  aSignal::downChan!me ->
+  --bSignal.up
+  bSignal::upChan!me ->
+  --(b,c)
+  VarB::getValue?b ->
+  VarC::getValue?c ->
+  --result ->
+  Return!me!ASync!(b.c) ->
+  SKIP
+
+SyncB(me,bvalue) =
+  Call!me!BSync!bvalue ->
+  --bClear.down
+  bClear::downChan!me ->
+  --b=me
+  VarB::setValue!bvalue ->
+  --cClear.up
+  cClear::upChan!me ->
+  --bSignal.down
+  bSignal::downChan!me ->
+  --cSignal.up
+  cSignal::upChan!me ->
+  --(a,c)
+  VarA::getValue?a ->
+  VarC::getValue?c ->
+  --result
+  Return!me!BSync!(a.c) ->
+  SKIP
+
+SyncC(me,cvalue) =
+  Call!me!CSync!cvalue ->
+  --cClear.down
+  cClear::downChan!me ->
+  --c = me
+  VarC::setValue!cvalue ->
+  --aSignal.up
+  aSignal::upChan!me ->
+  --cSignal.down
+  cSignal::downChan!me ->
+  --aClear.up
+  aSignal::upChan!me ->
+  --(a,b)
+  VarA::getValue?a ->
+  VarB::getValue?b ->
+  --result
+  Return!me!CSync!(a.b) ->
+  SKIP
