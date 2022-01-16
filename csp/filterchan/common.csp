@@ -1,6 +1,7 @@
 include "../lib/common.csp"
 include "../lib/monitor_dbg.csp"
 include "../lib/variable.csp"
+include "../lib/lists.csp"
 
 datatype TypeThreadID = S1 | S2 | R1 | R2
 datatype TypeData = A | B | C

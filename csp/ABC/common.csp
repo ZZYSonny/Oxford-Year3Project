@@ -1,9 +1,9 @@
 include "../lib/common.csp"
 include "../lib/variable.csp"
 include "../lib/semaphore.csp"
-
-datatype TypeThreadID = TA | TB | TC
-datatype TypeData = A | B | C
+include "../lib/lists.csp"
+datatype TypeThreadID = TA | TB | TC | TD
+datatype TypeData = A | B
 datatype TypeOps = ASync | BSync | CSync
 
 channel Call : TypeThreadID.TypeOps.TypeData

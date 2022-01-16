@@ -1,4 +1,4 @@
-include "correct2.csp"
+include "faulty.csp"
 
 hide = True
 channel Sync: TypeSeqNumber
@@ -10,15 +10,7 @@ Lin(All,me)=
   Sync?mereturn ->
   Return!me!mereturn ->
   Lin(All,me)
-
-LinEvents(All,me)=union({
-  Call.me
-},{
-  Sync.i,
-  Return.me.i |
-  i <- TypeSeqNumber
-})
-
+LinEvents(All,me)={|Call.me,Return.me,Sync|}
 Linearizers(All)= || me: All @ [LinEvents(All,me)]  Lin(All,me)
 
 System1 = runWith(hide,

@@ -6,25 +6,25 @@ Spec = |~| x: TypeData @ |~| p: findPred(x) @
   Sync?sendid!(SendParam.x)!(SendReturn)?recvid!(RecvParam.p)!(RecvReturn.x) ->
   Spec
   
-Lin0(All,me)=
-  let others=diff(All,{me}) within(
-    [] x: TypeData @
-      Call!me!(SendParam.x) ->
-      Sync!me!(SendParam.x)!(SendReturn)?other:others?recvparam?recvreturn ->
-      Return!me!(SendReturn) ->
-      Lin0(All,me)
-  ) [] (
-    [] x: TypeData @ [] p: TypePred @
-      Call!me!(RecvParam.p) ->
-      Sync?other:others?sendparam?sendreturn!me!(RecvParam.p)!(RecvReturn.x) ->
-      Return!me!(RecvReturn.x) ->
-      Lin0(All,me)
-  )
-Lin1(All,me) = Lin0(All,me) |||
-  let others=diff(All,{me}) within repeatP(
-    Sync?ta:others?sendparam?sendreturn?tb:others?recvparam?recvreturn -> SKIP
-  )
-Linearizers(All)= ([|{|Sync|}|] me:All @ Lin1(All,me))
+Lin(All,me)=(
+  [] x: TypeData @
+    Call!me!(SendParam.x) ->
+    Sync!me!(SendParam.x)!(SendReturn)?other?recvparam?recvreturn ->
+    Return!me!(SendReturn) ->
+    Lin(All,me)
+) [] (
+  [] x: TypeData @ [] p: TypePred @
+    Call!me!(RecvParam.p) ->
+    Sync?other?sendparam?sendreturn!me!(RecvParam.p)!(RecvReturn.x) ->
+    Return!me!(RecvReturn.x) ->
+    Lin(All,me)
+)
+LinEvents(All,me)=union({
+  ev | ev<-{|Sync|},
+  let Sync.t1.a.b.t2.c.d=ev within
+    countEqualList(me,<t1,t2>)==1
+},{|Call.me,Return.me|})
+Linearizers(All)= || me: All @ [LinEvents(All,me)] Lin(All,me)
 
 ----------------------------------
 --Test for 1 sender and 1 receiver

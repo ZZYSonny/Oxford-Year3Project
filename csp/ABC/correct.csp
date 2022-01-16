@@ -77,7 +77,7 @@ SyncC(me,cvalue) =
   VarA::getValue?a ->
   VarB::getValue?b ->
   --aClear.up
-  aSignal::upChan!me ->
+  aClear::upChan!me ->
   --result
   Return!me!CSync!(a.b) ->
   SKIP

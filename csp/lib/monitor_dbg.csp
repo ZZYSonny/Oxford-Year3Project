@@ -62,11 +62,13 @@ exports
   --Given a process that uses the monitor
   --Return the process synchronized with the monitor server process
   --If hide is true, monitor channels are hidden
-  runWith(hideInternal,hideSpurious, P) = 
+  runWith(hideSpurious, hideInternal, P) = 
     let hideset0 = if hideInternal then chanset else {} within
     let hideset1 = if hideSpurious then hideset0 else diff(hideset0,{|SpuriousWake|}) within
     (inactive({}) [|chanset|] P) \ hideset1
   
+  runSpecWithSpurious(P) = P ||| RUN({|SpuriousWake|})
+
   --java-like synchronized function
   synchronized(me, P)=
     WaitEnter.me ->

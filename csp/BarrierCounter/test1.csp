@@ -1,4 +1,4 @@
-include "correct.csp"
+include "faulty.csp"
 include "../lib/lists.csp"
 
 hide = True
@@ -15,18 +15,7 @@ Lin(All,me)=
   Sync?perms?returns ->
   Return!me!nthList(findList(me,perms),returns) ->
   Lin(All,me)
-
-LinEvents(All,me)=union({
-  Call.me
-},union({
-  Return.me.i |
-  i <- TypeSeqNumber
-},{
-  Sync.perms.returns |
-  perms <- TypeThreadIDPermutation,
-  returns <- TypeReturns
-}))
-
+LinEvents(All,me)={|Call.me,Return.me,Sync|}
 Linearizers(All)= || me: All @ [LinEvents(All,me)]  Lin(All,me)
 
 System1 = runWith(hide,

@@ -44,9 +44,9 @@ exchange(me,datasend) =
       SKIP
     ))
 
-runWith(hide,p)=
-  Monitor::runWith(hide,hide,
-  Step::runWith(hide,
-  Data::runWith(hide,
+runWith(hideSpurious, hideInternal, p)=
+  Monitor::runWith(hideSpurious, hideInternal,
+  Step::runWith(hideInternal,
+  Data::runWith(hideInternal,
     p
   )))

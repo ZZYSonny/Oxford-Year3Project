@@ -1,4 +1,4 @@
-include "faulty.csp"
+include "correct.csp"
 
 hide = True
 channel Sync: TypeThreadID.TypeThreadID.TypeThreadID.TypeThreadID
@@ -20,22 +20,11 @@ Lin(All,me)= (
   Return!me!WomanSync!mereturn ->
   Lin(All,me)
 )
-
 LinEvents(All,me)=union({
-  Call.me.ManSync,
-  Call.me.WomanSync
-},union({
-  Sync.me.a.other.b,
-  Sync.other.a.me.b| 
-  other<-diff(All,{me}),
-  a<-TypeThreadID, b<-TypeThreadID
-},{
-  Return.me.ManSync.a,
-  Return.me.WomanSync.a| 
-  other<-diff(All,{me}),
-  a<-TypeThreadID
-}))
-
+  ev | ev<-{|Sync|},
+  let Sync.t1.a.t2.b=ev within
+    countEqualList(me,<t1,t2>)==1
+},{|Call.me,Return.me|})
 Linearizers(All)= || me: All @ [LinEvents(All,me)]  Lin(All,me)
 
 System1 = runWith(hide,
@@ -44,6 +33,7 @@ System1 = runWith(hide,
 )
 Spec1 = (Linearizers({Man1,Woman1}) [|{|Sync|}|] Spec) \ {|Sync|}
 assert Spec1 [T= System1
+--assert System1 :[deadlock free]
 
 System2 = runWith(hide,
     repeat(manSync(Man1)) |||

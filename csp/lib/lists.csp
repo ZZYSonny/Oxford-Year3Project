@@ -20,6 +20,11 @@ findList(x,<a>^as)=
   if a==x then 0
   else 1+findList(x,as)
 
+countEqualList(x,<>)=0
+countEqualList(x,<a>^as)=
+  countEqualList(x,as)+
+  if a==x then 1 else 0
+
 Arrangement(0,as)={<>}
 Arrangement(n,as)={
   <a>^ans|

@@ -25,27 +25,35 @@ Lin(All,me)=
       Return!me!CSync!a!b ->
       Lin(All,me)
     )
-
 LinEvents(All,me)=union({
   Sync.me.a.b.c.t2.b.a.c.t3.c.a.b,
   Sync.t2.a.b.c.me.b.a.c.t3.c.a.b,
   Sync.t2.a.b.c.t3.b.a.c.me.c.a.b| 
   t2<-diff(All,{me}), t3<-diff(All,{me,t2}),
   a<-TypeData, b<-TypeData, c<-TypeData
-},{
-  Call.me.op.a,
-  Return.me.op.b.c|
-  op<-TypeOps,
-  a<-TypeData, b<-TypeData, c<-TypeData
-})
-
+},{|Call.me,Return.me|})
 Linearizers(All)= || me: All @ [LinEvents(All,me)]  Lin(All,me)
 
-System1 = runWith(hide,
-    repeat(SyncA(TA,A)) |||
-    repeat(SyncB(TB,B)) |||
-    repeat(SyncC(TC,C))
+--a thread syncing data A and B alternately
+syncWithAB(me,f)=f(me,A);f(me,B);syncWithAB(me,f)
+--same thing but B first then A
+syncWithBA(me,f)=f(me,B);f(me,A);syncWithAB(me,f)
+
+--OK
+System1 = runWith(True,
+    repeat(syncWithAB(TA,SyncA)) |||
+    repeat(syncWithAB(TB,SyncB)) |||
+    repeat(syncWithAB(TC,SyncC))
 )
 Spec1 = (Linearizers({TA, TB, TC})) \ {|Sync|}
 assert Spec1 [T= System1
-assert System1 [T= Spec1
+
+--OK
+System2 = runWith(False,
+    (SyncA(TA,A)) |||
+    (SyncB(TB,A);SyncB(TB,B)) |||
+    (SyncC(TC,A);SyncC(TC,B)) |||
+    (SyncA(TD,A))
+)
+Spec2 = (Linearizers({TA, TB, TC, TD})) \ {|Sync|}
+assert Spec2 [T= System2

@@ -1,0 +1,10 @@
+
+MaxTime=4
+TypeTime={0..MaxTime}
+channel getTime: TypeTime
+clock(now)=
+  (getTime!now -> clock(now))
+  []
+  clock((now+1)%MaxTime)
+
+  

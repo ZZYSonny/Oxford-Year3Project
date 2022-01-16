@@ -1,4 +1,4 @@
-include "faulty3.csp"
+include "correct.csp"
 
 hide = True
 channel Sync
@@ -10,13 +10,7 @@ Lin(All,me)=
   Sync ->
   Return!me ->
   Lin(All,me)
-
-LinEvents(All,me)={
-  Call.me,
-  Return.me,
-  Sync
-}
-
+LinEvents(All,me)={|Sync,Call.me,Return.me|}
 Linearizers(All)= || me: All @ [LinEvents(All,me)]  Lin(All,me)
 
 System1 = runWith(hide,

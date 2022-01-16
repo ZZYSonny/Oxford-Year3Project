@@ -54,11 +54,11 @@ SyncB(me,bvalue) =
   cClear::upChan!me ->
   --bSignal.down
   bSignal::downChan!me ->
-  --cSignal.up
-  cSignal::upChan!me ->
   --(a,c)
   VarA::getValue?a ->
   VarC::getValue?c ->
+  --cSignal.up
+  cSignal::upChan!me ->
   --result
   Return!me!BSync!(a.c) ->
   SKIP
@@ -73,11 +73,11 @@ SyncC(me,cvalue) =
   aSignal::upChan!me ->
   --cSignal.down
   cSignal::downChan!me ->
-  --aClear.up
-  aSignal::upChan!me ->
   --(a,b)
   VarA::getValue?a ->
   VarB::getValue?b ->
+  --aClear.up
+  aClear::upChan!me ->
   --result
   Return!me!CSync!(a.b) ->
   SKIP
