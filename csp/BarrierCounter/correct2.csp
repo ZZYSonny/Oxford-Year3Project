@@ -1,0 +1,57 @@
+include "common.csp"
+
+instance VarSeqNumber = VariableMin({0..M},0)
+instance VarWaiting = VariableMin({0..N},0)
+instance WaitSem = SignallingSemaphore(TypeThreadID)
+instance Mutex = MutexSemaphore(TypeThreadID)
+
+runWith(hide,p)=
+  VarSeqNumber::runWith(hide,
+  VarWaiting::runWith(hide,
+  WaitSem::runWith(hide,
+  Mutex::runWith(hide,
+    p
+  ))))
+
+sync(me)=
+  Call!me ->
+  --mutex.down
+  Mutex::downChan!me ->
+  --val result = seqNumber
+  VarSeqNumber::getValue?result -> (
+    --if(waiting==n-1)
+    VarWaiting::getValue?x -> (
+    if x==N-1 then (
+      --waitSem.up
+      WaitSem::upChan!me ->
+      SKIP
+    ) else (
+      --waiting+=1
+      if x==N then div else
+      VarWaiting::setValue!(x+1) ->
+      --mutex.up
+      Mutex::upChan!me ->
+      --waitSem.down
+      WaitSem::downChan!me ->
+      --waiting-=1
+      VarWaiting::getValue?y ->
+      if y==0 then div else
+      VarWaiting::setValue!(y-1) ->
+      if y-1==0 then (
+        --seqNumber+=1
+        VarSeqNumber::getValue?z ->
+        VarSeqNumber::setValue!((z+1)%M) ->
+        --mutex.up
+        Mutex::upChan!me ->
+        SKIP
+      ) else (
+        --waitSem.up
+        WaitSem::upChan!me ->
+        SKIP
+      )
+    ));
+    --result
+    Return!me!result ->
+    SKIP
+  )
+  

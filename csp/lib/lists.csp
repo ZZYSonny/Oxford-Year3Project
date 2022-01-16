@@ -1,0 +1,35 @@
+flatten(ass) = <
+  a |
+  as <- ass,
+  a <- as
+>
+
+inList(x,<a>^as)=
+  if x==a then True
+  else inList(x,as)
+inList(x,<>) = False
+
+nthList(0,<a>^as)=a
+nthList(i,<a>^as)=nthList(i-1,as)
+
+nElemList(0,e)=<>
+nElemList(i,e)=<e>^nElemList(i-1,e)
+
+findList(x,<>)=-1
+findList(x,<a>^as)=
+  if a==x then 0
+  else 1+findList(x,as)
+
+Arrangement(0,as)={<>}
+Arrangement(n,as)={
+  <a>^ans|
+  ans<-Arrangement(n-1,as),
+  a<-as
+}
+
+Permutation({})={<>}
+Permutation(as)={
+  <a>^ans|
+  a<-as,
+  ans<-Permutation(diff(as,{a}))
+}

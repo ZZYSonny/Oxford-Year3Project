@@ -1,0 +1,33 @@
+include "correct.csp"
+include "../lib/lists.csp"
+
+hide = True
+--TypeThreadIDArrangement=Arrangement(N, TypeThreadID)
+TypeThreadIDPermutation=Permutation(TypeThreadID)
+channel Sync:TypeThreadIDPermutation
+
+Spec = Sync?perm:TypeThreadIDPermutation -> Spec
+
+Lin(All,me)=
+  Call!me ->
+  Sync?perm ->
+  Return!me ->
+  Lin(All,me)
+
+LinEvents(All,me)=union({
+  Call.me,
+  Return.me
+},{
+  Sync.perm|
+  perm<-TypeThreadIDPermutation
+})
+
+Linearizers(All)= || me: All @ [LinEvents(All,me)]  Lin(All,me)
+
+System1 = runWith(hide,
+    repeat(sync(TA)) |||
+    repeat(sync(TB))
+)
+Spec1 = (Linearizers({TA, TB}) [|{|Sync|}|] Spec) \ {|Sync|}
+assert Spec1 [T= System1
+assert System1 [T= Spec1

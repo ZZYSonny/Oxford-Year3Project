@@ -1,0 +1,30 @@
+include "correct2.csp"
+
+hide = True
+channel Sync: TypeSeqNumber
+
+Spec(i) = Sync.i -> Spec((i+1)%M)
+
+Lin(All,me)=
+  Call!me ->
+  Sync?mereturn ->
+  Return!me!mereturn ->
+  Lin(All,me)
+
+LinEvents(All,me)=union({
+  Call.me
+},{
+  Sync.i,
+  Return.me.i |
+  i <- TypeSeqNumber
+})
+
+Linearizers(All)= || me: All @ [LinEvents(All,me)]  Lin(All,me)
+
+System1 = runWith(hide,
+    repeat(sync(TA)) |||
+    repeat(sync(TB))
+)
+Spec1 = (Linearizers({TA, TB}) [|{|Sync|}|] Spec(0)) \ {|Sync|}
+assert Spec1 [T= System1
+assert System1 [T= Spec1

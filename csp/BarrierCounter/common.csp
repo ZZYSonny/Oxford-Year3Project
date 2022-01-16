@@ -1,0 +1,13 @@
+include "../lib/common.csp"
+include "../lib/variable.csp"
+include "../lib/monitor_dbg.csp"
+include "../lib/semaphore.csp"
+
+datatype TypeThreadID = TA | TB
+N=2
+M=2
+
+TypeSeqNumber={0..M}
+channel Call : TypeThreadID
+channel Return: TypeThreadID.TypeSeqNumber
+

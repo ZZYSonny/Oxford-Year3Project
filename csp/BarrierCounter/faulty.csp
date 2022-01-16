@@ -1,0 +1,70 @@
+include "common.csp"
+
+instance VarSeqNumber = VariableMin({0..M},0)
+instance VarCount = VariableMin({0..N},0)
+instance VarLeaving = VariableMin(Bool,False)
+instance Monitor = ModuleMonitor(TypeThreadID)
+
+runWith(hide,p)=
+  VarSeqNumber::runWith(hide,
+  VarCount::runWith(hide,
+  VarLeaving::runWith(hide,
+  Monitor::runWith(hide,hide,
+    p
+  ))))
+
+sync(me)=
+  Call!me ->
+  --synchronized
+  Monitor::enter(me);
+    --count+=1
+    VarCount::getValue?x ->
+    if x==N then div else
+    VarCount::setValue!(x+1) -> (
+    --if(count==n)
+    if x+1==N then (
+      --leaving=true
+      VarLeaving::setValue!True ->
+      --notifyAll()
+      Monitor::notifyAll(me);
+      --seqNumber
+      VarSeqNumber::getValue?ans->(
+        Monitor::exit(me);
+        Return!me!ans ->
+        SKIP
+      )
+    ) else (
+      --while(!leaving) wait()
+      Monitor::whileWait(me, \ktrue,kfalse @
+        VarLeaving::getValue?leaving ->
+        if (not leaving) then ktrue else kfalse
+      );
+      --count-=1
+      VarCount::getValue?y -> 
+      if y==0 then div else
+      VarCount::setValue!y-1 ->
+      --if(count==0)
+      if(y-1==0) then (
+        --leaving=false
+        VarLeaving::setValue!False ->
+        --seqNumber+=1
+        VarSeqNumber::getValue?z ->
+        VarSeqNumber::setValue!((z+1)%M) ->
+        --seqNumber-1
+        VarSeqNumber::getValue?ans->(
+          Monitor::exit(me);
+          Return!me!z ->
+          SKIP
+        )
+      ) else (
+        --seqNumber
+        VarSeqNumber::getValue?ans->(
+          Monitor::exit(me);
+          Return!me!ans ->
+          SKIP
+        )
+      )
+    )
+  )
+
+
