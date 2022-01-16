@@ -1,0 +1,15 @@
+include "../lib/common.csp"
+include "../lib/variable.csp"
+include "../lib/monitor_dbg.csp"
+
+datatype TypeThreadID = Man1 | Man2 | Woman1 | Woman2
+datatype TypeOptionThreadID = None | Some.TypeThreadID
+datatype TypeOps = ManSync | WomanSync
+
+TypeMan={Man1,Man2}
+TypeWoman={Woman1,Woman2}
+
+channel Call : TypeThreadID.TypeOps
+channel Return: TypeThreadID.TypeOps.TypeThreadID
+
+removeSome(Some.x)=x

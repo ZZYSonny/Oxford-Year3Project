@@ -1,0 +1,68 @@
+include "common.csp"
+
+
+instance VarStage = VariableMin({0,1,2},0) 
+instance VarHim = VariableDbg(TypeThreadID)
+instance VarHer = VariableDbg(TypeThreadID)
+instance Monitor = ModuleMonitor(TypeThreadID)
+
+runWith(hide,p)=
+  VarStage::runWith(hide,
+  VarHim::runWith(hide,
+  VarHer::runWith(hide,
+  Monitor::runWith(hide,hide,
+    p
+  ))))
+
+manSync(me) = 
+  Call!me!ManSync ->
+  --synchronized
+  Monitor::enter(me);
+    --while(stage != 0) wait()
+    Monitor::whileWait(me, \ktrue,kfalse @
+      VarStage::getValue?x ->
+      if x!=0 then ktrue else kfalse
+    );
+    --him=me
+    VarHim::setValue!me ->
+    --stage=1
+    VarStage::setValue!1 ->
+    --notifyAll()
+    Monitor::notifyAll(me);
+    --while(stage != 2) wait()
+    Monitor::whileWait(me, \ktrue,kfalse @
+      VarStage::getValue?x ->
+      if x!=2 then ktrue else kfalse
+    );
+    --stage=0
+    VarStage::setValue!0 ->
+    --notifyAll()
+    Monitor::notifyAll(me);
+    --her
+    VarHer::getValue?ans ->(
+  Monitor::exit(me);
+  Return!me!ManSync!ans->
+  SKIP
+  )
+
+womanSync(me)=
+  Call!me!WomanSync ->
+  --synchronized
+  Monitor::enter(me);
+    --while(stage != 1) wait()
+    Monitor::whileWait(me, \ktrue,kfalse @
+      VarStage::getValue?x ->
+      if x!=1 then ktrue else kfalse
+    );
+    --her=me
+    VarHer::setValue!me ->
+    --stage=2
+    VarStage::setValue!2 ->
+    --notifyAll()
+    Monitor::notifyAll(me);
+    --him
+    VarHim::getValue?ans ->(
+  Monitor::exit(me);
+  Return!me!WomanSync!ans->
+  SKIP
+  )

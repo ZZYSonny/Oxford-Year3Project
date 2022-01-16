@@ -1,0 +1,72 @@
+include "common.csp"
+
+instance VarHim = VariableMin(TypeOptionThreadID,None)
+instance VarHer = VariableMin(TypeOptionThreadID,None)
+instance Monitor = ModuleMonitor(TypeThreadID)
+
+runWith(hide,p)=
+  VarHim::runWith(hide,
+  VarHer::runWith(hide,
+  Monitor::runWith(hide,hide,
+    p
+  )))
+
+manSync(me) = 
+  Call!me!ManSync ->
+  --synchronized
+  Monitor::enter(me);
+    --while(him.nonEmpty) wait()
+    Monitor::whileWait(me, \ktrue,kfalse @
+      VarHim::getValue?x ->
+      if x!=None then ktrue else kfalse
+    );
+    --him=Some(me)
+    VarHim::setValue!(Some.me) ->
+    --notifyAll()
+    Monitor::notifyAll(me);
+    --while(her.isEmpty) wait()
+    Monitor::whileWait(me, \ktrue,kfalse @
+      VarHer::getValue?x ->
+      if x==None then ktrue else kfalse
+    );
+    --val Some(res)=her
+    VarHer::getValue?(Some.ans) ->
+    --her=None
+    VarHer::setValue!None ->(
+    --notifyAll()
+    Monitor::notifyAll(me);
+  --synchronized
+  Monitor::exit(me);
+  Return!me!ManSync!ans->
+  SKIP
+  )
+
+womanSync(me) = 
+  Call!me!WomanSync ->
+  --synchronized
+  Monitor::enter(me);
+    --while(her.nonEmpty) wait()
+    Monitor::whileWait(me, \ktrue,kfalse @
+      VarHer::getValue?x ->
+      if x!=None then ktrue else kfalse
+    );
+    --her=Some(me)
+    VarHer::setValue!(Some.me) ->
+    --notifyAll()
+    Monitor::notifyAll(me);
+    --while(him.isEmpty) wait()
+    Monitor::whileWait(me, \ktrue,kfalse @
+      VarHim::getValue?x ->
+      if x==None then ktrue else kfalse
+    );
+    --val Some(res)=him
+    VarHim::getValue?(Some.ans) ->
+    --him=None
+    VarHim::setValue!None ->(
+    --notifyAll()
+    Monitor::notifyAll(me);
+  --synchronized
+  Monitor::exit(me);
+  Return!me!WomanSync!ans->
+  SKIP
+  )
