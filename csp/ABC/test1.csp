@@ -1,4 +1,4 @@
-include "correct.csp"
+include "faulty.csp"
 
 hide = True
 channel Sync: TypeThreadID.TypeData.(TypeData.TypeData).TypeThreadID.TypeData.(TypeData.TypeData).TypeThreadID.TypeData.(TypeData.TypeData)
@@ -26,7 +26,7 @@ Lin(All,me)=
       Lin(All,me)
     )
 
-RelatedSync(All,me)=union({
+LinEvents(All,me)=union({
   Sync.me.a.b.c.t2.b.a.c.t3.c.a.b,
   Sync.t2.a.b.c.me.b.a.c.t3.c.a.b,
   Sync.t2.a.b.c.t3.b.a.c.me.c.a.b| 
@@ -39,7 +39,7 @@ RelatedSync(All,me)=union({
   a<-TypeData, b<-TypeData, c<-TypeData
 })
 
-Linearizers(All)= || me: All @ [RelatedSync(All,me)]  Lin(All,me)
+Linearizers(All)= || me: All @ [LinEvents(All,me)]  Lin(All,me)
 
 System1 = runWith(hide,
     repeat(SyncA(TA,A)) |||
@@ -48,3 +48,4 @@ System1 = runWith(hide,
 )
 Spec1 = (Linearizers({TA, TB, TC})) \ {|Sync|}
 assert Spec1 [T= System1
+assert System1 [T= Spec1

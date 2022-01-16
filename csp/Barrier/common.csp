@@ -1,0 +1,10 @@
+include "../lib/common.csp"
+include "../lib/variable.csp"
+include "../lib/monitor_dbg.csp"
+
+datatype TypeThreadID = TA | TB
+N=2
+
+channel Call : TypeThreadID
+channel Return: TypeThreadID
+

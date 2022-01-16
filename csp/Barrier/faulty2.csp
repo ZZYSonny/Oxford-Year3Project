@@ -1,0 +1,37 @@
+include "common.csp"
+
+
+instance VarCount = VariableMin({0..N},0)
+instance Monitor = ModuleMonitor(TypeThreadID)
+
+runWith(hide,p)=
+  VarCount::runWith(hide,
+  Monitor::runWith(hide,hide,
+    p
+  ))
+
+sync(me)=
+  Call!me ->
+  --synchronized
+  Monitor::enter(me);
+    --count+=1
+    VarCount::getValue?x ->
+    if x==N then div else
+    VarCount::setValue!(x+1) -> (
+    --if(count==n)
+    if x+1==N then (
+      --count=0
+      VarCount::setValue!0 ->
+      --notifyAll()
+      Monitor::notifyAll(me)
+    ) else (
+      --wait()
+      Monitor::wait(me)
+    )
+  );
+  Monitor::exit(me);
+  Return!me ->
+  SKIP
+
+
+

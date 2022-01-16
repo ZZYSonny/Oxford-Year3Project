@@ -33,7 +33,7 @@ Lin(All,me)=
 --3^12
 --Event used by Lin(All,me)
 --This set is created for alphabetised synchronization
-RelatedSync(All,me)=union({
+LinEvents(All,me)=union({
   Sync.me.a.b.c.t2.d.e.f.t3.h.i.j,
   Sync.t2.a.b.c.me.d.e.f.t3.h.i.j,
   Sync.t2.a.b.c.t3.d.e.f.me.h.i.j| 
@@ -47,7 +47,7 @@ RelatedSync(All,me)=union({
   a<-TypeData, b<-TypeData, c<-TypeData
 })
 
-Linearizers(All)= || me: All @ [RelatedSync(All,me)] Lin(All,me)
+Linearizers(All)= || me: All @ [LinEvents(All,me)] Lin(All,me)
 
 System1 = runWith(hide,
     repeat(SyncA(TA,A)) |||
@@ -56,3 +56,4 @@ System1 = runWith(hide,
 )
 Spec1 = (Linearizers({TA, TB, TC}) [|{|Sync|}|] Spec) \ {|Sync|}
 assert Spec1 [T= System1
+assert System1 [T= Spec1

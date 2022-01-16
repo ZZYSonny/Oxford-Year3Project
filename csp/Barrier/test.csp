@@ -1,0 +1,28 @@
+include "faulty3.csp"
+
+hide = True
+channel Sync
+
+Spec = Sync -> Spec
+
+Lin(All,me)=
+  Call!me ->
+  Sync ->
+  Return!me ->
+  Lin(All,me)
+
+LinEvents(All,me)={
+  Call.me,
+  Return.me,
+  Sync
+}
+
+Linearizers(All)= || me: All @ [LinEvents(All,me)]  Lin(All,me)
+
+System1 = runWith(hide,
+    repeat(sync(TA)) |||
+    repeat(sync(TB))
+)
+Spec1 = (Linearizers({TA, TB}) [|{|Sync|}|] Spec) \ {|Sync|}
+assert Spec1 [T= System1
+assert System1 [T= Spec1
