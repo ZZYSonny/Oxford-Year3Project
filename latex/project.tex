@@ -4,28 +4,32 @@
 
 \subsection{Converting Scala Program to CSP Model}
 \subsubsection{Shared Variable}
-Shared variable is common in concurrent datatype. For example, to indicate the stage of exchanging in the exchanger. However, CSP does not have a built-in mutable variable feature. To achieve this, there needs to be an extra server process, running in parallel with other worker processes, and synchronizing on two channels \textbf{getChan}, and \textbf{setChan}. 
+The usage of shared variables is common in concurrent datatypes. For example, in later chapters some concurrent datatypes use mutable integer variables to indicate the stages of communication. However, CSP (is more like a functional programming language and) does not support mutable variables.  To model mutable variables, a server process is created for each variable. A server process is implemented by some recursive CSP functions and runs in parallel with the other part of system.
 
-The server process holds the value of the variable in its parameter. At any point, a worker process can get the variable value by synchronizing on \textbf{getChan} event with the server process. A worker process can also set the value of the variable by synchronizing on \textbf{setChan}. The server process will take and recurse with the new variable value.  
+The server process keeps the value of the variable in its parameter, and is always willing to synchronize with a thread that wants to read the value of variable through \textbf{getChan}, or a thread that wants to update the value of variable through \textbf{setChan}.
 
-The variable code is written in a modularized way so that other program can define mutable global variable with different names and types in a single line. 
+The CSP implementation of mutable variable is organized in a module so that all other concurrent datatypes can define variables consistently.
 
+//TODO: CSP code and a simple example of a process using the variable
 
 \subsubsection{Monitor}
 //TODO: Describing Java Monitor.
 
 //I find the state graph useful for explaining the CSP implementation
 
-Similarly, the implementation of monitor requires a server process, running in parallel with the worker processes. 
+Similarly, the implementation of monitor requires a server process, like the server process of mutable variable.
 
+//TODO: Change to TikZ diagram
 \begin{itemize}
-    \item Before a process enters the \textbf{synchronized} block, it may need to wait other process to leave the block, or more concisely, changing from \textbf{Runnable} state to \textbf{Running} state. It must first synchronize with the server process on a \textbf{WaitEnter} event.
+    \item Before a thread enters the \textbf{synchronized} block, the thread may need to wait other process to leave the block, or more concisely, changing from \textbf{Runnable} state to \textbf{Running} state. It must first synchronize with the server process on a \textbf{WaitEnter} event.
     \item Before the process leaves the synchronized block, it must synchronize on an \textbf{Exit} event, to switch to \textbf{Finished} state.
     \item The running process may wait until some variable to change. For this, the process must send a \textbf{Wait} event to the server, indicating changing from \textbf{Running} state to \textbf{Waiting} state. Later when resuming from \textbf{Waiting} state, the process first needs to switch to \textbf{Runnable} state with a \textbf{WaitNotify} event, then a \textbf{WaitEnter} event.
     \item Also inside the block, the running process may send a \textbf{Notify} or \textbf{NotifyAll} event to notify one or all process in waiting state.
 \end{itemize}
 
 The server process should behave differently when there is a \textbf{Running} process or not. When there is no process in \textbf{Running} state, the server process should only non-deterministically pick a process waiting to enter the synchronized block. When there is a process in \textbf{Running} state, the server process should only be willing to accept 
+
+There are a few corner cases to consider.
 
 In Java, when a process calls notify, but there is no waiting process to wake up, the function call does nothing. However, if the server process sends a \textbf{Notify} event when no process is waiting, the server process will simply deadlock. Thus, it is essential to prevent the server process doing a \textbf{Notify} event in such case.
 
