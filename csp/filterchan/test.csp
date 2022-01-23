@@ -2,7 +2,7 @@ include "./correct.csp"
 hide = True
 channel Sync: TypeThreadID.TypeParam.TypeReturn.TypeThreadID.TypeParam.TypeReturn
 
-Spec = |~| x: TypeData @ |~| p: findPred(x) @
+Spec = [] x: TypeData @ [] p: findPred(x) @
   Sync?sendid!(SendParam.x)!(SendReturn)?recvid!(RecvParam.p)!(RecvReturn.x) ->
   Spec
   
