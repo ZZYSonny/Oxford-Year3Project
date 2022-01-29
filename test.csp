@@ -1,0 +1,7 @@
+channel a,b
+
+A = (a -> STOP) [] (b -> STOP)
+B = (a -> STOP) |~| (b -> STOP)
+
+assert A [T= B
+assert B [T= A

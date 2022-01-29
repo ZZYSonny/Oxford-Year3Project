@@ -1,4 +1,4 @@
-include "correct.csp"
+include "faulty.csp"
 --Changes from test2
 --Use ?a:Set
 --Move external choice to closest
