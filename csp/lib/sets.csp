@@ -1,0 +1,6 @@
+Permutation({})={{}}
+Permutation(as)={
+  union({a},ans)|
+  a<-as,
+  ans<-Permutation(diff(as,{a}))
+}

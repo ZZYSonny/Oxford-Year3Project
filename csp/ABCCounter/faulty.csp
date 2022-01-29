@@ -1,0 +1,89 @@
+include "common.csp"
+
+
+instance VarA = VariableDbg(TypeData) 
+instance VarB = VariableDbg(TypeData)
+instance VarC = VariableDbg(TypeData)
+instance VarCounter = VariableMin({0..M},0)
+
+instance aClear = MutexSemaphore(TypeThreadID)
+instance bClear = SignallingSemaphore(TypeThreadID)
+instance cClear = SignallingSemaphore(TypeThreadID)
+instance aSignal = SignallingSemaphore(TypeThreadID)
+instance bSignal = SignallingSemaphore(TypeThreadID)
+instance cSignal = SignallingSemaphore(TypeThreadID)
+
+runWith(hide,p)=
+  VarA::runWith(hide,
+  VarB::runWith(hide,
+  VarC::runWith(hide,
+  VarCounter::runWith(hide,
+  aClear::runWith(hide,
+  bClear::runWith(hide,
+  cClear::runWith(hide,
+  aSignal::runWith(hide,
+  bSignal::runWith(hide,
+  cSignal::runWith(hide,
+    p
+  ))))))))))
+
+SyncA(me,avalue) =
+  Call!me!ASync!avalue ->
+  --aClear.down
+  aClear::downChan!me ->
+  --a = me
+  VarA::setValue!avalue ->
+  --bClear.up
+  bClear::upChan!me ->
+  --aSignal.down
+  aSignal::downChan!me ->
+  --bSignal.up
+  bSignal::upChan!me ->
+  --(b,c,counter)
+  VarB::getValue?b ->
+  VarC::getValue?c ->
+  VarCounter::getValue?counter ->
+  Return!me!ASync!b!c!counter ->
+  SKIP
+
+SyncB(me,bvalue) =
+  Call!me!BSync!bvalue ->
+  --bClear.down
+  bClear::downChan!me ->
+  --b=me
+  VarB::setValue!bvalue ->
+  --cClear.up
+  cClear::upChan!me ->
+  --bSignal.down
+  bSignal::downChan!me ->
+  --val result = (a,c,counter)
+  VarA::getValue?a ->
+  VarC::getValue?c ->
+  VarCounter::getValue?counter ->
+  --cSignal.up
+  cSignal::upChan!me ->
+  --result
+  Return!me!BSync!a!c!counter ->
+  SKIP
+
+SyncC(me,cvalue) =
+  Call!me!CSync!cvalue ->
+  --cClear.down
+  cClear::downChan!me ->
+  --c = me
+  VarC::setValue!cvalue ->
+  --aSignal.up
+  aSignal::upChan!me ->
+  --cSignal.down
+  cSignal::downChan!me ->
+  --val result = (a,b,counter)
+  VarA::getValue?a ->
+  VarB::getValue?b ->
+  VarCounter::getValue?counter ->
+  --counter += 1
+  VarCounter::setValue!((counter+1)%M) ->
+  --aClear.up
+  aClear::upChan!me ->
+  --result
+  Return!me!CSync!a!b!counter ->
+  SKIP

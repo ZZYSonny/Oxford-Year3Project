@@ -1,4 +1,4 @@
-include "faulty.csp"
+include "correct.csp"
 
 --Merge sync event into linearizer
 

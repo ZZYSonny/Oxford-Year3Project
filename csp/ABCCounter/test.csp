@@ -1,51 +1,34 @@
-include "correct.csp"
---Changes from test2
---Use ?a:Set
---Move external choice to closest
+include "faulty.csp"
+--Fast, but unusable for spec test
 hide = True
-channel Sync: TypeThreadID.TypeThreadID.TypeThreadID.TypeData.TypeData.TypeData
-
+channel Sync: TypeThreadID.TypeThreadID.TypeThreadID.TypeData.TypeData.TypeData.TypeCounter
 --Linearizer for a process
 Lin(All,me)= (
       --me synchronizes as thread A
-      [] a: TypeData @ 
-      Call!me!ASync!a ->
-      [] t2: diff(All,{me}) @ 
-      [] t3: diff(All,{me,t2}) @ 
-      [] b: TypeData @ 
-      [] c: TypeData @
-      Sync!me!t2!t3!a!b!c ->
-      Return!me!ASync!b!c ->
+      Call!me!ASync?a ->
+      Sync!me?t2:diff(All,{me})?t3:diff(All,{me,t2})!a?b?c?cnt ->
+      Return!me!ASync!b!c!cnt ->
       Lin(All,me)
     ) [] (
       --me synchronizes as thread B
-      [] b: TypeData @
-      Call!me!BSync!b ->
-      [] t2: diff(All,{me}) @ 
-      [] t3: diff(All,{me,t2}) @ 
-      [] a: TypeData @ 
-      [] c: TypeData @
-      Sync!t2!me!t3!a!b!c ->
-      Return!me!BSync!a!c ->
+      Call!me!BSync?b ->
+      Sync?t2:diff(All,{me})!me?t3:diff(All,{me,t2})?a!b?c?cnt ->
+      Return!me!BSync!a!c!cnt ->
       Lin(All,me)
     ) [] (
       --me synchronizes as thread C
-      [] c: TypeData @
-      Call!me!CSync!c ->
-      [] t2: diff(All,{me}) @ 
-      [] t3: diff(All,{me,t2}) @ 
-      [] a: TypeData @ 
-      [] b: TypeData @
-      Sync!t2!t3!me!a!b!c ->
-      Return!me!CSync!a!b ->
+      Call!me!CSync?c ->
+      Sync?t2:diff(All,{me})?t3:diff(All,{me,t2})!me?a?b!c?cnt ->
+      Return!me!CSync!a!b!cnt ->
       Lin(All,me)
     )
 LinEvents(All,me)=union({
   e | e <- {|Sync|},
   let Sync.t1.t2.t3.a.b.c=e within
-    countEqualList(me,<t1,t2,t3>)>0
+    countEqualList(me,<t1,t2,t3>)==1
 },{|Call.me,Return.me|})
-Linearizers(All)= (|| me: All @ [LinEvents(All,me)]  Lin(All,me)) \ {|Sync|}
+Spec(cnt)=Sync?t1?t2?t3?a?b?c!cnt->Spec((cnt+1)%M)
+Linearizers(All)= ((|| me: All @ [LinEvents(All,me)]  Lin(All,me)) [|{|Sync|}|] Spec(0)) \ {|Sync|}
 
 --a thread syncing data A and B alternately
 syncWithAB(me,f)=f(me,A);f(me,B);syncWithAB(me,f)
@@ -59,7 +42,7 @@ System1 = runWith(True,
 )
 Spec1 = Linearizers({TA, TB, TC})
 assert Spec1 [T= System1
-
+assert System1 :[deadlock free]
 
 System2 = runWith(True,
     repeat(syncWithAB(TA,SyncA)) |||
@@ -69,7 +52,7 @@ System2 = runWith(True,
 )
 Spec2 = Linearizers({TA, TB, TC, TD})
 assert Spec2 [T= System2
-
+assert System2 :[deadlock free]
 
 System3 = runWith(True,
     (SyncA(TA,A)) |||

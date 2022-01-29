@@ -1,0 +1,14 @@
+include "../lib/common.csp"
+include "../lib/variable.csp"
+include "../lib/semaphore.csp"
+include "../lib/lists.csp"
+datatype TypeThreadID = TA | TB | TC | TD
+datatype TypeData = A | B
+datatype TypeOps = ASync | BSync | CSync
+
+M = 5
+TypeCounter = {0..M}
+
+channel Call : TypeThreadID.TypeOps.TypeData
+channel Return: TypeThreadID.TypeOps.TypeData.TypeData.TypeCounter
+

@@ -1,4 +1,4 @@
-include "faulty.csp"
+include "correct.csp"
 --Use ?a:Set
 --Fast, but unusable for spec test
 hide = True
@@ -43,7 +43,7 @@ System1 = runWith(True,
 )
 Spec1 = Linearizers({TA, TB, TC})
 assert Spec1 [T= System1
-
+assert System1 :[deadlock free]
 
 System2 = runWith(True,
     repeat(syncWithAB(TA,SyncA)) |||
@@ -53,6 +53,7 @@ System2 = runWith(True,
 )
 Spec2 = Linearizers({TA, TB, TC, TD})
 assert Spec2 [T= System2
+assert System2 :[deadlock free]
 
 System3 = runWith(True,
     (SyncA(TA,A)) |||
