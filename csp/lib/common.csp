@@ -20,3 +20,7 @@ channel DivChan
 div0 = DivChan -> div0
 div = div0 \ {|DivChan|}
 assertOrDiv(cond)=cond(div,SKIP)
+
+assertBool(b)=if b then SKIP else div
+
+alternate(P1,P2)=P1;P2;alternate(P1,P2)

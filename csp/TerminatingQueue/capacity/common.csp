@@ -1,0 +1,23 @@
+include "../../lib/common.csp"
+include "../../lib/variable.csp"
+include "../../lib/monitor_dbg.csp"
+include "../../lib/lists.csp"
+
+--Limited Size
+
+datatype TypeData=A|B
+datatype TypeThread=T1|T2
+NThread=card(TypeThread)
+NQueueCapacity=1
+TypeQueue={
+  q|
+  i<-{0..NQueueCapacity},
+  q<-Arrangement(i,TypeData)
+}
+
+datatype TypeOptionData=Some.TypeData | None
+datatype TypeCallParam=EnqueueCall.TypeData | DequeueCall
+datatype TypeReturnParam=EnqueueReturn | DequeueReturn.TypeOptionData
+
+channel Call: TypeThread.TypeCallParam
+channel Return: TypeThread.TypeReturnParam
