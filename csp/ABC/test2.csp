@@ -45,6 +45,8 @@ System1 = runWith(True,
 )
 Spec1 = Linearizers({TA, TB, TC})
 assert Spec1 [T= System1
+assert Spec1 [T= Spec1
+assert System1 [T= System1
 
 
 System2 = runWith(True,

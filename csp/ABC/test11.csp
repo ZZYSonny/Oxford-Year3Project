@@ -1,68 +1,61 @@
 include "correct.csp"
---Use ?a:Set
---Fast, but unusable for spec test
+
+--Merge sync event into linearizer
+
 hide = True
-channel Sync: TypeThreadID.TypeThreadID.TypeThreadID.TypeData.TypeData.TypeData
+channel Sync: TypeThreadID.TypeData.(TypeData.TypeData).TypeThreadID.TypeData.(TypeData.TypeData).TypeThreadID.TypeData.(TypeData.TypeData)
 
 --Linearizer for a process
-Lin(All,me)= (
+Lin(All,me)=(
       --me synchronizes as thread A
       Call!me!ASync?a ->
-      Sync!me?t2:diff(All,{me})?t3:diff(All,{me,t2})!a?b?c ->
+      Sync!me!a?b?c?t2:diff(All,{me})!b!a!c?t3:diff(All,{me,t2})!c!a!b ->
       Return!me!ASync!b!c ->
       Lin(All,me)
     ) [] (
       --me synchronizes as thread B
       Call!me!BSync?b ->
-      Sync?t2:diff(All,{me})!me?t3:diff(All,{me,t2})?a!b?c ->
+      Sync?t2:diff(All,{me})?a!b?c!me!b!a!c?t3:diff(All,{me,t2})!c!a!b ->
       Return!me!BSync!a!c ->
       Lin(All,me)
     ) [] (
       --me synchronizes as thread C
       Call!me!CSync?c ->
-      Sync?t2:diff(All,{me})?t3:diff(All,{me,t2})!me?a?b!c ->
+      Sync?t2:diff(All,{me})?a?b!c?t3:diff(All,{me,t2})!b!a!c!me!c!a!b ->
       Return!me!CSync!a!b ->
       Lin(All,me)
     )
 LinEvents(All,me)=union({
-  e | e <- {|Sync|},
-  let Sync.t1.t2.t3.a.b.c=e within
-    countEqualList(me,<t1,t2,t3>)==1
+  Sync.me.a.b.c.t2.b.a.c.t3.c.a.b,
+  Sync.t2.a.b.c.me.b.a.c.t3.c.a.b,
+  Sync.t2.a.b.c.t3.b.a.c.me.c.a.b| 
+  t2<-diff(All,{me}), t3<-diff(All,{me,t2}),
+  a<-TypeData, b<-TypeData, c<-TypeData
 },{|Call.me,Return.me|})
-Linearizers(All)= (|| me: All @ [LinEvents(All,me)]  Lin(All,me)) \ {|Sync|}
+Linearizers(All)= || me: All @ [LinEvents(All,me)]  Lin(All,me)
 
 --a thread syncing data A and B alternately
 syncWithAB(me,f)=f(me,A);f(me,B);syncWithAB(me,f)
 --same thing but B first then A
 syncWithBA(me,f)=f(me,B);f(me,A);syncWithAB(me,f)
 
+--OK
 System1 = runWith(True,
     repeat(syncWithAB(TA,SyncA)) |||
     repeat(syncWithAB(TB,SyncB)) |||
     repeat(syncWithAB(TC,SyncC))
 )
-Spec1 = Linearizers({TA, TB, TC})
+Spec1 = (Linearizers({TA, TB, TC})) \ {|Sync|}
 assert Spec1 [T= System1
-assert System1 :[deadlock free]
 assert Spec1 [T= Spec1
 assert System1 [T= System1
 
-System2 = runWith(True,
-    repeat(syncWithAB(TA,SyncA)) |||
-    repeat(syncWithAB(TB,SyncB)) |||
-    repeat(syncWithAB(TC,SyncC)) |||
-    repeat(syncWithAB(TD,SyncA))
-)
-Spec2 = Linearizers({TA, TB, TC, TD})
-assert Spec2 [T= System2
-assert System2 :[deadlock free]
-assert System2 [T= System2
-
-System3 = runWith(True,
+--OK
+System2 = runWith(False,
     (SyncA(TA,A)) |||
     (SyncB(TB,A);SyncB(TB,B)) |||
     (SyncC(TC,A);SyncC(TC,B)) |||
     (SyncA(TD,A))
 )
-Spec3 = Linearizers({TA, TB, TC, TD})
-assert Spec3 [T= System3
+Spec2 = (Linearizers({TA, TB, TC, TD})) \ {|Sync|}
+assert Spec2 [T= System2

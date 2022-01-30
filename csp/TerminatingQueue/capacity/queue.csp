@@ -1,6 +1,6 @@
 include "../../lib/lists.csp"
 
-NQueueCapacity=1
+NQueueCapacity=3
 qNewQueue=<>
 TypeQueue={
   q|
