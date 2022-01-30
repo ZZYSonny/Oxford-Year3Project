@@ -1,0 +1,29 @@
+datatype TypeQueue= QA | QAB | QB | QC
+--Inside the queue: A* | A*B | B  | C*
+--Accepts           AB |     | C  | C
+
+--the queue is never empty
+qEmpty(q)= false
+
+--the queue starts with A*
+qNewQueue=QA
+
+qEnqueue(QA,A)=QA
+qEnqueue(QA,B)=QAB
+qEnqueue(QB,C)=QB
+qEnqueue(QC,C)=QC
+
+qValidEnqueue(QA)={A,B}
+qValidEnqueue(QAB)={}
+qValidEnqueue(QB)={C}
+qValidEnqueue(QC)={C}
+
+qHead(QA)=A
+qHead(QAB)=A
+qHead(QB)=B
+qHead(QC)=C
+
+qTail(QA)=QA
+qTail(QAB)=QB
+qTail(QB)=QC
+qTail(QC)=QC

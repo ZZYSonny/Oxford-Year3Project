@@ -1,0 +1,55 @@
+include "../common.csp"
+include "queue.csp"
+include "correct.csp"
+
+channel Sync: TypeThread.TypeCallParam.TypeReturnParam
+
+Lin(All,me)=(
+  Call!me?enqueueCallObj:{|EnqueueCall|} ->
+  Sync!me!enqueueCallObj!EnqueueReturn ->
+  Return!me!EnqueueReturn ->
+  Lin(All,me)
+) [] (
+  Call!me!DequeueCall ->
+  Sync!me!DequeueCall!(DequeueReturn.None) ->
+  Return!me!(DequeueReturn.None) ->
+  STOP
+) [] (
+  Call!me!DequeueCall ->
+  Sync!me!DequeueCall?EnqueueReturnObj:{|DequeueReturn.Some|} ->
+  Return!me!EnqueueReturnObj ->
+  Lin(All,me)  
+)
+LinEvents(All,me)={|Sync.me,Call.me,Return.me|}
+Linearizers(All)=((|| me: All @ [LinEvents(All,me)] Lin(All,me)) [|{|Sync|}|] Spec(qNewQueue)) \ {|Sync|}
+
+--The Spec Process
+Spec(q)=( 
+  --A thread performing an enqueue operation
+  Sync?t?(EnqueueCall.x):{EnqueueCall.i | i<-qValidEnqueue(q)}!EnqueueReturn ->
+  Spec(qEnqueue(q,x))
+) [] (
+  --A thread performing an dequeue operation, and successfully
+  --obtained a return value
+  Sync?t!(DequeueCall)!(DequeueReturn.(Some.(qHead(q)))) ->
+  Spec(qTail(q))
+)
+--Every thread performs returns none exactly once
+SpecNone({})=STOP
+SpecNone(s)=
+  Sync?t:s!DequeueCall!(DequeueReturn.None) ->
+  SpecNone(diff(s,{t}))
+
+
+System1 = runWith(True,True,
+  (enqueue(T1,A);enqueue(T1,B);enqueue(T1,C);dequeue(T1)) |||
+  repeat(dequeue(T2))
+)
+assert Linearizers({T1,T2}) [T= System1
+
+System2 = runWith(True,True,
+  (repeatPOrSkip(enqueue(T1,A));enqueue(T1,B);repeatPOrSkip(enqueue(T1,C))) |||
+  repeat(dequeue(T2))
+)
+assert Linearizers({T1,T2}) [T= System2
+

@@ -1,3 +1,5 @@
+include "../common.csp"
+include "queue.csp"
 include "correct.csp"
 
 channel Sync: TypeThread.TypeCallParam.TypeReturnParam
@@ -19,19 +21,19 @@ Lin(All,me)=(
   Lin(All,me)  
 )
 LinEvents(All,me)={|Sync.me,Call.me,Return.me|}
-Linearizers(All)=((|| me: All @ [LinEvents(All,me)] Lin(All,me)) [|{|Sync|}|] Spec(<>)) \ {|Sync|}
+Linearizers(All)=((|| me: All @ [LinEvents(All,me)] Lin(All,me)) [|{|Sync|}|] Spec(qNewQueue)) \ {|Sync|}
 
 --The Spec Process
 Spec(q)=( length(q)+1<=NQueueCapacity & 
   --A thread performing an enqueue operation
   Sync?t?(EnqueueCall.x):{|EnqueueCall|}!EnqueueReturn ->
   Spec(q^<x>)
-) [] ( q!=<> &
+) [] ( not qEmpty(q) &
   --A thread performing an dequeue operation, and successfully
   --obtained a return value
   Sync?t!(DequeueCall)!(DequeueReturn.(Some.(head(q)))) ->
   Spec(tail(q))
-) [] ( q==<> & 
+) [] ( qEmpty(q) & 
   --A thread perfoming an dequeue operation, but all other threads
   --are dequeueing. Every thread returns none exactly once, then
   --system stops. Might be unnecessary?
@@ -67,3 +69,10 @@ System4 = runWith(True,True,
   repeatP(enqueue(T2,B) |~| dequeue(T2))
 )
 assert Linearizers({T1,T2}) [T= System4
+
+System5 = runWith(True,True,
+  repeatP(enqueue(T1,A) |~| dequeue(T1)) |||
+  repeatP(enqueue(T2,B) |~| dequeue(T2)) |||
+  repeatP(enqueue(T3,C) |~| dequeue(T2))
+)
+assert Linearizers({T1,T2,T3}) [T= System4

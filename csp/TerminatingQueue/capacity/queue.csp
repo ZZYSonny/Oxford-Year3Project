@@ -1,0 +1,14 @@
+include "../../lib/lists.csp"
+
+NQueueCapacity=1
+qNewQueue=<>
+TypeQueue={
+  q|
+  i<-{0..NQueueCapacity},
+  q<-Arrangement(i,TypeData)
+}
+
+qEmpty(q)=q==<>
+qEnqueue(q,x)=q^<x>
+qHead(q)=head(q)
+qTail(q)=tail(q)

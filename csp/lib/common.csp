@@ -1,3 +1,7 @@
+--divergence
+channel DivChan
+div0 = DivChan -> div0
+div = div0 \ {|DivChan|}
 --while(cond){body}
 --Due to the limitation of CSPM, cond is written in a continuation style
 --(ktrue, kfalse) -> Proc
@@ -6,21 +10,20 @@ while(cond)(body) =
     body;while(cond)(body),
     SKIP
   )
-
+--repeat an event forever
 repeatE(e) = e -> repeatE(e)
-repeatP(P) = P; repeatP(P)
-
-repeat(P) = P; repeat(P)
-
+--repeat an event for n times
 repeatN(e,n)= 
   if n==0 then SKIP
   else e -> repeatN(e,n-1)
+--repeat a process (that finishes with SKIP) forever
+repeatP(P) = P; repeatP(P)
+--repeat a process (that finishes with SKIP) for some number of times
+repeatPOrSkip(P) = (P;repeatPOrSkip(P)) |~| repeatPOrSkip(P)
+--Run P1,P2 alternately forever
+alternate(P1,P2)=repeatP(P1;P2)
 
-channel DivChan
-div0 = DivChan -> div0
-div = div0 \ {|DivChan|}
+--to be removed
+repeat(P) = P; repeat(P)
 assertOrDiv(cond)=cond(div,SKIP)
-
 assertBool(b)=if b then SKIP else div
-
-alternate(P1,P2)=P1;P2;alternate(P1,P2)
