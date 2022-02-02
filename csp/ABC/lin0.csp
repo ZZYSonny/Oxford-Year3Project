@@ -1,0 +1,38 @@
+--The most original version of the linearizer
+channel Sync: TypeThreadID.TypeData.TypeData.TypeData.TypeThreadID.TypeData.TypeData.TypeData.TypeThreadID.TypeData.TypeData.TypeData
+--thread identity calling ASync. ASync parameter a. ASync return pair (b,c)
+--thread identity calling BSync. BSync parameter b. BSync return pair (a,c)
+--thread identity calling CSync. CSync parameter c. CSync return pair (a,b)
+
+Spec = Sync?aid?a?b?c?bid:diff(TypeThreadID,{aid})!b!a!c?cid:diff(TypeThreadID,{aid,bid})!c!a!b -> Spec
+
+--Linearizer for a process
+Lin(All,me)=(
+      --me synchronizes as thread A
+      Call!me!ASync?a ->
+      Sync!me!a?b?c?t2:diff(All,{me})?t2b?t2a?t2c?t3:diff(All,{me,t2})?t3c?t3a?t3b ->
+      Return!me!ASync!b!c ->
+      Lin(All,me)
+    ) [] (
+      --me synchronizes as thread B
+      Call!me!BSync?b ->
+      Sync?t2:diff(All,{me})?t2b?t2a?t2c!me!b?a?c?t3:diff(All,{me,t2})?t3c?t3a?t3b ->
+      Return!me!BSync!a!c ->
+      Lin(All,me)
+    ) [] (
+      --me synchronizes as thread C
+      Call!me!CSync?c ->
+      Sync?t2:diff(All,{me})?t2b?t2a?t2c?t3:diff(All,{me,t2})?t3c?t3a?t3b!me!c?a?b ->
+      Return!me!CSync!a!b ->
+      Lin(All,me)
+    )
+
+--The event used by Lin(All,me)
+LinEvents(All,me)=union({
+  ev | ev<-{|Sync|},
+  let Sync.t1.a.b.c.t2.d.e.f.t3.h.i.j=ev within
+    countEqualList(me,<t1,t2,t3>)==1
+},union({|Call.me|},{|Return.me|}))
+
+--Build a linearizer for threads in All
+Linearizers(All)= ((|| me: All @ [LinEvents(All,me)] Lin(All,me)) [|{|Sync|}|] Spec) \ {|Sync|}

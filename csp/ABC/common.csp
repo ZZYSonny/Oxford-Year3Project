@@ -2,7 +2,7 @@ include "../lib/common.csp"
 include "../lib/variable.csp"
 include "../lib/semaphore.csp"
 include "../lib/lists.csp"
-datatype TypeThreadID = TA | TB | TC | TD
+datatype TypeThreadID = T1 | T2 | T3 | T4
 datatype TypeData = A | B
 datatype TypeOps = ASync | BSync | CSync
 

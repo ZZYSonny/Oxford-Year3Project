@@ -1,0 +1,32 @@
+--A modified version of lin2
+--slow
+channel Sync: TypeThreadID.TypeThreadID.TypeThreadID.TypeData.TypeData.TypeData
+
+--Linearizer for a process
+Lin(All,me)= 
+  [] a: TypeData @ [] b: TypeData @ [] c: TypeData @
+  [] t2: diff(All,{me}) @ [] t3: diff(All,{me,t2}) @ (
+      --me synchronizes as thread A
+      Call!me!ASync!a ->
+      Sync!me!t2!t3!a!b!c ->
+      Return!me!ASync!b!c ->
+      Lin(All,me)
+    ) [] (
+      --me synchronizes as thread B
+      Call!me!BSync!b ->
+      Sync!t2!me!t3!a!b!c ->
+      Return!me!BSync!a!c ->
+      Lin(All,me)
+    ) [] (
+      --me synchronizes as thread C
+      Call!me!CSync!c ->
+      Sync!t2!t3!me!a!b!c ->
+      Return!me!CSync!a!b ->
+      Lin(All,me)
+    )
+LinEvents(All,me)=union({
+  e | e <- {|Sync|},
+  let Sync.t1.t2.t3.a.b.c=e within
+    countEqualList(me,<t1,t2,t3>)>0
+},{|Call.me,Return.me|})
+Linearizers(All)= (|| me: All @ [LinEvents(All,me)]  Lin(All,me)) \ {|Sync|}

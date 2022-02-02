@@ -1,0 +1,32 @@
+include "correct.csp"
+include "lin2.csp"
+--a thread syncing data A and B alternately
+syncWithAB(me,f)=f(me,A);f(me,B);syncWithAB(me,f)
+--same thing but B first then A
+syncWithBA(me,f)=f(me,B);f(me,A);syncWithAB(me,f)
+
+syncForever(me,f)=repeat(|~|x:TypeData @ f(me,x))
+
+--test case: 3 threads
+System3Thread = runWith(True,
+    syncForever(T1,SyncA) |||
+    syncForever(T2,SyncB) |||
+    syncForever(T3,SyncC)
+)
+Spec3Thread = Linearizers({T1, T2, T3})
+--test the graph size of the spec process
+assert Spec3Thread [T= Spec3Thread
+assert System3Thread [T= System3Thread
+
+assert Spec3Thread [T= System3Thread
+assert System3Thread :[deadlock free]
+
+System4Thread = runWith(True,
+    syncForever(T1,SyncA) |||
+    syncForever(T2,SyncB) |||
+    syncForever(T3,SyncC) |||
+    syncForever(T4,SyncA)
+)
+Spec4Thread = Linearizers({T1, T2, T3, T4})
+assert Spec4Thread [T= System4Thread
+assert System4Thread :[deadlock free]
