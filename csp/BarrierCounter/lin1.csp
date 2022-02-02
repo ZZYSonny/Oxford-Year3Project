@@ -1,5 +1,5 @@
 TypeThreadIDPermutation=PermutationInList(TypeThreadID)
-TypeReturns=ArrangementInList(NThread,{0..M-1})
+TypeReturns=ArrangementInList(NThread,TypeSeqNumber)
 channel Sync: TypeThreadIDPermutation. TypeReturns
 
 Spec(i) = Sync?perm!nElemList(NThread,i) -> Spec((i+1)%M)

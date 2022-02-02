@@ -3,7 +3,6 @@ include "../lib/variable.csp"
 include "../lib/monitor.csp"
 
 datatype TypeThreadID = T1 | T2 | T3
-NThread=card(TypeThreadID)
 
 channel Call : TypeThreadID
 channel Return: TypeThreadID

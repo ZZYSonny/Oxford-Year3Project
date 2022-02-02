@@ -4,8 +4,6 @@ include "../lib/monitor.csp"
 include "../lib/semaphore.csp"
 
 datatype TypeThreadID = T1 | T2 | T3
-NThread=card(TypeThreadID)
-
 M=2
 TypeSeqNumber={0..M}
 channel Call : TypeThreadID

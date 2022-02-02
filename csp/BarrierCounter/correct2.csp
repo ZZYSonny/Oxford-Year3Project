@@ -1,7 +1,7 @@
 include "common.csp"
 
 instance VarSeqNumber = ModuleVariable({0..M},0)
-instance VarWaiting = ModuleVariable({0..NThread},0)
+instance VarWaiting = ModuleVariable({0..card(TypeThreadID)},0)
 instance WaitSem = ModuleSignallingSemaphore(TypeThreadID)
 instance Mutex = ModuleMutexSemaphore(TypeThreadID)
 
@@ -13,7 +13,7 @@ runWith(hideSpurious,hideInternal,p)=
     p
   ))))
 
-sync(me)=
+sync(me,NThread)=
   Call!me ->
   --mutex.down
   Mutex::downChan!me ->
@@ -27,7 +27,7 @@ sync(me)=
       SKIP
     ) else (
       --waiting+=1
-      if x==NThread then DIV else
+      if x>=NThread then DIV else
       VarWaiting::setValue!(x+1) ->
       --mutex.up
       Mutex::upChan!me ->

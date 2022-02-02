@@ -1,7 +1,7 @@
 include "common.csp"
 
 instance VarSeqNumber = ModuleVariable({0..M},0)
-instance VarCount = ModuleVariable({0..NThread},0)
+instance VarCount = ModuleVariable({0..card(TypeThreadID)},0)
 instance VarLeaving = ModuleVariable(Bool,False)
 instance Monitor = ModuleMonitor(TypeThreadID)
 
@@ -13,7 +13,7 @@ runWith(hideSpurious,hideInternal,p)=
     p
   ))))
 
-sync(me)=
+sync(me,NThread)=
   Call!me ->
   --synchronized
   Monitor::enter(me);
@@ -24,7 +24,7 @@ sync(me)=
     );
     --count+=1
     VarCount::getValue?x ->
-    if x==NThread then DIV else
+    if x>=NThread then DIV else
     VarCount::setValue!(x+1) -> (
     --if(count==NThread)
     if x+1==NThread then (

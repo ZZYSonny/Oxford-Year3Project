@@ -32,7 +32,7 @@ nthList(0,<a>^as)=a
 nthList(i,<a>^as)=nthList(i-1,as)
 
 --return a list 
-List(0,e)=<>
+nElemList(0,e)=<>
 nElemList(i,e)=<e>^nElemList(i-1,e)
 
 --find the first i s.t. as[i]=x
