@@ -1,5 +1,5 @@
-include "faulty.csp"
-include "lin.csp"
+include "correct.csp"
+include "lin1.csp"
 
 fSyncForever(me,f)=runP(|~|x:TypeData @ f(me,x))
 rSyncForever(me)=runP(|~|x:TypeData @ (SyncA(me,x) |~| SyncB(me,x) |~| SyncC(me,x)))
@@ -12,6 +12,9 @@ System1 = runWith(True,
     fSyncForever(T3,SyncC)
 )
 Spec3Thread = Linearizers({T1, T2, T3})
+--test the graph size of the spec process
+assert Spec3Thread [T= Spec3Thread
+assert System1 [T= System1
 assert Spec3Thread [T= System1
 assert System1 :[deadlock free]
 
@@ -24,6 +27,8 @@ System2 = runWith(True,
     fSyncForever(T4,SyncA)
 )
 Spec4Thread = Linearizers({T1, T2, T3, T4})
+assert Spec4Thread [T= Spec4Thread
+assert System2 [T= System2
 assert Spec4Thread [T= System2
 assert System2 :[deadlock free]
 

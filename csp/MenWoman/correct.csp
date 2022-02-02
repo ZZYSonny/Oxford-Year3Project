@@ -1,16 +1,16 @@
 include "common.csp"
 
 
-instance VarStage = VariableMin({0,1,2},0) 
-instance VarHim = VariableDbg(TypeThreadID)
-instance VarHer = VariableDbg(TypeThreadID)
+instance VarStage = ModuleVariable({0,1,2},0) 
+instance VarHim = ModuleUninitVariable(TypeThreadID)
+instance VarHer = ModuleUninitVariable(TypeThreadID)
 instance Monitor = ModuleMonitor(TypeThreadID)
 
-runWith(hide,p)=
-  VarStage::runWith(hide,
-  VarHim::runWith(hide,
-  VarHer::runWith(hide,
-  Monitor::runWith(hide,hide,
+runWith(hideSpurious,hideInternal,p)=
+  VarStage::runWith(hideInternal,
+  VarHim::runWith(hideInternal,
+  VarHer::runWith(hideInternal,
+  Monitor::runWith(hideSpurious,hideInternal,
     p
   ))))
 

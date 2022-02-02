@@ -1,4 +1,4 @@
-module VariableMin(TypeValue, initialValue)
+module ModuleVariable(TypeValue, initialValue)
   Var(value) =
     getValue!value -> Var(value)
     [] 
@@ -17,10 +17,7 @@ exports
 endmodule
 
 
-module VariableDbg(TypeValue)
-  UninitializedVar = 
-    setValue?value -> Var(value)
-
+module ModuleUninitVariable(TypeValue)
   Var(value) =
     getValue!value -> Var(value)
     [] 
@@ -32,8 +29,8 @@ module VariableDbg(TypeValue)
 
 exports
   runWith(hide,P) = 
-    if hide then (UninitializedVar [| chanset |] P) \ chanset
-    else UninitializedVar [| chanset |] P
+    if hide then ((|~| x:TypeValue @ Var(x)) [| chanset |] P) \ chanset
+    else (|~| x:TypeValue @ Var(x)) [| chanset |] P
   
   channel getValue, setValue: TypeValue
 endmodule

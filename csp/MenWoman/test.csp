@@ -1,45 +1,31 @@
-include "correct.csp"
+include "faulty.csp"
+include "lin.csp"
 
-hide = True
-channel Sync: TypeThreadID.TypeThreadID.TypeThreadID.TypeThreadID
---(Identity of thread calling ManSync).(Return of ManSync).(Identity of thread calling WomanSync).(Return of WomanSync)
+Spec2Thread=Linearizers({TMan1,TWoman1})
+Spec4Thread=Linearizers({TMan1,TMan2,TWoman1,TWoman2})
 
-Spec = 
-  Sync?man:TypeMan?woman:TypeWoman!woman!man ->
-  Spec
-
---Linearizer for a process
-Lin(All,me)= (
-  Call!me!ManSync->
-  Sync!me?mereturn?other?otherreturn ->
-  Return!me!ManSync!mereturn ->
-  Lin(All,me)
-)[](
-  Call!me!WomanSync ->
-  Sync?other?otherreturn!me?mereturn ->
-  Return!me!WomanSync!mereturn ->
-  Lin(All,me)
+System1 = runWith(True,True,
+    runP(manSync(TMan1)) |||
+    runP(womanSync(TWoman1))
 )
-LinEvents(All,me)=union({
-  ev | ev<-{|Sync|},
-  let Sync.t1.a.t2.b=ev within
-    countEqualList(me,<t1,t2>)==1
-},{|Call.me,Return.me|})
-Linearizers(All)= || me: All @ [LinEvents(All,me)]  Lin(All,me)
-
-System1 = runWith(hide,
-    repeat(manSync(Man1)) |||
-    repeat(womanSync(Woman1))
+assert Spec2Thread [T= System1
+System2 = runWith(False,True,
+    runP(manSync(TMan1)) |||
+    runP(womanSync(TWoman1))
 )
-Spec1 = (Linearizers({Man1,Woman1}) [|{|Sync|}|] Spec) \ {|Sync|}
-assert Spec1 [T= System1
---assert System1 :[deadlock free]
+assert System2 :[deadlock free]
 
-System2 = runWith(hide,
-    repeat(manSync(Man1)) |||
-    repeat(manSync(Man2)) |||
-    repeat(womanSync(Woman2)) |||
-    repeat(womanSync(Woman1))
+System3 = runWith(True,True,
+    runP(manSync(TMan1)) |||
+    runP(manSync(TMan2)) |||
+    runP(womanSync(TWoman2)) |||
+    runP(womanSync(TWoman1))
 )
-Spec2 = (Linearizers({Man1,Man2,Woman1,Woman2}) [|{|Sync|}|] Spec) \ {|Sync|}
-assert Spec2 [T= System2
+assert Spec4Thread [T= System3
+System4 = runWith(False,True,
+    runP(manSync(TMan1)) |||
+    runP(manSync(TMan2)) |||
+    runP(womanSync(TWoman2)) |||
+    runP(womanSync(TWoman1))
+)
+assert System4 :[deadlock free]

@@ -1,0 +1,25 @@
+channel Sync: TypeThreadID.TypeParam.TypeReturn.TypeThreadID.TypeParam.TypeReturn
+
+--Spec = [] x: TypeData @ [] p: findPred(x) @
+--  Sync?sendid!(SendParam.x)!(SendReturn)?recvid!(RecvParam.p)!(RecvReturn.x) ->
+--  Spec
+
+Spec = Sync?t1?(SendParam.x)!(SendReturn)?t2?recv:{RecvParam.p|p<-findPred(x)}!(RecvReturn.x) -> Spec
+  
+Lin(All,me)=(
+  Call!me?sendparam ->
+  Sync!me!(sendparam)!(SendReturn)?other?(recvparam)?(recvreturn) ->
+  Return!me!(SendReturn) ->
+  Lin(All,me)
+) [] (
+  Call!me?recvparam ->
+  Sync?other?sendparam?sendreturn!me!recvparam?recvreturn ->
+  Return!me!recvreturn ->
+  Lin(All,me)
+)
+LinEvents(All,me)=union({
+  ev | ev<-{|Sync|},
+  let Sync.t1.a.b.t2.c.d=ev within
+    countList(me,<t1,t2>)==1
+},{|Call.me,Return.me|})
+Linearizers(All)= ((|| me: All @ [LinEvents(All,me)] Lin(All,me)) [|{|Sync|}|] Spec) \ {|Sync|}

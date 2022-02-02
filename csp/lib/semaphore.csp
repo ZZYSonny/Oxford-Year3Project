@@ -1,4 +1,4 @@
-module SignallingSemaphore(TypeThreadID)
+module ModuleSignallingSemaphore(TypeThreadID)
   Signalling = 
     upChan?id ->
     Mutex
@@ -21,7 +21,7 @@ exports
 endmodule
 
 
-module MutexSemaphore(TypeThreadID)
+module ModuleMutexSemaphore(TypeThreadID)
   Mutex =
     downChan?id1 ->
     upChan?id2 ->

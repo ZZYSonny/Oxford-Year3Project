@@ -1,9 +1,8 @@
 include "../lib/common.csp"
-include "../lib/monitor_dbg.csp"
+include "../lib/monitor.csp"
 include "../lib/variable.csp"
-include "../lib/lists.csp"
 
-datatype TypeThreadID = S1 | S2 | R1 | R2
+datatype TypeThreadID = T1 | T2 | T3 | T4
 datatype TypeData = A | B | C
 datatype TypePred = IsA | IsB | IsC
 
@@ -13,9 +12,7 @@ applyPred(IsB)(x)=x==B
 applyPred(IsC)(x)=x==C
 
 --findPred(x) = {function f|f(x)=true} 
-findPred(A)={IsA}
-findPred(B)={IsB}
-findPred(C)={IsC}
+findPred(x)={p|p<-TypePred,applyPred(p)(x)}
 
 --Type of parameter
 datatype TypeParam = SendParam.TypeData | RecvParam.TypePred

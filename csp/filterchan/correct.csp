@@ -1,8 +1,8 @@
 include "./common.csp"
 
 instance Monitor = ModuleMonitor(TypeThreadID)
-instance Full = VariableMin(Bool, False)
-instance Data = VariableMin(TypeData, A)
+instance Full = ModuleVariable(Bool, False)
+instance Data = ModuleUninitVariable(TypeData)
 
 --------- Filter Chan
 
@@ -46,9 +46,9 @@ receive(me, p) =
   SKIP
 )
 
-runWith(hide, p) =
-  Monitor::runWith(hide,hide,
-  Full::runWith(hide,
-  Data::runWith(hide,
+runWith(hideSpurious, hideInternal, p) =
+  Monitor::runWith(hideSpurious, hideInternal,
+  Full::runWith(hideInternal,
+  Data::runWith(hideInternal,
     p
   )))
