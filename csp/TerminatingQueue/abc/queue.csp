@@ -1,29 +1,30 @@
-datatype TypeQueue= QA | QAB | QB | QC
---Inside the queue: A* | A*B | B  | C*
---Accepts           AB |     | C  | C
+datatype TypeQueue= Q0A  | QA | QAB | QABC | QB | QBC | Q0C  | QC
 
 --the queue is never empty
-qEmpty(q)= false
+qEmpty(x)= qDequeue(x)=={}
 
 --the queue starts with A*
 qNewQueue=QA
 
+qEnqueue(Q0A,A)=QA
 qEnqueue(QA,A)=QA
 qEnqueue(QA,B)=QAB
-qEnqueue(QB,C)=QB
+qEnqueue(QAB,C)=QABC
+qEnqueue(QABC,C)=QABC
+qEnqueue(QB,C)=QBC
+qEnqueue(QBC,C)=QBC
+qEnqueue(Q0C,C)=QC
 qEnqueue(QC,C)=QC
 
+qDequeue(Q0A)={}
+qDequeue(QA)={(A,QA)}
+qDequeue(QAB)={(A,QAB),(A,QB)}
+qDequeue(QABC)={(A,QAB),(A,QB)}
+qDequeue(QB)={(B,Q0C)}
+qDequeue(QBC)={(B,QC)}
+qDequeue(Q0C)={}
+qDequeue(QC)={(C,QC)}
+
+qValidEnqueue(Q0A)={A}
 qValidEnqueue(QA)={A,B}
-qValidEnqueue(QAB)={}
-qValidEnqueue(QB)={C}
-qValidEnqueue(QC)={C}
-
-qHead(QA)=A
-qHead(QAB)=A
-qHead(QB)=B
-qHead(QC)=C
-
-qTail(QA)=QA
-qTail(QAB)=QB
-qTail(QB)=QC
-qTail(QC)=QC
+qValidEnqueue(_)={C}

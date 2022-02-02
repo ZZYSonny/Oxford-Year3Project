@@ -1,14 +1,15 @@
-include "../../lib/lists.csp"
-
 NQueueCapacity=3
-qNewQueue=<>
 TypeQueue={
   q|
   i<-{0..NQueueCapacity},
-  q<-Arrangement(i,TypeData)
+  q<-ArrangementInList(i,TypeData)
 }
 
 qEmpty(q)=q==<>
+qNewQueue=<>
+
+qValidEnqueue(q)=if length(q)>=NQueueCapacity then {} else TypeData
 qEnqueue(q,x)=q^<x>
-qHead(q)=head(q)
-qTail(q)=tail(q)
+
+qDequeue(<>)={}
+qDequeue(<qhead>^qtail)={(qhead,qtail)}

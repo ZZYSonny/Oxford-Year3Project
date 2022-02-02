@@ -1,6 +1,6 @@
-instance VarQueue=VariableMin(TypeQueue,qNewQueue)
-instance VarWaiting=VariableMin({0..NThread},0)
-instance VarDone=VariableMin(Bool,false)
+instance VarQueue=ModuleVariable(TypeQueue,qNewQueue)
+instance VarWaiting=ModuleVariable({0..NThread},0)
+instance VarDone=ModuleVariable(Bool,false)
 instance Monitor=ModuleMonitor(TypeThread)
 
 enqueue(me,x)=
@@ -10,7 +10,8 @@ enqueue(me,x)=
     VarDone::getValue?done ->
     if (not done) then (
       --queue.enqueue(x), block until the queue is not full
-      VarQueue::getValue?q:diff(TypeQueue, Arrangement(NQueueCapacity,TypeData)) ->
+      VarQueue::getValue?q ->
+      if (not member(x,qValidEnqueue(q))) then div else 
       VarQueue::setValue!(qEnqueue(q,x)) ->
       --if(waiting > 0) notify()
       VarWaiting::getValue?waiting ->
@@ -60,10 +61,11 @@ dequeue(me)=
     STOP
   ) else (
     VarQueue::getValue?q ->
-    if(qEmpty(q)) then SKIP else
-    VarQueue::setValue!(qTail(q)) ->
+    if qEmpty(q) then DIV else
+    |~| (ans, qtail): qDequeue(q) @
+    VarQueue::setValue!qtail ->
     Monitor::exit(me);
-    Return!me!(DequeueReturn.(Some.qHead(q))) ->
+    Return!me!(DequeueReturn.(Some.ans)) ->
     SKIP
 )
 

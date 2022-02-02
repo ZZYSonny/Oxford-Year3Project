@@ -1,6 +1,6 @@
 include "../../lib/common.csp"
 include "../../lib/variable.csp"
-include "../../lib/monitor_dbg.csp"
+include "../../lib/monitor.csp"
 
 --Limited Size
 
