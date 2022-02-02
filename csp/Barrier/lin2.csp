@@ -1,0 +1,11 @@
+channel Sync
+
+Spec = Sync -> Spec
+
+Lin(All,me)=
+  Call!me ->
+  Sync ->
+  Return!me ->
+  Lin(All,me)
+LinEvents(All,me)={|Sync,Call.me,Return.me|}
+Linearizers(All)= ((|| me: All @ [LinEvents(All,me)]  Lin(All,me)) [|{|Sync|}|] Spec) \ {|Sync|}

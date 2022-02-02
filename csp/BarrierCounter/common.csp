@@ -1,12 +1,12 @@
 include "../lib/common.csp"
 include "../lib/variable.csp"
-include "../lib/monitor_dbg.csp"
+include "../lib/monitor.csp"
 include "../lib/semaphore.csp"
 
-datatype TypeThreadID = TA | TB
-N=2
-M=2
+datatype TypeThreadID = T1 | T2 | T3
+NThread=card(TypeThreadID)
 
+M=2
 TypeSeqNumber={0..M}
 channel Call : TypeThreadID
 channel Return: TypeThreadID.TypeSeqNumber

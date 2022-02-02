@@ -1,82 +1,60 @@
-include "correct.csp"
-
-channel Sync: TypeThreadID. TypeData. TypeData. TypeThreadID. TypeData. TypeData
--- Thread1: thread identity, function parameter, function return
--- Thread2: thread identity, function parameter, function return
-
--- Spec Process. 
-Spec = Sync?ta?aparam?areturn?tb:diff(TypeThreadID,{ta})!areturn!aparam -> Spec
-
---Linearizer for a process, only accept Sync event regarding me between Call and Return
-Lin(All,me)=
-  Call!me?meparam -> ((
-      Sync!me!meparam?mereturn?other?oparam?oreturn ->
-      Return!me!mereturn ->
-      Lin(All,me)
-    )[](
-      Sync?other?oparam?oreturn!me!meparam?mereturn ->
-      Return!me!mereturn ->
-      Lin(All,me)
-  ))
-LinEvents(All,me)=union({
-  e | e <- {|Sync|},
-  let Sync.t1.a.b.t2.c.d=e within
-    countEqualList(me,<t1,t2>)==1
-},{|Call.me,Return.me|})
-Linearizers(All)= || me: All @ [LinEvents(All,me)] Lin(All,me)
-
-----------------------------------
---Test for two process
---Where one always exchange A
---The second always exchange B
---Check the system never deadlock and diverges only because of spurious wakeup
-System0 = runWith(False,True,
-  repeat(exchange(TA,A)) |||
-  repeat(exchange(TB,B))
-)
-Spec0 = Monitor::runSpecWithSpurious(Linearizers({TA, TB}) [|{|Sync|}|] Spec) \ {|Sync|}
-assert Spec0 [T= System0
-assert System0 :[deadlock free]
-
-
+include "faulty.csp"
+include "lin.csp"
 
 ----------------------------------
 --Test for two process
 --Where one always exchange A
 --The second always exchange B
 System1 = runWith(True,True,
-  repeat(exchange(TA,A)) |||
-  repeat(exchange(TB,B))
+  runP(exchange(T1,A)) |||
+  runP(exchange(T2,B))
 )
-Spec1 = (Linearizers({TA, TB}) [|{|Sync|}|] Spec) \ {|Sync|}
-assert Spec1 [T= System1
+--check the system obeys the linearizer
+Spec2Thread = Linearizers({T1, T2}) 
+assert Spec2Thread [T= System1
+--check the same system never deadlock and diverges only because of spurious wakeup
+System2 = runWith(False,True,
+  runP(exchange(T1,A)) |||
+  runP(exchange(T2,B))
+)
+assert System2 :[deadlock free]
+
 
 ----------------------------------
 --Test for three process
 --Where one always exchange A
 --The second always exchange B
 --The third always exchange C
-System2 = runWith(True,True,
-  repeat(exchange(TA,A)) |||
-  repeat(exchange(TB,B)) |||
-  repeat(exchange(TC,C))
+System3 = runWith(True,True,
+  runP(exchange(T1,A)) |||
+  runP(exchange(T2,B)) |||
+  runP(exchange(T3,C))
 )
-All2 = {TA, TB, TC}
-Spec2 = (Linearizers(All2) [|{|Sync|}|] Spec) \ {|Sync|}
-assert Spec2 [T= System2
+Spec3Thread = Linearizers({T1, T2, T3}) 
+assert Spec3Thread [T= System3
 
-
+System4 = runWith(False,True,
+  runP(exchange(T1,A)) |||
+  runP(exchange(T2,B)) |||
+  runP(exchange(T3,C))
+)
+assert System4 :[deadlock free]
 
 ----------------------------------
 --Test for three process
---Where each non determinisitcally choose A,B,C to exchange
+--Where each non determinisiT3ally choose A,B,C to exchange
 
 --Behavior of each process
-worker(me) = |~| data:TypeData @ exchange(me,data);worker(me)
-All3 = {TA, TB, TC}
-System3 = runWith(True,True,
-  ||| me:All3 @ worker(me)
+System5 = runWith(True,True,
+  runP(|~| data:TypeData @ exchange(T1,data)) |||
+  runP(|~| data:TypeData @ exchange(T2,data)) |||
+  runP(|~| data:TypeData @ exchange(T3,data))
 )
-Spec3 = (Linearizers(All3) [|{|Sync|}|] Spec) \ {|Sync|}
-assert Spec3 [T= System3
---assert System3 [T= Spec3
+assert Spec3Thread [T= System5
+
+System6 = runWith(false,True,
+  runP(|~| data:TypeData @ exchange(T1,data)) |||
+  runP(|~| data:TypeData @ exchange(T2,data)) |||
+  runP(|~| data:TypeData @ exchange(T3,data))
+)
+assert System6 :[deadlock free]

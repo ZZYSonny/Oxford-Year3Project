@@ -1,0 +1,32 @@
+include "correct.csp"
+include "lin1.csp"
+
+--In this system with 2 thread, each thread repeatly does sync
+--check trace(System2Thread)=trace(Spec2Thread) 
+System1 = runWith(true,true,
+    runP(sync(T1)) |||
+    runP(sync(T2))
+)
+Spec2Thread = Linearizers({T1, T2}) 
+assert Spec2Thread [T= System1
+System2 = runWith(false,true,
+    runP(sync(T1)) |||
+    runP(sync(T2))
+)
+assert System2 :[deadlock free]
+
+
+--similar system, but with 3 threads
+System3 = runWith(true,true,
+    runP(sync(T1)) |||
+    runP(sync(T2)) |||
+    runP(sync(T3))
+)
+Spec3Thread = Linearizers({T1, T2, T3}) 
+assert Spec3Thread [T= System3
+System4 = runWith(false,true,
+    runP(sync(T1)) |||
+    runP(sync(T2)) |||
+    runP(sync(T3))
+)
+assert System4 :[deadlock free]

@@ -1,13 +1,13 @@
 include "common.csp"
 
-instance VarHim = VariableMin(TypeOptionThreadID,None)
-instance VarHer = VariableMin(TypeOptionThreadID,None)
+instance VarHim = ModuleVariable(TypeOptionThreadID,None)
+instance VarHer = ModuleVariable(TypeOptionThreadID,None)
 instance Monitor = ModuleMonitor(TypeThreadID)
 
-runWith(hide,p)=
-  VarHim::runWith(hide,
-  VarHer::runWith(hide,
-  Monitor::runWith(hide,hide,
+runWith(hideSpurious,hideInternal,p)=
+  VarHim::runWith(hideInternal,
+  VarHer::runWith(hideInternal,
+  Monitor::runWith(hideSpurious,hideInternal,
     p
   )))
 

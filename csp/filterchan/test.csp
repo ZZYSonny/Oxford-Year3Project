@@ -1,66 +1,62 @@
-include "./correct.csp"
-hide = True
-channel Sync: TypeThreadID.TypeParam.TypeReturn.TypeThreadID.TypeParam.TypeReturn
-
-Spec = [] x: TypeData @ [] p: findPred(x) @
-  Sync?sendid!(SendParam.x)!(SendReturn)?recvid!(RecvParam.p)!(RecvReturn.x) ->
-  Spec
-  
-Lin(All,me)=(
-  [] x: TypeData @
-    Call!me!(SendParam.x) ->
-    Sync!me!(SendParam.x)!(SendReturn)?other?recvparam?recvreturn ->
-    Return!me!(SendReturn) ->
-    Lin(All,me)
-) [] (
-  [] x: TypeData @ [] p: TypePred @
-    Call!me!(RecvParam.p) ->
-    Sync?other?sendparam?sendreturn!me!(RecvParam.p)!(RecvReturn.x) ->
-    Return!me!(RecvReturn.x) ->
-    Lin(All,me)
-)
-LinEvents(All,me)=union({
-  ev | ev<-{|Sync|},
-  let Sync.t1.a.b.t2.c.d=ev within
-    countEqualList(me,<t1,t2>)==1
-},{|Call.me,Return.me|})
-Linearizers(All)= || me: All @ [LinEvents(All,me)] Lin(All,me)
+include "correct.csp"
+include "lin.csp"
+Spec2Thread = Linearizers({T1,T2}) 
+Spec4Thread = Linearizers({T1,T2,T3,T4})
 
 ----------------------------------
 --Test for 1 sender and 1 receiver
 --Where the sender always send A
 --The receiver always receive A
-System1 = runWith(True,
-  repeatP(send(S1,A)) |||
-  repeatP(receive(R1,IsA))
+System1 = runWith(True,True,
+  runP(send(T1,A)) |||
+  runP(receive(T2,IsA))
 )
-Spec1 = (Linearizers({S1,R1}) [|{|Sync|}|] Spec) \ {|Sync|}
-assert Spec1 [T= System1
+assert Spec2Thread [T= System1
+--check this system never diverges
+System2 = runWith(False,True,
+  runP(send(T1,A)) |||
+  runP(receive(T2,IsA))
+)
+assert System2 :[deadlock free]
 
 ----------------------------------
 --Test for 2 sender and 2 receiver
 --Where one sender always send A, the other always send B
 --One receiver always receive A, the other always receive B
-System2 = runWith(True,
-  repeatP(send(S1,A)) |||
-  repeatP(send(S2,B)) |||
-  repeatP(receive(R1,IsA)) |||
-  repeatP(receive(R2,IsB))
+System3 = runWith(True,True,
+  runP(send(T1,A)) |||
+  runP(send(T2,B)) |||
+  runP(receive(T3,IsA)) |||
+  runP(receive(T4,IsB))
 )
-Spec2 = (Linearizers({S1,S2,R1,R2}) [|{|Sync|}|] Spec) \ {|Sync|}
-assert Spec2 [T= System2
+assert Spec4Thread [T= System3
+System4 = runWith(False,True,
+  runP(send(T1,A)) |||
+  runP(send(T2,B)) |||
+  runP(receive(T3,IsA)) |||
+  runP(receive(T4,IsB))
+)
+assert System4 :[deadlock free]
 
 ----------------------------------
 --Test for 2 sender and 2 receiver
 --Where two sender non deterministically send A or B
 --Two receiver non deterministically receive A or B
-senderWorker(me) = repeatP(|~| x:TypeData @ send(me,x);SKIP)
-receiverWorker(me) = repeatP(|~| p:TypePred @ receive(me,p);SKIP)
-System3 = runWith(True,
-  senderWorker(S1) |||
-  senderWorker(S2) |||
-  receiverWorker(R1) |||
-  receiverWorker(R2)
+senderWorker(me) = runP(|~| x:TypeData @ send(me,x);SKIP)
+receiverWorker(me) = runP(|~| p:TypePred @ receive(me,p);SKIP)
+System5 = runWith(True,True,
+  senderWorker(T1) |||
+  senderWorker(T2) |||
+  receiverWorker(T3) |||
+  receiverWorker(T4)
 )
-Spec3 = (Linearizers({S1,S2,R1,R2}) [|{|Sync|}|] Spec) \ {|Sync|}
-assert Spec3 [T= System3
+assert Spec4Thread [T= System5
+System6 = runWith(False,True,
+  senderWorker(T1) |||
+  senderWorker(T2) |||
+  receiverWorker(T3) |||
+  receiverWorker(T4)
+)
+assert System6 :[deadlock free]
+
+

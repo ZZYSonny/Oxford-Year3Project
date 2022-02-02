@@ -11,19 +11,62 @@ while(cond)(body) =
     SKIP
   )
 --repeat an event forever
-repeatE(e) = e -> repeatE(e)
+runE(e) = e -> runE(e)
 --repeat an event for n times
-repeatN(e,n)= 
+runENtime(e,n)= 
   if n==0 then SKIP
-  else e -> repeatN(e,n-1)
+  else e -> runENtime(e,n-1)
 --repeat a process (that finishes with SKIP) forever
-repeatP(P) = P; repeatP(P)
+runP(P) = P; runP(P)
 --repeat a process (that finishes with SKIP) for some number of times
-repeatPOrSkip(P) = (P;repeatPOrSkip(P)) |~| repeatPOrSkip(P)
---Run P1,P2 alternately forever
-alternate(P1,P2)=repeatP(P1;P2)
+chaosP(P) = (P;chaosP(P)) |~| SKIP
 
---to be removed
-repeat(P) = P; repeat(P)
-assertOrDiv(cond)=cond(div,SKIP)
-assertBool(b)=if b then SKIP else div
+--flatten(ass) = <
+--  a |
+--  as <- ass,
+--  a <- as
+-->
+
+--return the n-th item from head in the sequence
+nthList(0,<a>^as)=a
+nthList(i,<a>^as)=nthList(i-1,as)
+
+--return a list 
+List(0,e)=<>
+nElemList(i,e)=<e>^nElemList(i-1,e)
+
+--find the first i s.t. as[i]=x
+--returns -1 if not found
+indexList(x,<>)=-1
+indexList(x,<a>^as)=
+  if a==x then 0
+  else 1+indexList(x,as)
+
+--count the number of x in the sequence
+countList(x,<>)=0
+countList(x,<a>^as)=
+  countList(x,as)+
+  if a==x then 1 else 0
+
+--Return the set of permutation (stored in sequence)
+--where elements are in as
+ArrangementInList(0,as)={<>}
+ArrangementInList(n,as)={
+  <a>^ans|
+  ans<-ArrangementInList(n-1,as),
+  a<-as
+}
+
+PermutationInList({})={<>}
+PermutationInList(as)={
+  <a>^ans|
+  a<-as,
+  ans<-PermutationInList(diff(as,{a}))
+}
+
+PermutationInSet({})={{}}
+PermutationInSet(as)={
+  union({a},ans)|
+  a<-as,
+  ans<-PermutationInSet(diff(as,{a}))
+}

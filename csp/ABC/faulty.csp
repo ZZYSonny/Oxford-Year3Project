@@ -1,16 +1,16 @@
 include "common.csp"
 
 
-instance VarA = VariableDbg(TypeData) 
-instance VarB = VariableDbg(TypeData)
-instance VarC = VariableDbg(TypeData)
+instance VarA = ModuleVariable(TypeData) 
+instance VarB = ModuleVariable(TypeData)
+instance VarC = ModuleVariable(TypeData)
 
-instance aClear = MutexSemaphore(TypeThreadID)
-instance bClear = SignallingSemaphore(TypeThreadID)
-instance cClear = SignallingSemaphore(TypeThreadID)
-instance aSignal = SignallingSemaphore(TypeThreadID)
-instance bSignal = SignallingSemaphore(TypeThreadID)
-instance cSignal = SignallingSemaphore(TypeThreadID)
+instance aClear = ModuleMutexSemaphore(TypeThreadID)
+instance bClear = ModuleSignallingSemaphore(TypeThreadID)
+instance cClear = ModuleSignallingSemaphore(TypeThreadID)
+instance aSignal = ModuleSignallingSemaphore(TypeThreadID)
+instance bSignal = ModuleSignallingSemaphore(TypeThreadID)
+instance cSignal = ModuleSignallingSemaphore(TypeThreadID)
 
 runWith(hide,p)=
   VarA::runWith(hide,

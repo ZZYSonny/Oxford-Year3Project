@@ -1,0 +1,13 @@
+TypeThreadIDPermutation=PermutationInList(TypeThreadID)
+TypeReturns=ArrangementInList(NThread,{0..M-1})
+channel Sync: TypeThreadIDPermutation. TypeReturns
+
+Spec(i) = Sync?perm!nElemList(NThread,i) -> Spec((i+1)%M)
+
+Lin(All,me)=
+  Call!me ->
+  Sync?perms?returns ->
+  Return!me!nthList(indexList(me,perms),returns) ->
+  Lin(All,me)
+LinEvents(All,me)={|Call.me,Return.me,Sync|}
+Linearizers(All)= ((|| me: All @ [LinEvents(All,me)]  Lin(All,me)) [|{|Sync|}|] Spec(0)) \ {|Sync|}

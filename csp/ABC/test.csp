@@ -1,32 +1,45 @@
 include "correct.csp"
-include "lin2.csp"
---a thread syncing data A and B alternately
-syncWithAB(me,f)=f(me,A);f(me,B);syncWithAB(me,f)
---same thing but B first then A
-syncWithBA(me,f)=f(me,B);f(me,A);syncWithAB(me,f)
+include "lin1.csp"
 
-syncForever(me,f)=repeat(|~|x:TypeData @ f(me,x))
+fSyncForever(me,f)=runP(|~|x:TypeData @ f(me,x))
+rSyncForever(me)=runP(|~|x:TypeData @ (SyncA(me,x) |~| SyncB(me,x) |~| SyncC(me,x)))
 
---test case: 3 threads
-System3Thread = runWith(True,
-    syncForever(T1,SyncA) |||
-    syncForever(T2,SyncB) |||
-    syncForever(T3,SyncC)
+--test a system with 3 thread
+--where thread T1,T2,T3 does ASync, BSync, CSync respectively
+System1 = runWith(True,
+    fSyncForever(T1,SyncA) |||
+    fSyncForever(T2,SyncB) |||
+    fSyncForever(T3,SyncC)
 )
 Spec3Thread = Linearizers({T1, T2, T3})
 --test the graph size of the spec process
 assert Spec3Thread [T= Spec3Thread
-assert System3Thread [T= System3Thread
+assert System1 [T= System1
+assert Spec3Thread [T= System1
+assert System1 :[deadlock free]
 
-assert Spec3Thread [T= System3Thread
-assert System3Thread :[deadlock free]
-
-System4Thread = runWith(True,
-    syncForever(T1,SyncA) |||
-    syncForever(T2,SyncB) |||
-    syncForever(T3,SyncC) |||
-    syncForever(T4,SyncA)
+--test a system with 4 thread
+--where thread T1,T2,T3,T4 does ASync, BSync, CSync,ASync respectively
+System2 = runWith(True,
+    fSyncForever(T1,SyncA) |||
+    fSyncForever(T2,SyncB) |||
+    fSyncForever(T3,SyncC) |||
+    fSyncForever(T4,SyncA)
 )
 Spec4Thread = Linearizers({T1, T2, T3, T4})
-assert Spec4Thread [T= System4Thread
-assert System4Thread :[deadlock free]
+assert Spec4Thread [T= Spec4Thread
+assert System2 [T= System2
+assert Spec4Thread [T= System2
+assert System2 :[deadlock free]
+
+--test a system with 4 thread
+--where thread T1,T2,T3,T4 does ASync, BSync, CSync,ASync respectively
+System3 = runWith(True,
+    rSyncForever(T1) |||
+    rSyncForever(T2) |||
+    rSyncForever(T3) |||
+    rSyncForever(T4)
+)
+assert Spec4Thread [T= System3
+--not checking deadlock free here because it is possible that
+--all threads does the same kind of synchronization

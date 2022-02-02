@@ -1,12 +1,12 @@
 include "common.csp"
 
 
-instance VarCount = VariableMin({0..N},0)
+instance VarCount = ModuleVariable({0..NThread},0)
 instance Monitor = ModuleMonitor(TypeThreadID)
 
-runWith(hide,p)=
-  VarCount::runWith(hide,
-  Monitor::runWith(hide,hide,
+runWith(hideSpurious, hideInternal,p)=
+  VarCount::runWith(hideInternal,
+  Monitor::runWith(hideSpurious, hideInternal,
     p
   ))
 
@@ -16,10 +16,10 @@ sync(me)=
   Monitor::enter(me);
     --count+=1
     VarCount::getValue?x ->
-    if x==N then div else
+    if x==NThread then DIV else
     VarCount::setValue!(x+1) -> (
     --if(count==n)
-    if x+1==N then (
+    if x+1==NThread then (
       --count=0
       VarCount::setValue!0 ->
       --notifyAll()

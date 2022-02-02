@@ -30,7 +30,7 @@ Lin(All,me)= (
 LinEvents(All,me)=union({
   e | e <- {|Sync|},
   let Sync.t1.t2.t3.a.b.c=e within
-    countEqualList(me,<t1,t2,t3>)==1
+    countList(me,<t1,t2,t3>)==1
 },{|Call.me,Return.me|})
 
 Linearizers(All)= (|| me: All @ [LinEvents(All,me)]  Lin(All,me)) \ {|Sync|}

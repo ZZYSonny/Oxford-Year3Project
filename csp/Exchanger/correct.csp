@@ -1,8 +1,8 @@
 include "common.csp"
 
 instance Monitor = ModuleMonitor(TypeThreadID)
-instance Step = VariableMin({0,1,2}, 0)
-instance Data = VariableMin(TypeData, A)
+instance Step = ModuleVariable({0,1,2}, 0)
+instance Data = ModuleUninitVariable(TypeData)
 
 exchange(me,datasend) = 
   --Start event for Linearizer
