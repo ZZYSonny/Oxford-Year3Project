@@ -47,6 +47,15 @@ On the other hand, what if the implementation of \textbf{syncA} does not take a 
 Using the standard linearization testing technique, the following channel can be used to represent the synchronization of three threads.
 //CSP Code
 
+The first test case involves three thread. Three threads non-deterministically choose a data and then call \textbf{aSync}, \textbf{bSync}, \textbf{cSync}.
+
+The second test case involves four thread. In addition to three threads in the first threads, another thread calling \textbf{aSync} is added.
+
+//CSP Code
+
+When testing with both the correct and the faulty version of ABC object, FDR is able to finish first test case relatively quickly, but requires unacceptable long time for the second test. With further diagnosing the running time of testing, it was found compilation of system specification process took the longest time. 
+
+//TODO: analyze the size of graph
 
 
 
