@@ -1,4 +1,4 @@
-This is XeTeX, Version 3.141592653-2.6-0.999993 (TeX Live 2021/Arch Linux) (preloaded format=xelatex 2021.12.27)  13 JAN 2022 22:29
+This is XeTeX, Version 3.141592653-2.6-0.999993 (TeX Live 2021/Arch Linux) (preloaded format=xelatex 2021.12.27)  7 FEB 2022 00:29
 entering extended mode
  \write18 enabled.
  file:line:error style messages enabled.
@@ -62,10 +62,10 @@ LaTeX Font Info:    ... okay on input line 2.
 Here is how much of TeX's memory you used:
  465 strings out of 476257
  9449 string characters out of 5816918
- 327647 words of memory out of 5000000
+ 325647 words of memory out of 5000000
  21207 multiletter control sequences out of 15000+600000
  403462 words of font info for 31 fonts, out of 8000000 for 9000
  1348 hyphenation exceptions out of 8191
- 37i,5n,39p,654b,108s stack positions out of 5000i,500n,10000p,200000b,80000s
+ 37i,5n,39p,483b,173s stack positions out of 5000i,500n,10000p,200000b,80000s
 
 Output written on project.pdf (2 pages).

@@ -4,7 +4,7 @@ datatype TypeQueue= Q0A  | QA | QAB | QABC | QB | QBC | Q0C  | QC
 qEmpty(x)= qDequeue(x)=={}
 
 --the queue starts with A*
-qNewQueue=QA
+qNewQueue=Q0A
 
 qEnqueue(Q0A,A)=QA
 qEnqueue(QA,A)=QA

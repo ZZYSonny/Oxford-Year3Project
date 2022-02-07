@@ -4,47 +4,49 @@
 
 \subsection{Converting Scala Program to CSP Model}
 \subsubsection{Shared Variable}
-The usage of shared variables is common in concurrent datatypes. For example, in later chapters some concurrent datatypes use mutable integer variables to indicate the stages of communication. However, CSP (is more like a functional programming language and) does not support mutable variables.  To model mutable variables, a server process is created for each variable. A server process is implemented by some recursive CSP functions and runs in parallel with the other part of system.
+//Background - CSP - Example? 
 
-The server process keeps the value of the variable in its parameter, and is always willing to synchronize with a thread that wants to read the value of variable through \textbf{getChan}, or a thread that wants to update the value of variable through \textbf{setChan}.
+The usage of shared variables is common in concurrent datatypes. For example, some concurrent datatypes may temporarily store an integer value sent by a thread in a variable. However, CSP is more like a functional programming language and does not support mutable variables. 
 
-The CSP implementation of mutable variable is organized in a module so that all other concurrent datatypes can define variables consistently.
+The behavior of a shared variable can be captured by a recursive function in CSP. The recursive function represents a thread holding the value of variable in the function parameter. At any time, the variable thread is willing to answer a query for the variable value in channel \textbf{getChan}. Or the thread can receive an update on the variable value in channel \textbf{getChan}, after which the function recurses with the new variable value.
 
-//TODO: CSP code and a simple example of a process using the variable
+//CSP code here
 
-\subsubsection{Monitor}
-//TODO: Describing Java Monitor.
+In order for other objects to use the shared variable, the variable function needs to run in parallel with threads, and synchronizing on \textbf{getChan} and \textbf{setChan} events. It is convenient to implement this in a function \textbf{runWith}, to run a process in synchronization with the variable process.
 
-//I find the state graph useful for explaining the CSP implementation
+//CSP code here
 
-Similarly, the implementation of monitor requires a server process, like the server process of mutable variable.
+\subsubsection{Semaphore}
 
-//TODO: Change to TikZ diagram
+
+
+\subsection{Testing Objects}
+\subsubsection{ABC}
+In the ABC object, three threads are involved in each round of synchronization. On the higher level, three threads call function \textbf{syncA}, \textbf{syncB}, \textbf{syncC} with their parameter respectively, and each function returns the parameters of two other function calls.
+
+The ABC object may be implemented with semaphore. In each round
+
+//feels like a lot of repetition
 \begin{itemize}
-    \item Before a thread enters the \textbf{synchronized} block, the thread may need to wait other process to leave the block, or more concisely, changing from \textbf{Runnable} state to \textbf{Running} state. It must first synchronize with the server process on a \textbf{WaitEnter} event.
-    \item Before the process leaves the synchronized block, it must synchronize on an \textbf{Exit} event, to switch to \textbf{Finished} state.
-    \item The running process may wait until some variable to change. For this, the process must send a \textbf{Wait} event to the server, indicating changing from \textbf{Running} state to \textbf{Waiting} state. Later when resuming from \textbf{Waiting} state, the process first needs to switch to \textbf{Runnable} state with a \textbf{WaitNotify} event, then a \textbf{WaitEnter} event.
-    \item Also inside the block, the running process may send a \textbf{Notify} or \textbf{NotifyAll} event to notify one or all process in waiting state.
+    \item Initially \textbf{aClear} semaphore is up
+    \item A thread calling \textbf{aSync} takes down the \textbf{aClear} semaphore, puts down its value, and raises \textbf{bClear} semaphore, and finally waits for the \textbf{aSignal} semaphore to raise.
+    \item Another thread calling \textbf{bSync} takes down the \textbf{bClear} semaphore, put down its value, and raises \textbf{cClear} semaphore, and waits for \textbf{bSignal} semaphore to raise.
+    \item One more thread calling \textbf{cSync} takes down the \textbf{cClear} semaphore, put down its value, and raises \textbf{aSignal} semaphore, and waits for \textbf{cSignal} semaphore to raise.
+    \item The first thread is able to continue. The thread takes a copy of the other two argument, raises the \textbf{bSignal} thread, and exits with the arguments pair.
+    \item The second thread is able to continue and does the similar thing as the first thread. Before exiting, the second thread raises \textbf{cSignal}.
+    \item The last thread is then able to continue. Before exiting, the last thread raises \textbf{aClear}, allowing a new round to start.
 \end{itemize}
 
-The server process should behave differently when there is a \textbf{Running} process or not. When there is no process in \textbf{Running} state, the server process should only non-deterministically pick a process waiting to enter the synchronized block. When there is a process in \textbf{Running} state, the server process should only be willing to accept 
+Using the shared variable and semaphore module, it is easy to translate the Scala implementation to a CSP implementation. 
 
-There are a few corner cases to consider.
+Unlike Monitor in Java and Scala, raising a semaphore immediately allows another thread waiting to \textbf{down} the semaphore to continue. So in the semaphore implementation, it is essential to take a copy of the two other argument, before raising the semaphore for the next thread. 
 
-In Java, when a process calls notify, but there is no waiting process to wake up, the function call does nothing. However, if the server process sends a \textbf{Notify} event when no process is waiting, the server process will simply deadlock. Thus, it is essential to prevent the server process doing a \textbf{Notify} event in such case.
+On the other hand, what if the implementation of \textbf{syncA} does not take a copy of the argument? It turns out the ABC object still works correctly when only three threads are involved, but fails the linearization test with four threads.
 
-One way to achieve this is to maintain a list of waiting processes. When the server process needs to do a \textbf{Notify}, after the running process sends a \textbf{Notify} event, the server process non-deterministically picks a waiting process from the list and send a \textbf{WaitNotify} event. Similarly, for notifyAll, the server process non-deterministically sends \textbf{WaitNotify} to all waiting process. It is also possible to simplify the lists of waiting processes to the number of waiting processes, because when the server sends a \textbf{WaitNotify} event, only waiting processes will be synchronized. 
+\subsubsection{Testing}
+Using the standard linearization testing technique, the following channel can be used to represent the synchronization of three threads.
+//CSP Code
 
-The monitor may spuriously wake up some processes at some time. For this purpose, the server process may non-deterministically choose to wake up processes whenever possible. //TODO: Livelock.
-
-Now that waiting processes may be waked up spuriously, it becomes helpful to use \textbf{wait} with a while loop like \textbf{while(cond) wait()}, to check if variable has actually been changed. While loop, again, is not in CSP. Also \textbf{cond} is a bit unusual, because when evaluating the condition, the process may need to read global variable. For this reason, a generic while loop is defined. //TODO: While loop
-
-\subsection{Testing}
-\subsubsection{Linearization}
-\subsubsection{Filter Channel}
-A filter channel is like a OneOne channel. Process sending data continues only when the data is taken by some receiver. Process receiving data only takes values from senders that satisfies some predicate, and has not been taken by anyone else. 
-
-//TODO: An example with sync diagram
 
 
 
