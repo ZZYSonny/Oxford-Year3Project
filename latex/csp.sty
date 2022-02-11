@@ -1,0 +1,433 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%       csp.sty         ->      LaTeX macros for csp  
+
+%       (c) July 1994           Jim Davies      >> version 5.6 <<
+
+%   Heavily edited by Gavin
+ 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\typeout{^^Jcsp style >> version 5.6 << ^^J}
+
+\ifx\csp@sty@loaded\undefined \relax
+  \def\csp@sty@loaded{} 
+\else 
+  \endinput 
+\fi
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%       instructions 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%       \documentstyle[csp]     ->      define csp *macros*
+%                 [csp_zed]     ->      AMS *fonts*
+%                 [csp_csp]     ->      AMS and CSP *fonts*
+%                 [csp_old]     ->      *old* definitions
+
+%       If more than one option is included, then the following rules
+%       apply: 
+
+%         csp_X,csp     =fs     csp_X           (X = csp,zed)
+%         csp,csp_X     =fs     csp_X   
+%         csp,csp       =fs     csp
+
+%       That is, plain `csp' adds nothing if it is not the only csp
+%       option present.  The `=f' denotes equivalent font usage, the
+%       `=s' denotes equivalent macro definition. 
+
+%       The other options overwrite font definitions but preserve 
+%       any additional macros.  For example, `csp_zed,csp_csp' will
+%       define symbols using the AMS *and* CSP fonts, but will offer
+%       macros such as `\schema' from `csp_zed'. 
+%
+%         csp_X,csp_Y   =f      csp_Y           (X,Y = csp,zed)
+%         csp_X,csp_Y   =s      csp_X + csp_Y
+
+%       There is one more option, `csp_old', which must appear last
+%       in any list of csp options.  It modifies macro definitions 
+%       to match early versions of `csp.sty'. 
+
+%       Many thanks to Alan Jeffrey, Jeremy Gibbons, Mike Spivey,
+%       Joe Stoy, and John Murdie for their helpful suggestions. 
+
+%                                                       Jim Davies 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%       construction macros 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\def~{\ifmmode\,\else\penalty\@M\ \fi}
+\def\_{\leavevmode\vbox{\hrule width0.5em}}
+\def\@overlay#1#2{\mathpalette\@@overlay{{#1}{#2}}}
+\def\@@overlay#1#2{\@@@overlay#1#2}
+\def\@@@overlay#1#2#3{{\setbox0=\hbox{$#1#2$}\setbox1=\hbox{$#1#3$}%
+                      \ifdim \wd0<\wd1% 
+                         \setbox2=\box1 \setbox1=\box0 \setbox0=\box2% 
+                      \fi % \box0 is the wider 
+                      \rlap{\hbox to\wd0{\hss\box1\hss}}\box0}}
+\def\strut@op#1{\mathop{\mathstrut{#1}}\nolimits}
+\def\indexed@op#1{%
+  \mathop{\vcenter{\hbox{\Large$\mathstrut#1$}}}\nolimits}
+
+%\ifx\selectfont\undefined 
+%  \let\mathrm=\rm
+%  \let\mathbf=\bf
+%  \let\mathsf=\sf 
+%\else
+%  \ifx\scale@lucidasizes\undefined
+%    \ifx\mathbf\undefined \relax
+%      \newmathalphabet{\mathbf}
+%      \addtoversion{normal}\mathbf{cmr}{bx}{n}
+%    \fi
+%    \ifx\mathsf\undefined \relax
+%      \newmathalphabet{\mathsf}
+%      \addtoversion{normal}\mathsf{cmss}{m}{n}
+%      \addtoversion{bold}\mathsf{cmss}{bx}{n}
+%    \fi
+%  \fi
+%\fi
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%       logic and sets
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\ifx\tex@forall\undefined
+  \let\tex@forall=\forall \let\tex@exists=\exists 
+  \let\tex@lambda=\lambda \let\tex@mu=\mu
+\fi
+
+\let \Inter     \bigcap                   
+\let \Land      \bigwedge                 
+\let \Lor       \bigvee                   
+\let \Union     \bigcup                   
+\let \cross     \times                        
+\def \dom       {\strut@op{\mathrm{dom}}}     
+\def \exists    {\strut@op{\tex@exists}}        
+\def \forall    {\strut@op{\tex@forall}}        
+\def \hence     {\mathrel{\vdash}}           
+\let \iff       \Leftrightarrow              
+\let \implies   \Rightarrow                  
+\let \inter     \cap                          
+\def \lambda    {\strut@op{\tex@lambda}}        
+\def \land      {\mathrel{\wedge}}           
+\def \lnot      {\neg}                     
+\def \lor       {\mathrel{\vee}}             
+\def \mu        {\strut@op{\tex@mu}}            
+\let \nin       \notin                        
+\def \ran       {\strut@op{\mathrm{ran}}}     
+% \def \seq       {\strut@op{\mathrm{seq}}}     
+\let \union     \cup                          
+\def \upto      {\mathbin{\ldotp\ldotp}}      
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%       reset mathcodes if necessary
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%\ifx\@setmcodes\undefined \relax
+%  \ifx\selectfont\undefined \relax
+%    \def\@setmcodes#1#2#3{{\count0=#1 \count1=#3
+%         \loop \global\mathcode\count0=\count1 \ifnum \count0<#2
+%         \advance\count0 by1 \advance\count1 by1 \repeat}}
+%    \@setmcodes{`A}{`Z}{"7441}
+%    \@setmcodes{`a}{`z}{"7461}
+%    \@setmcodes{`0}{`9}{"7430}
+%  \else
+%    \ifx\itfam\undefined \relax
+%      \new@mathgroup\itfam
+%      \define@mathgroup\mv@normal\itfam{cmr}{m}{it}
+%    \fi
+%    \def\it@hex{\hexnumber@\itfam}
+%    \def\@setmcodes#1#2#3{{\count0=#1 \count1=#3
+%         \loop \global\mathcode\count0=\count1 \ifnum \count0<#2
+%         \advance\count0 by1 \advance\count1 by1 \repeat}}
+%    \@setmcodes{`A}{`Z}{"7\it@hex 41}
+%    \@setmcodes{`a}{`z}{"7\it@hex 61}
+%    \@setmcodes{`0}{`9}{"7\it@hex 30}
+%  \fi
+%  \def\@makefnmark{\hbox{$^{\mathrm{\@thefnmark}}$}}
+%  \long\def\@makefntext#1{\parindent 1em\noindent
+%     \hbox to 1.8em{\hss\@makefnmark}#1}
+%\fi
+
+\mathcode`\;="8000 % Makes ; active in math mode
+{\catcode`\;=\active \gdef;{\mathbin{\semicolon}}}
+\mathchardef\semicolon="603B
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%       default symbol table
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\let \@mc               \mathchardef
+\def \csp@at            {\hbox{\it @}}
+\@mc \csp@bar           "026A
+\def \csp@bigextchoice  {\indexed@op{{\csp@extchoice}}}
+\def \csp@bigintchoice  {\indexed@op{{\csp@intchoice}}}
+\def \csp@biginterleave {\indexed@op{{\csp@interleave}}}
+\def \csp@bigparallel   {\indexed@op{{\csp@parallel}}}
+\@mc \csp@cat           "015F
+\@mc \csp@chain         "021D
+\def \csp@chaos         {{Chaos}}
+\def \csp@contig        {{\mathrm{in}}}
+\@mc \csp@count         "0223
+\@mc \csp@data          "022B
+\def \csp@defs          {\widehat{=}}
+\@mc \csp@during        "0222
+\def \csp@extchoice     {{\Box}}
+\def \csp@finset        {{\mathbf{F}}}
+\@mc \csp@ge            "0215
+\@mc \csp@hide          "026E
+\@mc \csp@intchoice     "0275
+\def \csp@interleave    {\csp@bar\csp@bar\csp@bar}  
+\@mc \csp@interrupt     "0234
+\@mc \csp@lbrack        "005B           
+\def \csp@ldbrack       {\csp@lbrack\mkern-2mu\csp@lbrack}
+\def \csp@ldparen       {\csp@lparen\mkern-2mu\csp@bar}
+\@mc \csp@le            "0214
+%\def \csp@leftpar       {\csp@bar\mkern-1mu\csp@lbrack}
+\@mc \csp@lparen        "0184
+\def \csp@nat           {{\mathbf{N}}}          
+%\def \csp@nexists       {\not\!\exists}         
+\def \csp@num           {{\mathbf{Z}}}
+\@mc \csp@parallel      "026B
+\def \csp@power         {{\mathbf{P}}}
+\@mc \csp@prefix        "0214
+\def \csp@project       {\@overlay{\lower.06ex\hbox{$\grave{\,}$}}%
+                                  {\mathord{\csp@bar}}}
+\def \csp@rat           {{\mathbf{Q}}}
+\@mc \csp@rbrack        "005D   
+\def \csp@rdbrack       {\csp@rbrack\mkern-2mu\csp@rbrack}
+\def \csp@rdparen       {\csp@bar\mkern-2mu\csp@rparen}
+\def \csp@real          {{\mathbf{R}}}
+%\def \csp@rightpar      {\csp@rbrack\mkern-1mu\csp@bar}
+\@mc \csp@rparen        "0185
+\def \csp@skip          {{Skip}}
+\def \csp@slave         {\raise0.2ex\hbox{$\slash\mkern-4mu\slash$}}
+\@mc \csp@spot          "020F
+\def \csp@stop          {{Stop}}
+\@mc \csp@subseq        "0216
+\def \csp@then          {\rightarrow}
+\@mc \csp@tick          "1270
+\@mc \csp@timeout       "012E
+\@mc \csp@transfer      "022E   
+\def \csp@view          {\csp@hide\,\csp@hide}
+\def \csp@wait          {{Wait}}
+
+\def \csp@leftpar       {\csp@lbrack\csp@bar}
+\def \csp@rightpar      {\csp@bar\csp@rbrack}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%       macros for observations
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\def \cat       {\mathord{\smash{\raise 0.8ex\hbox{$\csp@cat$}}}}
+\def \contig    {\mathrel{\csp@contig}}
+\def\In{\contig}
+\def \cnt       {\mathrel{\csp@count}}
+\def \data      {\mathrel{\csp@data}}
+\def \defs      {\mathrel{\csp@defs}}
+\def \during    {\mathrel{\csp@during}}
+\def \finset    {\strut@op{\csp@finset}}
+\def \ge        {\mathrel{\csp@ge}}
+\def \le        {\mathrel{\csp@le}}
+\def \nat       {\mathord{\csp@nat}}
+%\def \nexists   {\strut@op{\csp@nexists}}
+\def \num       {\mathord{\csp@num}}
+\def \power     {\strut@op{\csp@power}}
+\def \prefix    {\mathrel{\csp@prefix}}
+\def \project   {\mathrel{\csp@project}}
+\def \rat       {\mathord{\csp@rat}}
+\def \real      {\mathord{\csp@real}}
+\def \spot      {\mathrel{\csp@spot}}
+\def \subseq    {\mathrel{\csp@subseq}}
+\def \tick      {\mathord{\csp@tick}}
+
+\def \trace#1{\langle #1\rangle}          
+\def \nil       {\trace{}}                       
+\def \set#1{\{#1\}}                       
+\def \emptyset  {\set{}}
+\def \seq#1{\langle#1\rangle}                    
+
+\def \Begin     {\strut@op{\mathrm{begin}}}
+\def \End       {\strut@op{\mathrm{end}}}
+\def \Head      {\strut@op{\mathrm{head}}}
+\def \First     {\strut@op{\mathrm{first}}}
+\def \Tail      {\strut@op{\mathrm{tail}}}
+\def \Front     {\strut@op{\mathrm{front}}}
+\def \Last      {\strut@op{\mathrm{last}}}
+\def \Times     {\strut@op{\mathrm{times}}}
+\def \Events    {\strut@op{\mathrm{events}}}
+ 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%       macros for processes
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\let \xparallel \parallel 
+
+\def \Bottom    {\mathord{\perp}}
+\def \Chaos     {\mathord{\csp@chaos}}
+\def \Stop      {\mathord{\csp@stop}}
+\def \Skip      {\mathord{\csp@skip}}
+\def \Wait      {\strut@op{\csp@wait}}
+\def \then      {\@ifnextchar[{\@then}{\mathrel{\csp@then}}}
+\def \@then[#1]{\buildrel #1\over\csp@then}
+\def \barchoice {\mathrel{\csp@bar}}
+\def \intchoice {\mathrel{\csp@intchoice}}
+\def \extchoice {\mathrel{\csp@extchoice}}
+\def \interrupt {\mathrel{\csp@interrupt}}
+\def \timeout   {\@ifnextchar[{\@timeout}{\mathrel{\csp@timeout}}}
+\def \@timeout[#1]{\mathrel{\csp@timeout_{#1}}}
+\def \transfer  {\@ifnextchar[{\@transfer}{\mathrel{\csp@transfer}}}
+\def \@transfer[#1]{\mathrel{\csp@transfer\{#1\}}}
+
+% Jim style parallel
+\def \jparallel  {\@ifnextchar[{\@parallel}{\mathrel{\csp@parallel}}}
+\def \@parallel[#1]{\@ifnextchar[{\@@parallel[#1]}{%
+                {\mathrel{\;\csp@leftpar{#1}\csp@rightpar\;}}}}
+\def \@@parallel[#1][#2]{\mathrel{\,\csp@leftpar\,{#1}\,
+                \csp@bar\,{#2}\,\csp@rightpar\,}}
+
+% Bill style parallel
+\def \parallel  {\@ifnextchar[{\@dparallel}{\mathrel{\csp@parallel}}}
+\def \@dparallel[#1]{\@ifnextchar[{\@@dparallel[#1]}{%
+                {\mathrel{\,\mathop{\xparallel}\limits_{#1}\,}}}}
+\def \@@dparallel[#1][#2]{\mathrel{\vphantom\xparallel_{#1}\mathord{\xparallel_{#2}}}}
+
+\def \interleave{\mathrel{\csp@interleave}}
+\def \chain     {\mathrel{\csp@chain}}
+\def \hide      {\mathrel{\csp@hide}}
+\def \view      {\mathrel{\csp@view}}
+\def \at        {\mathbin{\csp@at}}
+\def \Intchoice {\mathop{\csp@bigintchoice}\nolimits}
+\def \Extchoice {\mathop{\csp@bigextchoice}\nolimits}
+\def \Parallel  {\mathop{\csp@bigparallel}\nolimits}
+\def \Interleave{\mathop{\csp@biginterleave}\nolimits}
+\def \If        {\mathop{\mbox{if}}} % {\hbox to 1.5em {\hss\mathrm{if}\hss}}   
+\def \Then      {\mathrel{\mbox{then}}} % {\hbox to 3em {\hss\mathrm{then}\hss}} 
+\def \Else      {\mathrel{\mbox{else}}} % {\hbox to 3em {\hss\mathrm{else}\hss}} 
+\def \Fi        {\hbox to 1.5em {\hss\mathrm{fi}\hss}}   
+
+\def \clause    {\Bigm{|}}      
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%       macros for observations
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\def\@PreMacro#1{\mathop{\mbox{\sf #1}}}
+\def\@InMacro#1{\mathrel{\mbox{\sf #1}}}
+\def\@@InMacro#1^#2{\;\mbox{\sf #1}^{#2}\;}
+\def\@SupInMacro#1{\@ifnextchar^{\@@InMacro{#1}}{\@InMacro{#1}}}
+
+\def \mInternal         {\@PreMacro{internal}}
+\def \mRef              {\@InMacro{ref}}
+\def \mAt               {\@SupInMacro{at}}
+\def \mLive             {\@SupInMacro{live}}
+\def \mOpen             {\@SupInMacro{open}}
+\def \mFrom             {\@InMacro{from}}
+\def \mUntil            {\@InMacro{until}}
+\def \mLiveFrom         {\@InMacro{live from}}
+\def \mOpenFrom         {\@InMacro{open from}}
+\def \mNameOfLast       {\@InMacro{name of last}}
+\def \mBefore           {\@InMacro{before}}
+\def \mAfter            {\@InMacro{after}}
+\def \mTimeOfLast       {\@InMacro{time of last}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%       semantic models and refinement
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\def \@semapp[#1]{\,\csp@ldbrack #1 \csp@rdbrack}
+\def \semapp{\@semapp} % exported
+\def \sem@fun#1{{#1}\@ifnextchar[{\@semapp}{}}
+\def \Semantics         {\sem@fun{semantics}}
+\def \Traces            {\sem@fun{traces}}
+\def \Failures          {\sem@fun{failures}}
+\def \TimedTraces       {\sem@fun{timed\,traces}}
+\def \TimedFailures     {\sem@fun{timed\,failures}}
+\def \Divergences       {\sem@fun{divergences}}
+\def \Infinites         {\sem@fun{infinites}}
+
+\def \lessdet{\@ifnextchar[{\@lessdet}{\mathrel\sqsubseteq}}
+\def \@lessdet[#1]{\@ifnextchar[{\lessdet@two[#1]}{\lessdet@one[#1]}}
+\def \lessdet@one[#1]{\mathrel{\sqsubseteq_{#1}}}
+\def \lessdet@two[#1][#2]{%
+        \mathrel{{\vphantom{\sqsubseteq}}_{#1}{\sqsubseteq}_{#2}}}
+
+\def \fdequiv   {\mathrel{\equiv_{fd}}}
+\def \tequiv    {\mathrel{\equiv_{t}}}
+\def \fdrefine  {\mathrel{\sqsubseteq_{fd}}}
+\def \trefine   {\mathrel{\sqsubseteq_{t}}}
+
+\def \sat       {\mathrel{\mbox{\bf sat}}}
+\def \semb#1{{\csp@ldbrack #1 \csp@rdbrack}}
+
+\def\eset#1{\{\!\mathord{|}\!\,#1\!\,\mathord{|}\!\}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%       short names for semantic models
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\def\UT{UT}     \def\TE{TE}     \def\TT{TT}                
+\def\RT{RT}     \def\TR{TR}     \def\TI{TI}                
+\def\TTi{\TT^i} \def\TTw{\TT^\omega} \def\TRu{\TR^u}            
+
+\def\@obsmodel#1{{\cal{O}}_{#1}}
+\def\@obsspace#1{{\cal{S}}_{#1}}
+\def\@semmodel#1{{\cal{M}}_{#1}}
+\def\@semfunct#1{{\cal{F}}_{#1}\@ifnextchar[{\@semapp}{}}
+\def\@semapp[#1]{\semb{#1}}
+
+\def\Out    {\@obsmodel{UT}}    \def\Sut    {\@obsspace{UT}}
+\def\Ouf    {\@obsmodel{UF}}    \def\Suf    {\@obsspace{UF}}
+\def\Oufd   {\@obsmodel{UFD}}   \def\Sufd   {\@obsspace{UFD}}
+\def\Otf    {\@obsmodel{TF}}    \def\Stf    {\@obsspace{TF}}
+\def\Otfs   {\@obsmodel{TFS}}   \def\Stfs   {\@obsspace{TFS}}
+\def\Oti    {\@obsmodel{TI}}    \def\Sti    {\@obsspace{TI}}
+
+\def\Mut    {\@semmodel{UT}}    \def\Fut    {\@semfunct{UT}}
+\def\Muf    {\@semmodel{UF}}    \def\Fuf    {\@semfunct{UF}}
+\def\Mufd   {\@semmodel{UFD}}   \def\Fufd   {\@semfunct{UFD}}
+\def\Mtf    {\@semmodel{TF}}    \def\Ftf    {\@semfunct{TF}}
+\def\Mtfs   {\@semmodel{TFS}}   \def\Ftfs   {\@semfunct{TFS}}
+\def\Mti    {\@semmodel{TI}}    \def\Fti    {\@semfunct{TI}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%       synonymbols
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\let \refinedby \lessdet
+\let \refines   \sqsupseteq
+\let \restrict  \project
+\let \sharing   \parallel
+\let \values    \data
+\let \leftsemb  \csp@ldbrack
+\let \rightsemb \csp@rdbrack
+
+\def\Assert{\mathop{\mbox{assert}}}
+
+\endinput
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+

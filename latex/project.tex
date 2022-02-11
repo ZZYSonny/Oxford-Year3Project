@@ -1,18 +1,23 @@
 \documentclass{article}
+\usepackage{minted}
 \begin{document}
-
 
 \section{Common Objects}
 \subsection{Shared Variable}
-The usage of shared variables is common in concurrent datatypes. For example, some concurrent datatypes may temporarily store an integer value sent by a thread in a variable. However, CSP is more like a functional programming language and does not support mutable variables. 
+The usage of shared variables is common in concurrent datatypes. For example, some concurrent datatypes may temporarily store an integer value sent by a thread in its variable. However, CSP is more like a functional programming language and does not support mutable variables. 
 
 The behavior of a shared variable can be captured by a recursive function in CSP. The recursive function represents a thread holding the value of variable in the function parameter. At any time, the variable thread is willing to answer a query for the variable value in channel \textbf{getChan}. Or the thread can receive an update on the variable value in channel \textbf{getChan}, after which the function recurses with the new variable value.
 
-//TOADD: Full CSP code here
-
+\begin{minted}{haskell}
+    Var(value) = getValue!value -> Var(value)
+          [] setValue?value -> Var(value)  
+\end{minted}
 In order for other objects to use the shared variable, the variable function needs to run in parallel with threads, and synchronizing on \textbf{getChan} and \textbf{setChan} events. It is convenient to implement this in a function \textbf{runWith}, to run a process in synchronization with the variable process.
 
-//TOADD: Full CSP code here
+\begin{minted}{haskell}
+instance VarA = ModuleVariable({0,1,2},0)
+P = VarA::getValue?a -> VarA::setValue!a -> STOP
+\end{minted}
 
 \subsubsection{Semaphore}
 
@@ -23,7 +28,49 @@ In the ABC object, three threads are involved in each round of synchronization. 
 
 The ABC object may be implemented with semaphore. In each round
 
-//TOADD: Full ABC Code here, the following part feels like a lot of repetition with ABC Code
+\begin{minted}{scala}
+    class ABC[A,B,C] extends ABCT[A,B,C]{
+        // The identities of the current (or previous) threads.
+        private var a: A = _
+        private var b: B = _
+        private var c: C = _
+      
+        // Semaphores to signal that threads can write their identities.
+        private val aClear = MutexSemaphore()
+        private val bClear, cClear = SignallingSemaphore()
+      
+        // Semaphores to signal that threads can collect their results. 
+        private val aSignal, bSignal, cSignal = SignallingSemaphore()
+      
+        def syncA(me: A) = {
+          aClear.down         // (A1)
+          a = me; bClear.up   // signal to b at (B1)
+          aSignal.down        // (A2)
+          val result = (b,c)
+          bSignal.up          // signal to b at (B2)
+          result
+        }
+      
+        def syncB(me: B) = {
+          bClear.down         // (B1)
+          b = me; cClear.up   // signal to C at (C1)
+          bSignal.down        // (B2)
+          val result = (a,c)
+          cSignal.up          // signal to c at (C2)
+          result
+        }
+      
+        def syncC(me: C) = {
+          cClear.down         // (C1)
+          c = me; aSignal.up  // signal to A at (A2)
+          cSignal.down        // (C2)
+          val result = (a,b)
+          aClear.up           // signal to an A on the next round at (A1)
+          result
+        }
+      }      
+\end{minted}
+
 \begin{itemize}
     \item Initially \textbf{aClear} semaphore is up
     \item A thread calling \textbf{aSync} takes down the \textbf{aClear} semaphore, puts down its value, and raises \textbf{bClear} semaphore, and finally waits for the \textbf{aSignal} semaphore to raise.
@@ -43,7 +90,11 @@ On the other hand, what if the implementation of \textbf{syncA} does not take a 
 \subsubsection{Testing}
 Using the standard linearization testing technique, the following \textbf{Sync} channel can be used to represent the synchronization of three involved threads. For example, the event \textbf{Sync.t1.a.b.c.t2.d.e.f.t3.g.h.i} represents the synchronizations of three threads, \textbf{t1,t2,t3}, in which the first thread \textbf{t1} calls \textbf{aSync} with \textbf{a} and returns \textbf{(b,c)}, the second thread \textbf{t2} calls \textbf{bSync} with \textbf{d} and returns \textbf{(e,f)}, and last thread \textbf{t3} calls \textbf{cSync} with \textbf{g} and returns \textbf{(h,i)}. The spec process should then check each synchronization point that the return value for each functional call is the pair of arguments of two other function call.
 
-//CSP Channel and Spec Code
+\begin{minted}[breaklines]{haskell}
+channel Sync: TypeThreadID.TypeData.TypeData.TypeData. TypeThreadID.TypeData.TypeData.TypeData. TypeThreadID.TypeData.TypeData.TypeData
+
+Spec = Sync?aid?a?b?c?bid:diff(TypeThreadID,{aid})!b!a!c ?cid:diff(TypeThreadID,{aid,bid})!c!a!b -> Spec
+\end{minted}
 
 There are two test cases. The first test case involves three threads. Each of the thread chooses a data non-deterministically and then calls one of \textbf{aSync}, \textbf{bSync}, \textbf{cSync}. The second test case involves four thread, which chooses a data non-deterministically and calls \textbf{aSync}. In both cases, the systems should be traced refined (is it this direction in words) by the specification process. In addition, both systems should never deadlock, and the communication should continue forever.
 
@@ -54,12 +105,19 @@ Consider the specification process. Let $N$ be the number of threads in the syst
 
 There are $3*M^9$ different transitions before the individual linearizer recurses into itself, but only $3*M^3$ transitions are valid according to the specification. 
 
-//TOADD: syncA code of linearizer
-
+\begin{minted}[breaklines]{haskell}
+    Call!me!ASync?a ->
+    Sync!me!a?b?c ?t2:diff(All,{me})?t2b?t2a?t2c ?t3:diff(All,{me,t2})?t3c?t3a?t3b ->
+    Return!me!ASync!b!c ->
+    Lin(All,me)
+\end{minted}
+    
 With the above analysis, it is tempting to optimize the individual linearizer by using the information from the specification process. Instead of choosing all possible remaining arguments, the individual linearizer could choose arguments that are correct according to the specification process.
 
-//TOADD: one line of changed CSP code.
-
+\begin{minted}[breaklines]{haskell}
+    Sync!me!a?b?c ?t2:diff(All,{me})!b!a!c ?t3:diff(All,{me,t2})!c!a!b ->
+    Return!me!ASync!b!c
+\end{minted}
 It is possible to further simplify the \textbf{Sync} channel, as now the arguments representing return value are redundant. This change does not reduce the number of transitions for an individual linearizer, but it may help FDR simulating the model faster.
 
 With the above optimizations, the testing finishes quickly for both test cases.

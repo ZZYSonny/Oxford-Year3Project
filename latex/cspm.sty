@@ -1,0 +1,296 @@
+%% This file provides support for pretty-printing machine-readable CSP.  The
+%% package performs syntax highlighting, typesets comments in italics, and
+%% does some character substitutions to use standard CSP characters.  The
+%% package is based upon the listings package
+
+%% It provides an environment cspm that produces display-style CSP, and a
+%% command \CSPM for in-line CSP.  Examples of usage:
+%%   \begin{cspm}
+%%   P = a -> STOP [] b -> STOP -- a simple process
+%%   \end{cspm}
+%%   \CSPM{P = a -> STOP [] b -> STOP}.
+%% The former formats the CSP in a fixed width font, whereas the latter
+%% formats it in a variable width font.  Within the latter, the strings `~'
+%% and `\!' can be used to add or remove horizontal space, respectively.  
+
+%% Within the argument of \CSPM, the characters \, {, } and % have to be
+%% escaped as \\, \{, \} and \%, e.g. \CSPM{P \\ \{a\}}.
+
+%% The package isn't able to identify whether an operator such as `|~|'
+%% represents a binary or an indexed operator; the latter is conventionally
+%% typeset slightly larger.  The string `**' instructs the package to format
+%% the next such operator as an indexed operator, e.g.
+%% \CSPM{R = ** |~| i:{1,2,3} @ P(i) |~| Q(i)}.  The other operators to which
+%% this applies are `[]', `||' and `|||'.  
+
+%% Within the cspm environment, the `£' symbol can be used to escape to
+%% standard LaTeX, e.g.
+%%   \begin{cspm}
+%%   R = £$\Intchoice_{\mbox{\cspmfont\scriptsize i:\{1,2,3}\}}$£ P(i)
+%%   \end{cspm}
+%% The doesn't work within the argument of \CSPM -- close the argument to get
+%% the same effect, e.g. \CSPM{R =} $\codecolour
+%% \Intchoice_{\mbox{\cspmfont\scriptsize i:\{1,2,3}\}}$\CSPM{P(i)} 
+
+%% The following options are available:
+
+%% - bw: gives black and white output.
+
+%% - ugly: turns off character substitution.
+
+%% - slashRename: replaces the `<-' arrow in renamings with a `\', which I
+%%   prefer; this uses the presence of either `]]' or `|' to identify when to
+%%   turn off this substitution: this decision process won't work correctly if
+%%   `|' appears within the renaming, e.g. in a set comprehension.
+
+%% The output can also be adapted as follows:
+
+%% - To change the colour, redefine the \codecolour command, or change the
+%%   definition of CodeColour
+
+%% - To change the font, change the definition of \cspmfont and/or \cspmsize
+
+%% In addition, most of the options in the listings package should work.  See
+%% http://www.ctan.org/tex-archive/macros/latex/contrib/listings/listings.pdf. 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\ProvidesPackage{cspm}
+\RequirePackage{listings}
+\RequirePackage{ifthen}
+
+%%% bw option provides black and white; ugly option disables character
+%%% substitution; slashRename option formats renamings using `\'
+\newif\if@bw@ \@bw@false
+\newif\if@ugly@ \@ugly@false
+\newif\if@slashRename@ \@slashRename@false
+
+\DeclareOption{bw}{\@bw@true}
+\DeclareOption{ugly}{\@ugly@true}
+\DeclareOption{slashRename}{\@slashRename@true}
+\ProcessOptions
+
+%%% Do we want colour?
+
+\if@bw@
+  \def\CSPcolour{\relax}
+\else
+  \RequirePackage{color}  % if this doesn't work, try xcolor
+  \definecolor{CSPColour}{cmyk}{1,1,0,0.53}
+  \def\CSPcolour{\color{CSPColour}}
+\fi
+
+\if@ugly@
+  \relax
+\else
+  \RequirePackage{latexsym} % for the \Box symbol used for \extchoice
+  \RequirePackage{csp} % a standard CSP package to define some of the macros
+                       % below 
+\fi
+
+%%% Font choices; redefine these as required
+
+\def\cspmsize{\small}
+\def\cspmDisplaySize{\relax}
+\def\cspmInlineSize{\small}
+\def\cspmfont{\sffamily}
+\def\cspmstyle{\cspmsize\cspmfont\CSPcolour}
+\def\cspmInlineStyle{\cspmInlineSize\cspmfont\CSPcolour}
+
+\def\cspmfootnote{\def\cspmsize{\tiny}}
+\def\cspmlarge{\def\cspmsize{\normalsize}}
+
+%%% Replace "<-" with \backslash if inside a renaming
+
+\def\optLeftArrow{\leftarrow\null}
+\def\optLeftArrowd{\leftarrow}
+\if@slashRename@
+  \def\inRenaming{%
+    \gdef\optLeftArrow{\mathrel{\backslash}\null}%
+    \gdef\optLeftArrowd{\backslash}%
+  }
+  \def\outRenaming{%
+    \gdef\optLeftArrow{\leftarrow\null}%
+    \gdef\optLeftArrowd{\leftarrow}%
+  }
+\else
+  \def\inRenaming{\relax}
+  \def\outRenaming{\relax}
+\fi
+
+%%%%% Commands to turn operators into indexed versions, and back again
+
+\def\indexify{%
+  \gdef\optintchoice{\mbox{\large$\intchoice$}\unindexify}%
+  \gdef\optinterleave{\mbox{\large$\interleave$}\unindexify}%
+  \gdef\optextchoice{\mbox{\large$\extchoice$}\unindexify}%
+%  \gdef\optparallel{\Parallel\unindexify}%
+  \gdef\optparallel{\mbox{\large$\parallel$}\unindexify}%
+}
+
+\def\unindexify{%
+  \gdef\optintchoice{\intchoice}%
+  \gdef\optinterleave{\interleave}%
+  \gdef\optextchoice{\extchoice}%
+  \gdef\optparallel{\parallel}%
+}
+
+\unindexify
+
+%\let\mid=|  %% allows | to be redefined, as in scalalistings.sty
+
+%%% Basic language definition
+
+\lstdefinelanguage{cspm}
+  {keywords={datatype, channel, if, then, else, let, within, div},     
+   sensitive, keepspaces=true, %showstringspaces=false,
+   % basewidth={0.6em,0.45em}, %keywordstyle=\bfseries, 
+   morecomment=[l][\rm]{--}, morecomment=[s]{/*}{*/}
+  }[keywords,comments]
+
+\lstset{columns=flexible}
+
+\def\jotX{\hspace{0.45mm}}
+
+
+\if@ugly@
+  %%% Displayed CSPM, ugly style
+  \lstnewenvironment{cspm}[1][]
+    {\pagebreak[3]\bgroup\samepage
+      \lstset{
+        language=cspm, columns=fixed, escapechar=£, % basewidth={1.8em,1.45em},
+        basicstyle=\cspmstyle\cspmDisplaySize,
+        #1
+      }
+    }{\egroup}
+  %%% Inline CSPM, ugly style
+  \def\CSPM#1{{%
+    \lstset{
+      language=cspm, columns=fullflexible, 
+      basicstyle=\cspmstyle\cspmInlineSize,
+    }%
+    \lstinline{#1}%
+  }}
+\else  %%% literate style
+  %%% Displayed CSPM, literate style
+  \lstnewenvironment{cspm}[1][]
+    {\global\@ignoretrue\bgroup
+      \lstset{
+        language=cspm, % columns=fixed, 
+        escapechar=£, basewidth={0.7em,0.45em},
+        keepspaces=true,
+        basicstyle=\cspmstyle\cspmDisplaySize,
+        % moredelim=[is][\underbar]{"}{"}, % for emphasis
+        literate={ -> }  {{$\then$}}1             % prefixing
+                 { ! }   {{$\jotX\mathbin{!}\jotX$}}2         % !
+                 { ? }   {{$\jotX\mathbin{?}\jotX$}}1         % !
+                 { . }   {{$\jotX\mathbin{.}\jotX$}}1         % !
+                 { \\ }  {{$\null\hide\null$}}1         % hiding
+                 { | }   {{$\mid$\outRenaming}}1  % mid symbol (*) see below
+                 { [ }   {{$[$}}1                  % open 2-alphabet parallel
+                 { ] }   {{$]$}}1                  % close 2-alphabet parallel
+                 { < }   {{\scriptsize$<$}}2              % <
+                 { > }   {{\scriptsize$>$}}2              % >
+                 { <> }  {{\scriptsize$<\,>$}}3     % <>
+                 { [] }  {{$\optextchoice$}}1        % external choice
+                 { |~| } {{$\optintchoice$}}1       % nondet choice
+                 { [> }  {{$\timeout$}}1          % sliding choice
+                 { /\\ } {{$\interrupt$}}1       % interrupt
+                 { || }  {{$\optparallel$}}1         % parallel 
+                 { ||| } {{$\optinterleave$}}2      % interleaving
+                 { [| }  {{$[\mathord{\mid}$}}1      % open parallel
+                 { |] }  {{$\mathord{\mid}]$}}1      % close parallel
+                 { [[ }  {{$\mathord{[\![}$\inRenaming}}1    % open renaming
+                 { ]] }  {{$\mathord{]\!]}$\outRenaming}}1   % close renaming
+                 { <- }  {{$\optLeftArrowd$}}1     % renaming/generator arrow
+                 { <-> } {{$\leftrightarrow$}}1
+                 { \{| } {{$\{\!\mathord{\mid}$}}1  % open event set
+                 { |\} } {{$\mathord{\mid}\!\}$}}1  % close event set
+                 { (| } {{$(\!\mathord{\mid}$}}1      % open mapping
+                 { |) } {{$\mathord{\mid}\!)$}}1 % close mapping
+                 { @ }   {{$\bullet$}}1            % bullet 
+                 { @@ }  {{@@}}2               % double bullet ``as''
+                 { ** }  {{\indexify}}1      % make following operator indexed
+                 { >= }  {{\scriptsize$\geq$}}2              % >=
+                 { <= }  {{\scriptsize$\leq$}}2              % <=
+                 { != }  {{\scriptsize$\neq$}}2              % !=
+                 { == }  {{\scriptsize$=$}}2             % ==
+                 { ^ }   {{$\,\widehat{\ }\,$}}1                   % ^
+                 { [T= } {{$\;\refinedby_T\;$}}2  % traces refinement
+                 { [F= } {{$\;\refinedby_F\;$}}2  % failures refinement
+                 { [FD= }{{$\;\refinedby_{FD}\;$}}3,  % FD refinement
+        #1
+      }\def\baselinestretch{1.1}
+    }{\egroup}
+  %%% Inline CSPM, literate style
+  \def\CSPM#1{{%
+    \lstset{
+      language=cspm, columns=fullflexible, 
+      basicstyle=\cspmInlineStyle,
+      literate={ -> }  {{$\then\null$}}1        % prefixing
+               { \\ }  {{$\null\hide\null$}}1         % hiding
+               { ~ }   {{ }}1                     % extra space
+               { \\! }  {{$\!$}}1                 % negative space
+               { [ }   {{$[$}}1                  % open 2-alphabet parallel
+               { ] }   {{$]$}}1                  % close 2-alphabet parallel
+               { | }   {{$\mathrel{\mid}\null$\outRenaming}}1 
+                                               % mid symbol (*) see below
+               { [] }  {{$\optextchoice\null$}}2    % external choice
+               { |~| } {{$\optintchoice\null$}}2   % nondet choice
+               { [> }  {{$\timeout\null$}}2           % sliding choice
+               { /\\ } {{$\interrupt\null$}}2   % interrupt
+               { || }  {{$\optparallel$}}1          % parallel 
+               { ||| } {{$\optinterleave\null$}}2      % interleaving
+               { [| }  {$\mathrel{[\mathord{\mid}}\null$}1   % open parallel
+               { |] }  {{$\null\mathrel{\mathord{\mid}]}\null$}}1 % close parallel
+               { <- }  {{$\optLeftArrow$}}1        % renaming/generator arrow
+               { <-> } {{$\leftrightarrow\null$}}1
+               { [[ }  {{$\mathrel{[\![}$\inRenaming}}1    % open renaming
+               { ]] }  {{\outRenaming$\mathrel{]\!]}\null$}}1  % close renaming
+               { \{| } {{$\mathord{\{\!\mathord{\mid}}$}}1     % open event set
+               { |\} } {{$\mathord{\mathord{\mid}\!\}}\null$}}1 % close event
+                                % set
+               { (| } {{$\mathord{(\!\mathord{\mid}}$}}1      % open mapping
+               { |) } {{$\mathord{\mathord{\mid}\!)}\null$}}1 % close mapping
+               { @ }   {{$\mathrel{\bullet}\null$}}1            % bullet
+               { @@ }  {{@@}}2               % double bullet ``as''
+               { ** }  {{\indexify}}1           % make operators indexed
+               { >= }  {{$\null\geq\null$}}2                      % >=
+               { <= }  {{$\null\leq\null$}}2                      % <=
+               { != }  {{$\null\neq\null$}}2                      % !=
+               { == }  {{$\null=\null$}}2             % ==
+               { [T= } {{$\;\refinedby_T\;$}}1     % traces refinement
+               { [F= } {{$\;\refinedby_F\;$}}1     % failures refinement
+               { [FD= }{{$\;\refinedby_{FD}\;$}}1   % FD refinement
+    }%
+    \lstinline{#1}%
+  }}
+\fi
+
+% (*) The above code assumes that as soon as we see a "|", we're no longer in
+% a renaming.  This won't be true if the renamed event is defined using a set
+% comprehension, for example. 
+
+% Macro for embedding this style in maths style
+
+\def\CSPMM#1{\mbox{\CSPM{#1}}}
+
+%% Allow inline CSPm to be embedded within "|"s.  This doesn't support
+%% literate style.
+
+\let\|=|
+\let\mid=|
+\def\cspMid{\lstMakeShortInline[language=cspm,showstringspaces=false,
+          basicstyle=\cspmInlineStyle,columns=fullflexible]|}
+\def\uncspMid{\lstDeleteShortInline|}
+
+
+
+
+
+
+
+
+
+
+
