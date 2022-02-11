@@ -2,31 +2,28 @@
 \begin{document}
 
 
-\subsection{Converting Scala Program to CSP Model}
-\subsubsection{Shared Variable}
-//Background - CSP - Example? 
-
+\section{Common Objects}
+\subsection{Shared Variable}
 The usage of shared variables is common in concurrent datatypes. For example, some concurrent datatypes may temporarily store an integer value sent by a thread in a variable. However, CSP is more like a functional programming language and does not support mutable variables. 
 
 The behavior of a shared variable can be captured by a recursive function in CSP. The recursive function represents a thread holding the value of variable in the function parameter. At any time, the variable thread is willing to answer a query for the variable value in channel \textbf{getChan}. Or the thread can receive an update on the variable value in channel \textbf{getChan}, after which the function recurses with the new variable value.
 
-//CSP code here
+//TOADD: Full CSP code here
 
 In order for other objects to use the shared variable, the variable function needs to run in parallel with threads, and synchronizing on \textbf{getChan} and \textbf{setChan} events. It is convenient to implement this in a function \textbf{runWith}, to run a process in synchronization with the variable process.
 
-//CSP code here
+//TOADD: Full CSP code here
 
 \subsubsection{Semaphore}
 
 
-
-\subsection{Testing Objects}
-\subsubsection{ABC}
-In the ABC object, three threads are involved in each round of synchronization. On the higher level, three threads call function \textbf{syncA}, \textbf{syncB}, \textbf{syncC} with their parameter respectively, and each function returns the parameters of two other function calls.
+\section{Testing Objects}
+\subsection{ABC}
+In the ABC object, three threads are involved in each round of synchronization. On the higher level, three different threads call function \textbf{syncA}, \textbf{syncB}, \textbf{syncC} with their parameter respectively, and each function returns the parameters of two other function calls.
 
 The ABC object may be implemented with semaphore. In each round
 
-//feels like a lot of repetition
+//TOADD: Full ABC Code here, the following part feels like a lot of repetition with ABC Code
 \begin{itemize}
     \item Initially \textbf{aClear} semaphore is up
     \item A thread calling \textbf{aSync} takes down the \textbf{aClear} semaphore, puts down its value, and raises \textbf{bClear} semaphore, and finally waits for the \textbf{aSignal} semaphore to raise.
@@ -44,19 +41,41 @@ Unlike Monitor in Java and Scala, raising a semaphore immediately allows another
 On the other hand, what if the implementation of \textbf{syncA} does not take a copy of the argument? It turns out the ABC object still works correctly when only three threads are involved, but fails the linearization test with four threads.
 
 \subsubsection{Testing}
-Using the standard linearization testing technique, the following channel can be used to represent the synchronization of three threads.
-//CSP Code
+Using the standard linearization testing technique, the following \textbf{Sync} channel can be used to represent the synchronization of three involved threads. For example, the event \textbf{Sync.t1.a.b.c.t2.d.e.f.t3.g.h.i} represents the synchronizations of three threads, \textbf{t1,t2,t3}, in which the first thread \textbf{t1} calls \textbf{aSync} with \textbf{a} and returns \textbf{(b,c)}, the second thread \textbf{t2} calls \textbf{bSync} with \textbf{d} and returns \textbf{(e,f)}, and last thread \textbf{t3} calls \textbf{cSync} with \textbf{g} and returns \textbf{(h,i)}. The spec process should then check each synchronization point that the return value for each functional call is the pair of arguments of two other function call.
 
-The first test case involves three thread. Three threads non-deterministically choose a data and then call \textbf{aSync}, \textbf{bSync}, \textbf{cSync}.
+//CSP Channel and Spec Code
 
-The second test case involves four thread. In addition to three threads in the first threads, another thread calling \textbf{aSync} is added.
+There are two test cases. The first test case involves three threads. Each of the thread chooses a data non-deterministically and then calls one of \textbf{aSync}, \textbf{bSync}, \textbf{cSync}. The second test case involves four thread, which chooses a data non-deterministically and calls \textbf{aSync}. In both cases, the systems should be traced refined (is it this direction in words) by the specification process. In addition, both systems should never deadlock, and the communication should continue forever.
 
-//CSP Code
+When testing with both the correct and the faulty versions of ABC object, FDR finishes the first test case relatively quickly, but requires a long time to finish the second test. With logging message from FDR, it was found compilation of specification process took the longest time. 
 
-When testing with both the correct and the faulty version of ABC object, FDR is able to finish first test case relatively quickly, but requires unacceptable long time for the second test. With further diagnosing the running time of testing, it was found compilation of system specification process took the longest time. 
+\subsubsection{Speeding up model compilation}
+Consider the specification process. Let $N$ be the number of threads in the system, $M$ be the size of the data set. The specification process is the alphabetized parallel of $N$ individual linearizes. In each linearizer, the process first chooses to perform one of \textbf{aSync}, \textbf{bSync} or \textbf{cSync}, chooses the argument of the functional call for \textbf{Call} event, then chooses the rest of arguments for \textbf{Sync} event, and finally performs one event before recursing into itself.
 
-//TODO: analyze the size of graph
+There are $3*M^9$ different transitions before the individual linearizer recurses into itself, but only $3*M^3$ transitions are valid according to the specification. 
 
+//TOADD: syncA code of linearizer
+
+With the above analysis, it is tempting to optimize the individual linearizer by using the information from the specification process. Instead of choosing all possible remaining arguments, the individual linearizer could choose arguments that are correct according to the specification process.
+
+//TOADD: one line of changed CSP code.
+
+It is possible to further simplify the \textbf{Sync} channel, as now the arguments representing return value are redundant. This change does not reduce the number of transitions for an individual linearizer, but it may help FDR simulating the model faster.
+
+With the above optimizations, the testing finishes quickly for both test cases.
+
+//TOADD: Table of compilation time
+
+\subsubsection{Explanation of the error case}
+With the traces of the counterexample from FDR, it is possible to see what goes wrong in the faulty version when there are four threads.
+
+//TODO: Draw diagram using Scala code for this.
+\begin{itemize}
+    \item Thread \textbf{TA}, \textbf{TB}, \textbf{TC} call \textbf{aSync}, \textbf{bSync} or \textbf{cSync} respectively, and put down its argument.
+    \item Thread \textbf{TA} raises \textbf{bSignal} without saving a copy of return value {(b,c)}. The other two threads \textbf{TB}, \textbf{TC} are able to continue and exit. 
+    \item Thread \textbf{TD}, \textbf{TB}, \textbf{TC} call \textbf{aSync}, \textbf{bSync} or \textbf{cSync} respectively, and put down its argument.
+    \item Thread \textbf{TA} uses the wrong overwritten \textbf{(b,c)} as return value. 
+\end{itemize}
 
 
 \end{document}
