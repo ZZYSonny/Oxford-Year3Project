@@ -1,5 +1,10 @@
 \documentclass{article}
 \usepackage{minted}
+\usepackage{csp}
+\usepackage{cspm}
+
+
+
 \begin{document}
 
 \section{Common Objects}
@@ -8,25 +13,25 @@ The usage of shared variables is common in concurrent datatypes. For example, so
 
 The behavior of a shared variable can be captured by a recursive function in CSP. The recursive function represents a thread holding the value of variable in the function parameter. At any time, the variable thread is willing to answer a query for the variable value in channel \textbf{getChan}. Or the thread can receive an update on the variable value in channel \textbf{getChan}, after which the function recurses with the new variable value.
 
-\begin{minted}{haskell}
-    Var(value) = getValue!value -> Var(value)
+\begin{cspm}
+Var(value) = getValue!value -> Var(value)
           [] setValue?value -> Var(value)  
-\end{minted}
-In order for other objects to use the shared variable, the variable function needs to run in parallel with threads, and synchronizing on \textbf{getChan} and \textbf{setChan} events. It is convenient to implement this in a function \textbf{runWith}, to run a process in synchronization with the variable process.
+\end{cspm}
+In order for other objects to use the shared variable, the variable function needs to run in parallel with threads, and synchronizing on \textbf{getChan} and \textbf{setChan} events. It is convenient to implement this in a function \textbf{runWith}, to run a given process in parallel with the variable process.
 
-\begin{minted}{haskell}
+For example, the CSP code below is a simple example of a process using the shared variable. The process first reads the value of the variable, then discards it and set the variable value to $1$.
+\begin{cspm}
 instance VarA = ModuleVariable({0,1,2},0)
 P = VarA::getValue?a -> VarA::setValue!a -> STOP
-\end{minted}
+Q = VarA::runWith(P)
+\end{cspm}
 
 \subsubsection{Semaphore}
 
 
 \section{Testing Objects}
 \subsection{ABC}
-In the ABC object, three threads are involved in each round of synchronization. On the higher level, three different threads call function \textbf{syncA}, \textbf{syncB}, \textbf{syncC} with their parameter respectively, and each function returns the parameters of two other function calls.
-
-The ABC object may be implemented with semaphore. In each round
+In the ABC object, three threads are involved in each round of synchronization. On the higher level, three different threads call function \textbf{syncA}, \textbf{syncB}, \textbf{syncC} with their arguments respectively, and each function returns the arguments of two other function calls.
 
 \begin{minted}{scala}
     class ABC[A,B,C] extends ABCT[A,B,C]{
@@ -71,6 +76,7 @@ The ABC object may be implemented with semaphore. In each round
       }      
 \end{minted}
 
+For the above semaphore implementation of ABC object, In each round
 \begin{itemize}
     \item Initially \textbf{aClear} semaphore is up
     \item A thread calling \textbf{aSync} takes down the \textbf{aClear} semaphore, puts down its value, and raises \textbf{bClear} semaphore, and finally waits for the \textbf{aSignal} semaphore to raise.
@@ -88,36 +94,45 @@ Unlike Monitor in Java and Scala, raising a semaphore immediately allows another
 On the other hand, what if the implementation of \textbf{syncA} does not take a copy of the argument? It turns out the ABC object still works correctly when only three threads are involved, but fails the linearization test with four threads.
 
 \subsubsection{Testing}
-Using the standard linearization testing technique, the following \textbf{Sync} channel can be used to represent the synchronization of three involved threads. For example, the event \textbf{Sync.t1.a.b.c.t2.d.e.f.t3.g.h.i} represents the synchronizations of three threads, \textbf{t1,t2,t3}, in which the first thread \textbf{t1} calls \textbf{aSync} with \textbf{a} and returns \textbf{(b,c)}, the second thread \textbf{t2} calls \textbf{bSync} with \textbf{d} and returns \textbf{(e,f)}, and last thread \textbf{t3} calls \textbf{cSync} with \textbf{g} and returns \textbf{(h,i)}. The spec process should then check each synchronization point that the return value for each functional call is the pair of arguments of two other function call.
+Using the standard linearization testing technique, the following \textbf{Sync} channel can be used to represent the synchronization of three involved threads. For example, the event \textbf{Sync.t1.a.b.c.t2.d.e.f.t3.g.h.i} represents the synchronizations of three threads, \textbf{t1,t2,t3}, in which the first thread \textbf{t1} calls \textbf{aSync} with \textbf{a} and returns \textbf{(b,c)}, the second thread \textbf{t2} calls \textbf{bSync} with \textbf{d} and returns \textbf{(e,f)}, and last thread \textbf{t3} calls \textbf{cSync} with \textbf{g} and returns \textbf{(h,i)}. The spec process should then check each synchronization point that the return value of each functional call is the pair of arguments of two other function call.
 
-\begin{minted}[breaklines]{haskell}
-channel Sync: TypeThreadID.TypeData.TypeData.TypeData. TypeThreadID.TypeData.TypeData.TypeData. TypeThreadID.TypeData.TypeData.TypeData
+\begin{cspm}
+channel Sync: TypeThreadID.TypeData.TypeData.TypeData.
+              TypeThreadID.TypeData.TypeData.TypeData.
+              TypeThreadID.TypeData.TypeData.TypeData
 
-Spec = Sync?aid?a?b?c?bid:diff(TypeThreadID,{aid})!b!a!c ?cid:diff(TypeThreadID,{aid,bid})!c!a!b -> Spec
-\end{minted}
+Spec = Sync?aid?a?b?c
+           ?bid:diff(TypeThreadID,{aid})!b!a!c
+           ?cid:diff(TypeThreadID,{aid,bid})!c!a!b 
+    -> Spec
+\end{cspm}
 
-There are two test cases. The first test case involves three threads. Each of the thread chooses a data non-deterministically and then calls one of \textbf{aSync}, \textbf{bSync}, \textbf{cSync}. The second test case involves four thread, which chooses a data non-deterministically and calls \textbf{aSync}. In both cases, the systems should be traced refined (is it this direction in words) by the specification process. In addition, both systems should never deadlock, and the communication should continue forever.
+There are two test cases. The first test case involves three threads. Each of the thread chooses a data non-deterministically and then calls one of \textbf{aSync}, \textbf{bSync}, \textbf{cSync}. The second test case involves four thread, which chooses a data non-deterministically and calls \textbf{aSync}. In both cases, the systems should be traced refined (is it this direction in words) by the specification process. In addition, both systems should never deadlock.
 
 When testing with both the correct and the faulty versions of ABC object, FDR finishes the first test case relatively quickly, but requires a long time to finish the second test. With logging message from FDR, it was found compilation of specification process took the longest time. 
 
 \subsubsection{Speeding up model compilation}
-Consider the specification process. Let $N$ be the number of threads in the system, $M$ be the size of the data set. The specification process is the alphabetized parallel of $N$ individual linearizes. In each linearizer, the process first chooses to perform one of \textbf{aSync}, \textbf{bSync} or \textbf{cSync}, chooses the argument of the functional call for \textbf{Call} event, then chooses the rest of arguments for \textbf{Sync} event, and finally performs one event before recursing into itself.
+Consider the specification process. Let $N$ be the number of threads in the system, $M$ be the size of the set of all possible arguments. The specification process is the alphabetized parallel of $N$ individual linearizes. In each linearizer, the process first chooses to perform one of \textbf{aSync}, \textbf{bSync} or \textbf{cSync}, chooses the argument of the functional call for \textbf{Call} event, then chooses the rest of arguments for \textbf{Sync} event, and finally performs one event before recursing into itself.
 
-There are $3*M^9$ different transitions before the individual linearizer recurses into itself, but only $3*M^3$ transitions are valid according to the specification. 
+There are $O(3*N^3M^9)$ different transitions before the individual linearizer recurses into itself. However, according to the specification process, once the argument and return value of \textbf{syncA} is determined, all remaining arguments and return value are also determined. So only $O(3*N^3M^3)$ transitions are valid according to the specification. 
 
-\begin{minted}[breaklines]{haskell}
-    Call!me!ASync?a ->
-    Sync!me!a?b?c ?t2:diff(All,{me})?t2b?t2a?t2c ?t3:diff(All,{me,t2})?t3c?t3a?t3b ->
+\begin{cspm}
+  Call!me!ASync?a->
+    Sync!me!a?b?c 
+        ?t2:diff(All,{me})?t2b?t2a?t2c 
+        ?t3:diff(All,{me,t2})?t3c?t3a?t3b ->
     Return!me!ASync!b!c ->
     Lin(All,me)
-\end{minted}
+\end{cspm}
     
 With the above analysis, it is tempting to optimize the individual linearizer by using the information from the specification process. Instead of choosing all possible remaining arguments, the individual linearizer could choose arguments that are correct according to the specification process.
 
-\begin{minted}[breaklines]{haskell}
-    Sync!me!a?b?c ?t2:diff(All,{me})!b!a!c ?t3:diff(All,{me,t2})!c!a!b ->
-    Return!me!ASync!b!c
-\end{minted}
+\begin{cspm}
+  Sync!me!a?b?c 
+      ?t2:diff(All,{me})!b!a!c
+      ?t3:diff(All,{me,t2})!c!a!b ->
+  Return!me!ASync!b!c
+\end{cspm}
 It is possible to further simplify the \textbf{Sync} channel, as now the arguments representing return value are redundant. This change does not reduce the number of transitions for an individual linearizer, but it may help FDR simulating the model faster.
 
 With the above optimizations, the testing finishes quickly for both test cases.
