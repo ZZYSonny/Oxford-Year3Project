@@ -94,7 +94,7 @@ Unlike Monitor in Java and Scala, raising a semaphore immediately allows another
 On the other hand, what if the implementation of \textbf{syncA} does not take a copy of the argument? It turns out the ABC object still works correctly when only three threads are involved, but fails the linearization test with four threads.
 
 \subsubsection{Testing}
-Using the standard linearization testing technique, the following \textbf{Sync} channel can be used to represent the synchronization of three involved threads. For example, the event \textbf{Sync.t1.a.b.c.t2.d.e.f.t3.g.h.i} represents the synchronizations of three threads, \textbf{t1,t2,t3}, in which the first thread \textbf{t1} calls \textbf{aSync} with \textbf{a} and returns \textbf{(b,c)}, the second thread \textbf{t2} calls \textbf{bSync} with \textbf{d} and returns \textbf{(e,f)}, and last thread \textbf{t3} calls \textbf{cSync} with \textbf{g} and returns \textbf{(h,i)}. The spec process should then check each synchronization point that the return value of each functional call is the pair of arguments of two other function call.
+Using the standard linearization testing technique, the following \textbf{Sync} channel can be used to represent the synchronization of three involved threads. For example, the event $Sync.t_1.a.b.c.t_2.d.e.f.t_3.g.h.i$ represents the synchronizations of three threads, $t_1,t_2,t_3$, in which the first thread $t_1$ calls \textbf{aSync} with $a$ and returns $(b,c)$, the second thread $t_2$ calls \textbf{bSync} with $d$ and returns $(e,f)$, and last thread $t_3$ calls \textbf{cSync} with $g$ and returns $(h,i)$. The spec process should then check each synchronization point that the return value of each functional call is the pair of arguments of two other function call.
 
 \begin{cspm}
 channel Sync: TypeThreadID.TypeData.TypeData.TypeData.
@@ -107,7 +107,7 @@ Spec = Sync?aid?a?b?c
     -> Spec
 \end{cspm}
 
-There are two test cases. The first test case involves three threads. Each of the thread chooses a data non-deterministically and then calls one of \textbf{aSync}, \textbf{bSync}, \textbf{cSync}. The second test case involves four thread, which chooses a data non-deterministically and calls \textbf{aSync}. In both cases, the systems should be traced refined (is it this direction in words) by the specification process. In addition, both systems should never deadlock.
+There are two test cases. The first test case involves three threads. Each of the thread chooses a data non-deterministically and then calls one of \textbf{aSync}, \textbf{bSync}, \textbf{cSync}. The second test case involves four thread, which chooses a data non-deterministically and calls \textbf{aSync}. In both cases, the systems should be traced refined (is it this direction in words) by the specification process. In addition, both systems should never deadlock. Because in both system, there are always threads willing to communicate as \textbf{aSync}, \textbf{bSync}, \textbf{cSync} respectively.
 
 When testing with both the correct and the faulty versions of ABC object, FDR finishes the first test case relatively quickly, but requires a long time to finish the second test. With logging message from FDR, it was found compilation of specification process took the longest time. 
 
@@ -133,7 +133,20 @@ With the above analysis, it is tempting to optimize the individual linearizer by
       ?t3:diff(All,{me,t2})!c!a!b ->
   Return!me!ASync!b!c
 \end{cspm}
+
 It is possible to further simplify the \textbf{Sync} channel, as now the arguments representing return value are redundant. This change does not reduce the number of transitions for an individual linearizer, but it may help FDR simulating the model faster.
+
+\begin{cspm}
+channel Sync: TypeThreadID.TypeThreadID.TypeThreadID.
+              TypeData.TypeData.TypeData
+
+Lin(All,me)= (
+  Call!me!ASync?a ->
+  Sync!me?t2:diff(All,{me})?t3:diff(All,{me,t2})!a?b?c ->
+  Return!me!ASync!b!c ->
+  Lin(All,me)
+) ...
+\end{cspm}
 
 With the above optimizations, the testing finishes quickly for both test cases.
 
@@ -144,11 +157,14 @@ With the traces of the counterexample from FDR, it is possible to see what goes 
 
 //TODO: Draw diagram using Scala code for this.
 \begin{itemize}
-    \item Thread \textbf{TA}, \textbf{TB}, \textbf{TC} call \textbf{aSync}, \textbf{bSync} or \textbf{cSync} respectively, and put down its argument.
-    \item Thread \textbf{TA} raises \textbf{bSignal} without saving a copy of return value {(b,c)}. The other two threads \textbf{TB}, \textbf{TC} are able to continue and exit. 
-    \item Thread \textbf{TD}, \textbf{TB}, \textbf{TC} call \textbf{aSync}, \textbf{bSync} or \textbf{cSync} respectively, and put down its argument.
-    \item Thread \textbf{TA} uses the wrong overwritten \textbf{(b,c)} as return value. 
+  \item Thread $T_A$, $T_B$, $T_C$ call \textbf{aSync}, \textbf{bSync} or \textbf{cSync} respectively, and put down its argument in turn.
+  \item Thread $T_A$ raises \textbf{bSignal} without saving a copy of   return value {(b,c)}. The other two threads $T_B$, $T_C$ are able   to continue and exit. 
+  \item Thread $T_D$, $T_B$, $T_C$ call \textbf{aSync}, \textbf{bSync} or \textbf{cSync} respectively, and put down its argument in turn.
+  \item Thread $T_A$ uses the wrong overwritten $(b,c)$ as return value. 
+  
 \end{itemize}
 
+\subsubsection{Conclusion}
+In the above section, we tested a semaphore based concurrent datatypes. With the testing result, we showed that it is important to be reminded that a thread waiting for the semaphore to raise can immediately continue and overwrite shared variables, after the semaphore is raised by another process.
 
 \end{document}
