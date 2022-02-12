@@ -11,7 +11,8 @@ enqueue(me,x)=
     if (not done) then (
       --queue.enqueue(x), block until the queue is not full
       VarQueue::getValue?q ->
-      if (not member(x,qValidEnqueue(q))) then div else 
+      --block
+      if (not member(x,qValidEnqueue(q))) then STOP else 
       VarQueue::setValue!(qEnqueue(q,x)) ->
       --if(waiting > 0) notify()
       VarWaiting::getValue?waiting ->
@@ -62,17 +63,17 @@ dequeue(me)=
   ) else (
     VarQueue::getValue?q ->
     if qEmpty(q) then DIV else
-    |~| (ans, qtail): qDequeue(q) @
+    [] (ans, qtail): qDequeue(q) @
     VarQueue::setValue!qtail ->
     Monitor::exit(me);
     Return!me!(DequeueReturn.(Some.ans)) ->
     SKIP
 )
 
-runWith(hide,hideSpurious,P)=
+runWith(hideSpurious,hide,P)=
   VarQueue::runWith(hide,
   VarWaiting::runWith(hide,
   VarDone::runWith(hide,
-  Monitor::runWith(hide,hideSpurious,
+  Monitor::runWith(hideSpurious,hide,
     P
   ))))

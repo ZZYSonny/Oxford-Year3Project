@@ -6,33 +6,64 @@ Lin(All,me)=(
   Return!me!EnqueueReturn ->
   Lin(All,me)
 ) [] (
-  Call!me!DequeueCall ->
-  Sync!me!DequeueCall!(DequeueReturn.None) ->
-  Return!me!(DequeueReturn.None) ->
-  STOP
-) [] (
-  Call!me!DequeueCall ->
-  Sync!me!DequeueCall?EnqueueReturnObj:{|DequeueReturn.Some|} ->
-  Return!me!EnqueueReturnObj ->
-  Lin(All,me)  
+  Call!me!DequeueCall -> ((
+    Sync!me!DequeueCall!(DequeueReturn.None) ->
+    Return!me!(DequeueReturn.None) ->
+    STOP
+  )[](
+    Sync!me!DequeueCall?EnqueueReturnObj:{|DequeueReturn.Some|} ->
+    Return!me!EnqueueReturnObj ->
+    Lin(All,me)  
+  ))
 )
 LinEvents(All,me)={|Sync.me,Call.me,Return.me|}
-Linearizers(All)=((|| me: All @ [LinEvents(All,me)] Lin(All,me)) [|{|Sync|}|] Spec(qNewQueue)) \ {|Sync|}
+Linearizers(All)=((|| me: All @ [LinEvents(All,me)] Lin(All,me)) [|{|Sync|}|] spec1) \ {|Sync|}
+Linearizers1(All)=((|| me: All @ [LinEvents(All,me)] Lin(All,me)) [|{|Sync|}|] spec1)
 
---The Spec Process
-Spec(q)=( 
-  --A thread performing an enqueue operation
-  Sync?t?(EnqueueCall.x):{EnqueueCall.i | i<-qValidEnqueue(q)}!EnqueueReturn ->
-  Spec(qEnqueue(q,x))
-) [] ( not qEmpty(q) &
-  --A thread performing an dequeue operation, and successfully
-  --obtained a return value
-  |~| (qhead, qtail): qDequeue(q) @
-  Sync?t!(DequeueCall)!(DequeueReturn.(Some.qhead)) ->
-  Spec(qtail)
+--not enqueued, allow a enqueue, b enqueue, a dequeue or fail dequeue
+--enqueued, not dequeued, allow enqueue of c, dequeue of a, dequeue of b, dequeue not fail
+--enqueued and dequeue, enqueue of c, dequeue of c
+
+--When queue is in the form of A*
+spec1=(
+  --A thread calls enqueue(A)
+  Sync?t!(EnqueueCall.A)!(EnqueueReturn) -> spec1
+)[](
+  --A thread calls enqueue(B)
+  --Now the queue is in the form of A*BC^0
+  Sync?t!(EnqueueCall.B)!(EnqueueReturn) -> spec2
+)[](
+  --A thread calls dequeue(), and get A
+  Sync?t!(DequeueCall)!(DequeueReturn.(Some.A)) -> spec1
+)[](
+  --A thread calls dequeue(), and fails
+  Sync?t!(DequeueCall)!(DequeueReturn.None) -> spec4
 )
---Every thread performs returns none exactly once
-SpecNone({})=STOP
-SpecNone(s)=
-  Sync?t:s!DequeueCall!(DequeueReturn.None) ->
-  SpecNone(diff(s,{t}))
+
+--When queue is in the form of A*BC*
+spec2=(
+  --A thread calls enqueue(C)
+  Sync?t!(EnqueueCall.C)!(EnqueueReturn) -> spec2
+)[](
+  --A thread calls dequeue() and returns A
+  Sync?t!(DequeueCall)!(DequeueReturn.(Some.A)) -> spec2
+)[](
+  --A thread calls dequeue() and returns B
+  --After this operation, the queue is now of the form C*
+  Sync?t!(DequeueCall)!(DequeueReturn.(Some.B)) -> spec3
+)
+
+--When the queue is in the form of C*
+spec3=(
+  --A thread calls enqueue(C)
+  Sync?t!(EnqueueCall.C)!(EnqueueReturn) -> spec3
+)[](
+  --A thread calls dequeue() and returns C
+  Sync?t!(DequeueCall)!(DequeueReturn.(Some.C)) -> spec3
+)[](
+  --A thread calls dequeue(), and fails
+  Sync?t!(DequeueCall)!(DequeueReturn.None) -> spec4
+)
+
+--When one thread calls dequeue and returns with failure
+spec4=CHAOS({ Sync.t.(DequeueCall).(DequeueReturn.None) | t <- TypeThread })

@@ -56,3 +56,8 @@ Writing,
   - Describe impl system, and spec
   - time to do the test
 ```
+
+```
+Section for each object
+regulator
+```
