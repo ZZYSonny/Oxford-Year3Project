@@ -1,51 +1,170 @@
 \documentclass{article}
+\usepackage{minted}
+\usepackage{csp}
+\usepackage{cspm}
+
+
+
 \begin{document}
 
+\section{Common Objects}
+\subsection{Shared Variable}
+The usage of shared variables is common in concurrent datatypes. For example, some concurrent datatypes may temporarily store an integer value sent by a thread in its variable. However, CSP is more like a functional programming language and does not support mutable variables. 
 
-\subsection{Converting Scala Program to CSP Model}
-\subsubsection{Shared Variable}
-The usage of shared variables is common in concurrent datatypes. For example, in later chapters some concurrent datatypes use mutable integer variables to indicate the stages of communication. However, CSP (is more like a functional programming language and) does not support mutable variables.  To model mutable variables, a server process is created for each variable. A server process is implemented by some recursive CSP functions and runs in parallel with the other part of system.
+The behavior of a shared variable can be captured by a recursive function in CSP. The recursive function represents a thread holding the value of variable in the function parameter. At any time, the variable thread is willing to answer a query for the variable value in channel \textbf{getChan}. Or the thread can receive an update on the variable value in channel \textbf{getChan}, after which the function recurses with the new variable value.
 
-The server process keeps the value of the variable in its parameter, and is always willing to synchronize with a thread that wants to read the value of variable through \textbf{getChan}, or a thread that wants to update the value of variable through \textbf{setChan}.
+\begin{cspm}
+Var(value) = getValue!value -> Var(value)
+          [] setValue?value -> Var(value)  
+\end{cspm}
+In order for other objects to use the shared variable, the variable function needs to run in parallel with threads, and synchronizing on \textbf{getChan} and \textbf{setChan} events. It is convenient to implement this in a function \textbf{runWith}, to run a given process in parallel with the variable process.
 
-The CSP implementation of mutable variable is organized in a module so that all other concurrent datatypes can define variables consistently.
+For example, the CSP code below is a simple example of a process using the shared variable. The process first reads the value of the variable, then discards it and set the variable value to $1$.
+\begin{cspm}
+instance VarA = ModuleVariable({0,1,2},0)
+P = VarA::getValue?a -> VarA::setValue!a -> STOP
+Q = VarA::runWith(P)
+\end{cspm}
 
-//TODO: CSP code and a simple example of a process using the variable
+\subsubsection{Semaphore}
 
-\subsubsection{Monitor}
-//TODO: Describing Java Monitor.
 
-//I find the state graph useful for explaining the CSP implementation
+\section{Testing Objects}
+\subsection{ABC}
+In the ABC object, three threads are involved in each round of synchronization. On the higher level, three different threads call function \textbf{syncA}, \textbf{syncB}, \textbf{syncC} with their arguments respectively, and each function returns the arguments of two other function calls.
 
-Similarly, the implementation of monitor requires a server process, like the server process of mutable variable.
+\begin{minted}{scala}
+    class ABC[A,B,C] extends ABCT[A,B,C]{
+        // The identities of the current (or previous) threads.
+        private var a: A = _
+        private var b: B = _
+        private var c: C = _
+      
+        // Semaphores to signal that threads can write their identities.
+        private val aClear = MutexSemaphore()
+        private val bClear, cClear = SignallingSemaphore()
+      
+        // Semaphores to signal that threads can collect their results. 
+        private val aSignal, bSignal, cSignal = SignallingSemaphore()
+      
+        def syncA(me: A) = {
+          aClear.down         // (A1)
+          a = me; bClear.up   // signal to b at (B1)
+          aSignal.down        // (A2)
+          val result = (b,c)
+          bSignal.up          // signal to b at (B2)
+          result
+        }
+      
+        def syncB(me: B) = {
+          bClear.down         // (B1)
+          b = me; cClear.up   // signal to C at (C1)
+          bSignal.down        // (B2)
+          val result = (a,c)
+          cSignal.up          // signal to c at (C2)
+          result
+        }
+      
+        def syncC(me: C) = {
+          cClear.down         // (C1)
+          c = me; aSignal.up  // signal to A at (A2)
+          cSignal.down        // (C2)
+          val result = (a,b)
+          aClear.up           // signal to an A on the next round at (A1)
+          result
+        }
+      }      
+\end{minted}
 
-//TODO: Change to TikZ diagram
+For the above semaphore implementation of ABC object, In each round
 \begin{itemize}
-    \item Before a thread enters the \textbf{synchronized} block, the thread may need to wait other process to leave the block, or more concisely, changing from \textbf{Runnable} state to \textbf{Running} state. It must first synchronize with the server process on a \textbf{WaitEnter} event.
-    \item Before the process leaves the synchronized block, it must synchronize on an \textbf{Exit} event, to switch to \textbf{Finished} state.
-    \item The running process may wait until some variable to change. For this, the process must send a \textbf{Wait} event to the server, indicating changing from \textbf{Running} state to \textbf{Waiting} state. Later when resuming from \textbf{Waiting} state, the process first needs to switch to \textbf{Runnable} state with a \textbf{WaitNotify} event, then a \textbf{WaitEnter} event.
-    \item Also inside the block, the running process may send a \textbf{Notify} or \textbf{NotifyAll} event to notify one or all process in waiting state.
+    \item Initially \textbf{aClear} semaphore is up
+    \item A thread calling \textbf{aSync} takes down the \textbf{aClear} semaphore, puts down its value, and raises \textbf{bClear} semaphore, and finally waits for the \textbf{aSignal} semaphore to raise.
+    \item Another thread calling \textbf{bSync} takes down the \textbf{bClear} semaphore, put down its value, and raises \textbf{cClear} semaphore, and waits for \textbf{bSignal} semaphore to raise.
+    \item One more thread calling \textbf{cSync} takes down the \textbf{cClear} semaphore, put down its value, and raises \textbf{aSignal} semaphore, and waits for \textbf{cSignal} semaphore to raise.
+    \item The first thread is able to continue. The thread takes a copy of the other two argument, raises the \textbf{bSignal} thread, and exits with the arguments pair.
+    \item The second thread is able to continue and does the similar thing as the first thread. Before exiting, the second thread raises \textbf{cSignal}.
+    \item The last thread is then able to continue. Before exiting, the last thread raises \textbf{aClear}, allowing a new round to start.
 \end{itemize}
 
-The server process should behave differently when there is a \textbf{Running} process or not. When there is no process in \textbf{Running} state, the server process should only non-deterministically pick a process waiting to enter the synchronized block. When there is a process in \textbf{Running} state, the server process should only be willing to accept 
+Using the shared variable and semaphore module, it is easy to translate the Scala implementation to a CSP implementation. 
 
-There are a few corner cases to consider.
+Unlike Monitor in Java and Scala, raising a semaphore immediately allows another thread waiting to \textbf{down} the semaphore to continue. So in the semaphore implementation, it is essential to take a copy of the two other argument, before raising the semaphore for the next thread. 
 
-In Java, when a process calls notify, but there is no waiting process to wake up, the function call does nothing. However, if the server process sends a \textbf{Notify} event when no process is waiting, the server process will simply deadlock. Thus, it is essential to prevent the server process doing a \textbf{Notify} event in such case.
+On the other hand, what if the implementation of \textbf{syncA} does not take a copy of the argument? It turns out the ABC object still works correctly when only three threads are involved, but fails the linearization test with four threads.
 
-One way to achieve this is to maintain a list of waiting processes. When the server process needs to do a \textbf{Notify}, after the running process sends a \textbf{Notify} event, the server process non-deterministically picks a waiting process from the list and send a \textbf{WaitNotify} event. Similarly, for notifyAll, the server process non-deterministically sends \textbf{WaitNotify} to all waiting process. It is also possible to simplify the lists of waiting processes to the number of waiting processes, because when the server sends a \textbf{WaitNotify} event, only waiting processes will be synchronized. 
+\subsubsection{Testing}
+Using the standard linearization testing technique, the following \textbf{Sync} channel can be used to represent the synchronization of three involved threads. For example, the event $Sync.t_1.a.b.c.t_2.d.e.f.t_3.g.h.i$ represents the synchronizations of three threads, $t_1,t_2,t_3$, in which the first thread $t_1$ calls \textbf{aSync} with $a$ and returns $(b,c)$, the second thread $t_2$ calls \textbf{bSync} with $d$ and returns $(e,f)$, and last thread $t_3$ calls \textbf{cSync} with $g$ and returns $(h,i)$. The spec process should then check each synchronization point that the return value of each functional call is the pair of arguments of two other function call.
 
-The monitor may spuriously wake up some processes at some time. For this purpose, the server process may non-deterministically choose to wake up processes whenever possible. //TODO: Livelock.
+\begin{cspm}
+channel Sync: TypeThreadID.TypeData.TypeData.TypeData.
+              TypeThreadID.TypeData.TypeData.TypeData.
+              TypeThreadID.TypeData.TypeData.TypeData
 
-Now that waiting processes may be waked up spuriously, it becomes helpful to use \textbf{wait} with a while loop like \textbf{while(cond) wait()}, to check if variable has actually been changed. While loop, again, is not in CSP. Also \textbf{cond} is a bit unusual, because when evaluating the condition, the process may need to read global variable. For this reason, a generic while loop is defined. //TODO: While loop
+Spec = Sync?aid?a?b?c
+           ?bid:diff(TypeThreadID,{aid})!b!a!c
+           ?cid:diff(TypeThreadID,{aid,bid})!c!a!b 
+    -> Spec
+\end{cspm}
 
-\subsection{Testing}
-\subsubsection{Linearization}
-\subsubsection{Filter Channel}
-A filter channel is like a OneOne channel. Process sending data continues only when the data is taken by some receiver. Process receiving data only takes values from senders that satisfies some predicate, and has not been taken by anyone else. 
+There are two test cases. The first test case involves three threads. Each of the thread chooses a data non-deterministically and then calls one of \textbf{aSync}, \textbf{bSync}, \textbf{cSync}. The second test case involves four thread, which chooses a data non-deterministically and calls \textbf{aSync}. In both cases, the systems should be traced refined (is it this direction in words) by the specification process. In addition, both systems should never deadlock. Because in both system, there are always threads willing to communicate as \textbf{aSync}, \textbf{bSync}, \textbf{cSync} respectively.
 
-//TODO: An example with sync diagram
+When testing with both the correct and the faulty versions of ABC object, FDR finishes the first test case relatively quickly, but requires a long time to finish the second test. With logging message from FDR, it was found compilation of specification process took the longest time. 
 
+\subsubsection{Speeding up model compilation}
+Consider the specification process. Let $N$ be the number of threads in the system, $M$ be the size of the set of all possible arguments. The specification process is the alphabetized parallel of $N$ individual linearizes. In each linearizer, the process first chooses to perform one of \textbf{aSync}, \textbf{bSync} or \textbf{cSync}, chooses the argument of the functional call for \textbf{Call} event, then chooses the rest of arguments for \textbf{Sync} event, and finally performs one event before recursing into itself.
 
+There are $O(3*N^3M^9)$ different transitions before the individual linearizer recurses into itself. However, according to the specification process, once the argument and return value of \textbf{syncA} is determined, all remaining arguments and return value are also determined. So only $O(3*N^3M^3)$ transitions are valid according to the specification. 
+
+\begin{cspm}
+  Call!me!ASync?a->
+    Sync!me!a?b?c 
+        ?t2:diff(All,{me})?t2b?t2a?t2c 
+        ?t3:diff(All,{me,t2})?t3c?t3a?t3b ->
+    Return!me!ASync!b!c ->
+    Lin(All,me)
+\end{cspm}
+    
+With the above analysis, it is tempting to optimize the individual linearizer by using the information from the specification process. Instead of choosing all possible remaining arguments, the individual linearizer could choose arguments that are correct according to the specification process.
+
+\begin{cspm}
+  Sync!me!a?b?c 
+      ?t2:diff(All,{me})!b!a!c
+      ?t3:diff(All,{me,t2})!c!a!b ->
+  Return!me!ASync!b!c
+\end{cspm}
+
+It is possible to further simplify the \textbf{Sync} channel, as now the arguments representing return value are redundant. This change does not reduce the number of transitions for an individual linearizer, but it may help FDR simulating the model faster.
+
+\begin{cspm}
+channel Sync: TypeThreadID.TypeThreadID.TypeThreadID.
+              TypeData.TypeData.TypeData
+
+Lin(All,me)= (
+  Call!me!ASync?a ->
+  Sync!me?t2:diff(All,{me})?t3:diff(All,{me,t2})!a?b?c ->
+  Return!me!ASync!b!c ->
+  Lin(All,me)
+) ...
+\end{cspm}
+
+With the above optimizations, the testing finishes quickly for both test cases.
+
+//TOADD: Table of compilation time
+
+\subsubsection{Explanation of the error case}
+With the traces of the counterexample from FDR, it is possible to see what goes wrong in the faulty version when there are four threads.
+
+//TODO: Draw diagram using Scala code for this.
+\begin{itemize}
+  \item Thread $T_A$, $T_B$, $T_C$ call \textbf{aSync}, \textbf{bSync} or \textbf{cSync} respectively, and put down its argument in turn.
+  \item Thread $T_A$ raises \textbf{bSignal} without saving a copy of   return value {(b,c)}. The other two threads $T_B$, $T_C$ are able   to continue and exit. 
+  \item Thread $T_D$, $T_B$, $T_C$ call \textbf{aSync}, \textbf{bSync} or \textbf{cSync} respectively, and put down its argument in turn.
+  \item Thread $T_A$ uses the wrong overwritten $(b,c)$ as return value. 
+  
+\end{itemize}
+
+\subsubsection{Conclusion}
+In the above section, we tested a semaphore based concurrent datatypes. With the testing result, we showed that it is important to be reminded that a thread waiting for the semaphore to raise can immediately continue and overwrite shared variables, after the semaphore is raised by another process.
 
 \end{document}

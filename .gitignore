@@ -6,3 +6,5 @@ test
 # Latex
 _minted-*
 *.synctex.gz
+*.log
+*.aux
