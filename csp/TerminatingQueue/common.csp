@@ -6,8 +6,8 @@ include "../../lib/monitor.csp"
 
 datatype TypeData=A|B|C
 datatype TypeThread=T1|T2|T3
-NThread=card(TypeThread)
-
+--NThread=card(TypeThread)
+NThread=1
 datatype TypeOptionData=Some.TypeData | None
 datatype TypeCallParam=EnqueueCall.TypeData | DequeueCall
 datatype TypeReturnParam=EnqueueReturn | DequeueReturn.TypeOptionData

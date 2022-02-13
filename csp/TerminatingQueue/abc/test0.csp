@@ -7,8 +7,15 @@ Spec1Thread=Linearizers({T1})
 Spec2Thread=Linearizers({T1,T2})
 assert Spec2Thread [T= Spec2Thread
 
-InputRegulatorAs=Call?t!(EnqueueCall.A) -> InputRegulatorAs
-              [] Call?t!(EnqueueCall.B) -> InputRegulatorCs  
+
+InputRegulatorAs(cs)=
+     Call?t:diff(TypeThread,cs)!(EnqueueCall.A) -> InputRegulatorAs(cs)
+  [] Call?t:diff(TypeThread,cs)!(EnqueueCall.B) -> InputRegulatorCs
+  [] Call?t:diff(TypeThread,cs)!(EnqueueCall.C) -> InputRegulatorAs(union(cs,{t}))
+InputRegulatorACs(cs)=
+     Call?t:diff(TypeThread,cs)!(EnqueueCall.A) -> InputRegulatorACs(cs)
+  [] Call?t:diff(TypeThread,cs)!(EnqueueCall.C) -> InputRegulatorACs(union(cs,{t}))
+  [] InputRegulatorCs
 InputRegulatorCs=Call?t!(EnqueueCall.C) -> InputRegulatorCs
 
 Thread(me)=
@@ -20,12 +27,12 @@ Thread(me)=
 System(All)=runWith(True,True,
   (||| me:All @ Thread(me)) 
     [|{Call.t.(EnqueueCall.x) | t<-TypeThread, x<-TypeData}|] 
-  InputRegulatorAs
+  InputRegulatorAs({})
 )
 SystemWithSpuriousEvent(All)=runWith(False,True,
   (||| me:All @ Thread(me)) 
     [|{Call.t.(EnqueueCall.x) | t<-TypeThread, x<-TypeData}|] 
-  InputRegulatorAs
+  InputRegulatorAs({})
 )
 
 --Trivial Simple Thread Case
@@ -36,6 +43,6 @@ assert System1WithSpurious :[deadlock free]
 
 --Two Thread case
 System2=System({T1,T2})
---takes 5 mins
+--takes 10-20mins
 assert System2 [T= System2
 assert Spec2Thread [T= System2

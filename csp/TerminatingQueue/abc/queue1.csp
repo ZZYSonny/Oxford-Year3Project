@@ -1,0 +1,27 @@
+datatype TypeQueue= Q0A | QAAs | QAsB0C | QAsBCCs | Q0C  | QCCs | QErr
+--                  Empty| AA* | A*B    | QA*BCC* | Empty| CC*  | Error
+--
+qEmpty(Q0A)=True
+qEmpty(Q0C)=True
+qEmpty(QErr)=True --Stop ASAP to reduce transitions
+qEmpty(_)=False
+--
+--the queue starts with A*
+qNewQueue=Q0A
+--
+qEnqueue(Q0A,    A)=QAAs
+qEnqueue(Q0A,    B)=QAsB0C
+qEnqueue(QAAs,   A)=QAAs
+qEnqueue(QAAs,   B)=QAsB0C
+qEnqueue(QAsB0C, C)=QAsB0C
+qEnqueue(QAsBCCs,C)=QAsB0C
+qEnqueue(Q0C,    C)=QCCs
+qEnqueue(QCCs,   C)=QCCs
+qEnqueue(_,_)=QErr
+--
+qValidEnqueue(_)={A,B,C}
+--
+qDequeue(QAAs)=  {(A,Q0A),(A,QAAs)}
+qDequeue(QAsB0C)={(A,QAsB0C),(B,Q0C)}
+qDequeue(QAsBCCs)={(A,QAsBCCs),(B,QCCs)}
+qDequeue(QCCs)={(C,Q0C),(C,QCCs)}
