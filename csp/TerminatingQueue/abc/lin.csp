@@ -1,5 +1,5 @@
 channel Sync: TypeThread.TypeCallParam.TypeReturnParam
-
+channel SyncShutDown
 Lin(All,me)=(
   Call!me?enqueueCallObj:{|EnqueueCall|} ->
   Sync!me!enqueueCallObj!EnqueueReturn ->
@@ -7,17 +7,21 @@ Lin(All,me)=(
   Lin(All,me)
 ) [] (
   Call!me!DequeueCall -> ((
-    Sync!me!DequeueCall!(DequeueReturn.None) ->
-    Return!me!(DequeueReturn.None) ->
+    --Only return None when all linearizers reach here
+    --introduce another channel
+    SyncShutDown ->
+    --Without introducing another channel, but add Sync.anyThread.DequeueCall.DequeueReturnNone to linEvents
+    Sync?t.DequeueCall.DequeueReturnNone ->
+    Return!me!(DequeueReturnNone) ->
     STOP
   )[](
-    Sync!me!DequeueCall?EnqueueReturnObj:{|DequeueReturn.Some|} ->
+    Sync!me!DequeueCall?EnqueueReturnObj:{|DequeueReturn|} ->
     Return!me!EnqueueReturnObj ->
     Lin(All,me)  
   ))
 )
-LinEvents(All,me)={|Sync.me,Call.me,Return.me|}
-Linearizers(All)=((|| me: All @ [LinEvents(All,me)] Lin(All,me)) [|{|Sync|}|] spec1) \ {|Sync|}
+LinEvents(All,me)={|Sync.me,Call.me,Return.me,SyncShutDown|}
+Linearizers(All)=((|| me: All @ [LinEvents(All,me)] Lin(All,me)) [|{|Sync|}|] spec1) \ {|Sync,SyncShutDown|}
 Linearizers1(All)=((|| me: All @ [LinEvents(All,me)] Lin(All,me)) [|{|Sync|}|] spec1)
 
 --not enqueued, allow a enqueue, b enqueue, a dequeue or fail dequeue
@@ -34,10 +38,10 @@ spec1=(
   Sync?t!(EnqueueCall.B)!(EnqueueReturn) -> spec2
 )[](
   --A thread calls dequeue(), and get A
-  Sync?t!(DequeueCall)!(DequeueReturn.(Some.A)) -> spec1
+  Sync?t!(DequeueCall)!(DequeueReturn.A) -> spec1
 )[](
   --A thread calls dequeue(), and fails
-  Sync?t!(DequeueCall)!(DequeueReturn.None) -> spec4
+  Sync?t!(DequeueCall)!(DequeueReturnNone) -> spec4
 )
 
 --When queue is in the form of A*BC*
@@ -46,11 +50,11 @@ spec2=(
   Sync?t!(EnqueueCall.C)!(EnqueueReturn) -> spec2
 )[](
   --A thread calls dequeue() and returns A
-  Sync?t!(DequeueCall)!(DequeueReturn.(Some.A)) -> spec2
+  Sync?t!(DequeueCall)!(DequeueReturn.A) -> spec2
 )[](
   --A thread calls dequeue() and returns B
   --After this operation, the queue is now of the form C*
-  Sync?t!(DequeueCall)!(DequeueReturn.(Some.B)) -> spec3
+  Sync?t!(DequeueCall)!(DequeueReturn.B) -> spec3
 )
 
 --When the queue is in the form of C*
@@ -59,11 +63,11 @@ spec3=(
   Sync?t!(EnqueueCall.C)!(EnqueueReturn) -> spec3
 )[](
   --A thread calls dequeue() and returns C
-  Sync?t!(DequeueCall)!(DequeueReturn.(Some.C)) -> spec3
+  Sync?t!(DequeueCall)!(DequeueReturn.C) -> spec3
 )[](
   --A thread calls dequeue(), and fails
-  Sync?t!(DequeueCall)!(DequeueReturn.None) -> spec4
+  Sync?t!(DequeueCall)!(DequeueReturnNone) -> spec4
 )
 
 --When one thread calls dequeue and returns with failure
-spec4=CHAOS({ Sync.t.(DequeueCall).(DequeueReturn.None) | t <- TypeThread })
+spec4=RUN({ Sync.t.(DequeueCall).(DequeueReturnNone) | t <- TypeThread })

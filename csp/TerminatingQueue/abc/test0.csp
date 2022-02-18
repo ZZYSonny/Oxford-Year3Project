@@ -5,6 +5,10 @@ include "lin.csp"
 
 Spec1Thread=Linearizers({T1})
 Spec2Thread=Linearizers({T1,T2})
+Spec3Thread=Linearizers({T1,T2,T3})
+Spec4Thread=Linearizers({T1,T2,T3,T4})
+Spec5Thread=Linearizers({T1,T2,T3,T4,T5})
+
 assert Spec2Thread [T= Spec2Thread
 
 
@@ -18,31 +22,39 @@ InputRegulatorACs(cs)=
   [] InputRegulatorCs
 InputRegulatorCs=Call?t!(EnqueueCall.C) -> InputRegulatorCs
 
-Thread(me)=
+Thread(NThread,me)=
   (|~|x:TypeData @ 
-    enqueue(me,x);Thread(me)
+    enqueue(NThread,me,x);Thread(NThread,me)
   ) |~| (
-    dequeue(me);Thread(me)
+    dequeue(NThread,me);Thread(NThread,me)
   )
 System(All)=runWith(True,True,
-  (||| me:All @ Thread(me)) 
+  (||| me:All @ Thread(card(All),me)) 
     [|{Call.t.(EnqueueCall.x) | t<-TypeThread, x<-TypeData}|] 
   InputRegulatorAs({})
 )
 SystemWithSpuriousEvent(All)=runWith(False,True,
-  (||| me:All @ Thread(me)) 
+  (||| me:All @ Thread(card(All),me)) 
     [|{Call.t.(EnqueueCall.x) | t<-TypeThread, x<-TypeData}|] 
   InputRegulatorAs({})
 )
 
 --Trivial Simple Thread Case
 System1=System({T1})
-System1WithSpurious=SystemWithSpuriousEvent({T1})
-assert System1 [T= System1
-assert System1WithSpurious :[deadlock free]
-
---Two Thread case
 System2=System({T1,T2})
---takes 10-20mins
+System3=System({T1,T2,T3})
+System4=System({T1,T2,T3,T4})
+System5=System({T1,T2,T3,T4,T5})
+
+assert System1 [T= System1
 assert System2 [T= System2
+assert System3 [T= System3
+
+assert Spec1Thread [T= System1
 assert Spec2Thread [T= System2
+assert Spec3Thread [T= System3
+assert Spec4Thread [T= System4
+assert Spec5Thread [T= System5
+
+assert SystemWithSpuriousEvent({T1,T2}) :[divergence free]
+

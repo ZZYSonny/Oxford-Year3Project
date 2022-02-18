@@ -4,7 +4,6 @@ instance VarDone=ModuleVariable(Bool,false)
 instance Monitor=ModuleMonitor(TypeThread)
 
 enqueue(NThread,me,x)=
-  Call!me!(EnqueueCall.x) ->
   Monitor::synchronized(me,
     --if(!done)
     VarDone::getValue?done ->
@@ -16,12 +15,9 @@ enqueue(NThread,me,x)=
       VarWaiting::getValue?waiting ->
       if(waiting>0) then Monitor::notify(me) else SKIP
     ) else SKIP
-  );
-  Return!me!(EnqueueReturn) ->
-  SKIP
+  )
   
 dequeue(NThread,me)=
-  Call!me!(DequeueCall) ->
   Monitor::enter(me);
   --if(!done && queue.isEmpty)
   VarDone::getValue?done ->
@@ -36,7 +32,6 @@ dequeue(NThread,me)=
       Monitor::notifyAll(me)
     )else(
       --waiting+=1
-      --if(x==NThread) then div else
       VarWaiting::setValue!(x+1) ->
       --while(queue.isEmpty && !done) wait()
       Monitor::whileWait(me, \ktrue,kfalse @
@@ -46,7 +41,6 @@ dequeue(NThread,me)=
       );
       --waiting -= 1
       VarWaiting::getValue?y:{1..NThread}->
-      --if (y==0) then div else
       VarWaiting::setValue!(y-1)->
       SKIP
     )

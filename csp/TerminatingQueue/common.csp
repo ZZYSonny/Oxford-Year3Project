@@ -5,12 +5,9 @@ include "../../lib/monitor.csp"
 --Limited Size
 
 datatype TypeData=A|B|C
-datatype TypeThread=T1|T2|T3
---NThread=card(TypeThread)
-NThread=1
-datatype TypeOptionData=Some.TypeData | None
+datatype TypeThread=T1|T2|T3|T4|T5
 datatype TypeCallParam=EnqueueCall.TypeData | DequeueCall
-datatype TypeReturnParam=EnqueueReturn | DequeueReturn.TypeOptionData
+datatype TypeReturnParam=EnqueueReturn | DequeueReturnNone | DequeueReturn.TypeData
 
 channel Call: TypeThread.TypeCallParam
 channel Return: TypeThread.TypeReturnParam

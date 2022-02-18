@@ -20,6 +20,8 @@ qEnqueue(QCCs,   C)=QCCs
 qValidEnqueue(Q0A)={A,B}
 qValidEnqueue(QAAs)={A,B}
 qValidEnqueue(_)={C}
+
+qCanEnqueue(x)={q | q<-TypeQueue, member(x,qValidEnqueue(q))}
 --
 qDequeue(QAAs)=  {(A,Q0A),(A,QAAs)}
 qDequeue(QAsB0C)={(A,QAsB0C),(B,Q0C)}

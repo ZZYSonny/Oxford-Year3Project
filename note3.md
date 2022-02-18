@@ -1,0 +1,6 @@
+- (I found a better grammar checker inside my latex editor :)
+- I found why my implementation for TerminatingQueue was slow
+  - In my old implementation, I have `if (y==0) then div else` as a assertion for CSP to avoid considering these case at compile stage. (For example, waiting should always >0 when `waiting-=1`)
+  - When I move the assertion to `getValue?y:{1..NThread}`, the system has less states and transitions. No difference between the systems.
+  - With the old implementation, FDR builds the unncessary transitions. And these transistions creates more unnecessary transititons when running with multiple threads.
+- 
