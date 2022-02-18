@@ -1,0 +1,52 @@
+include "common.csp"
+
+instance Monitor = ModuleMonitor(TypeThreadID)
+instance Step = ModuleVariable({0,1,2}, 0)
+instance Data = ModuleUninitVariable(TypeData)
+
+exchange(me,datasend) = 
+  Monitor::enter(me);
+    --Start event for Linearizer
+    Call.me.datasend->
+    --if(step == 0)
+    Step::getValue?step -> if step==0 then (
+      --data = x;
+      Data::setValue!datasend -> 
+      --step = 1;
+      Step::setValue!1 ->
+      --while(step == 1) wait()
+      Monitor::whileWait(me, \ktrue,kfalse @
+        Step::getValue?step ->
+        if step==1 then ktrue else kfalse
+      );
+      --step = 0
+      Step::setValue!0 ->
+      --data
+      Data::getValue?res ->(
+      --Exit Monitor
+      Monitor::exit(me);
+      --Return result
+      Return.me.res -> 
+      SKIP
+    ))else(
+      --val result = data;
+      Data::getValue?res ->(
+      --data = x;
+      Data::setValue!datasend ->
+      --step = 0; 
+      Step::setValue!0 ->
+      --notifyAll()
+      Monitor::notifyAll(me);
+      --Exit Monitor
+      Monitor::exit(me);
+      --Return result
+      Return.me.res -> 
+      SKIP
+    ))
+
+runWith(hideSpurious, hideInternal, p)=
+  Monitor::runWith(hideSpurious, hideInternal,
+  Step::runWith(hideInternal,
+  Data::runWith(hideInternal,
+    p
+  )))
