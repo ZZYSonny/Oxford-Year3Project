@@ -1,13 +1,11 @@
 module ModuleMonitor(TypeThreadID)
   channel
     Notify, NotifyAll, Exit, Wait,
-    WaitNotify, WaitEnter,
-    MonitorWake, SpuriousWake: TypeThreadID
+    WaitNotify, WaitEnter, SpuriousWake: TypeThreadID
 
   chanset = {|
     Notify, NotifyAll, Exit, Wait,
-    WaitNotify, WaitEnter,
-    MonitorWake, SpuriousWake
+    WaitNotify, WaitEnter, SpuriousWake
   |}
 
   --A list of event for every event e in s
@@ -26,7 +24,7 @@ module ModuleMonitor(TypeThreadID)
         active(cur, {})
       else
         --wakeup a process
-        MonitorWake?a:waiting -> 
+        WaitNotify?a:waiting -> 
         active(cur, diff(waiting, {a}))
     ) []
     --current running thread notifyAll

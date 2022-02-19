@@ -12,28 +12,23 @@ Spec5Thread=Linearizers({T1,T2,T3,T4,T5})
 assert Spec2Thread [T= Spec2Thread
 
 
-InputRegulatorAs(cs)=
-     Call?t:diff(TypeThread,cs)!(EnqueueCall.A) -> InputRegulatorAs(cs)
-  [] Call?t:diff(TypeThread,cs)!(EnqueueCall.B) -> InputRegulatorCs
-  [] Call?t:diff(TypeThread,cs)!(EnqueueCall.C) -> InputRegulatorAs(union(cs,{t}))
-InputRegulatorACs(cs)=
-     Call?t:diff(TypeThread,cs)!(EnqueueCall.A) -> InputRegulatorACs(cs)
-  [] Call?t:diff(TypeThread,cs)!(EnqueueCall.C) -> InputRegulatorACs(union(cs,{t}))
-  [] InputRegulatorCs
-InputRegulatorCs=Call?t!(EnqueueCall.C) -> InputRegulatorCs
+InputRegulatorAs(All,cs)=
+     Call?t:diff(All,cs)!(EnqueueCall.A) -> InputRegulatorAs(All,cs)
+  [] Call?t:diff(All,cs)!(EnqueueCall.B) -> InputRegulatorCs(All)
+  [] Call?t:diff(All,cs)!(EnqueueCall.C) -> InputRegulatorAs(All,union(cs,{t}))
+InputRegulatorACs(All,cs)=
+     Call?t:diff(All,cs)!(EnqueueCall.A) -> InputRegulatorACs(All,cs)
+  [] Call?t:diff(All,cs)!(EnqueueCall.C) -> InputRegulatorACs(All,union(cs,{t}))
+  [] InputRegulatorCs(All)
+InputRegulatorCs(All)=Call?t:All!(EnqueueCall.C) -> InputRegulatorCs(All)
 
 Thread(NThread,me)=
-  (|~|x:TypeData @ 
+  ([]x:TypeData @ 
     enqueue(NThread,me,x);Thread(NThread,me)
   ) |~| (
     dequeue(NThread,me);Thread(NThread,me)
   )
 System(All)=runWith(True,True,
-  (||| me:All @ Thread(card(All),me)) 
-    [|{Call.t.(EnqueueCall.x) | t<-TypeThread, x<-TypeData}|] 
-  InputRegulatorAs({})
-)
-SystemWithSpuriousEvent(All)=runWith(False,True,
   (||| me:All @ Thread(card(All),me)) 
     [|{Call.t.(EnqueueCall.x) | t<-TypeThread, x<-TypeData}|] 
   InputRegulatorAs({})

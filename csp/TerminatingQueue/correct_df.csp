@@ -3,21 +3,29 @@ instance VarWaiting=ModuleVariable({0..5},0)
 instance VarDone=ModuleVariable(Bool,false)
 instance Monitor=ModuleMonitor(TypeThread)
 
+channel wrongInput, queueStopped
+
 enqueue(NThread,me,x)=
+  Call!me!(EnqueueCall.x) ->
   Monitor::synchronized(me,
     --if(!done)
     VarDone::getValue?done ->
     if (not done) then (
       --queue.enqueue(x), block until the queue is not full
-      VarQueue::getValue?q:qCanEnqueue(x) ->
+      --VarQueue::getValue?q:qCanEnqueue(x) ->
+      VarQueue::getValue?q ->
+      if not member(x,qValidEnqueue(q)) then RUN({wrongInput}) else
       VarQueue::setValue!(qEnqueue(q,x)) ->
       --if(waiting > 0) notify()
       VarWaiting::getValue?waiting ->
       if(waiting>0) then Monitor::notify(me) else SKIP
     ) else SKIP
-  )
+  );
+  Return!me!(EnqueueReturn) ->
+  SKIP
   
 dequeue(NThread,me)=
+  Call!me!(DequeueCall) ->
   Monitor::enter(me);
   --if(!done && queue.isEmpty)
   VarDone::getValue?done ->
@@ -32,6 +40,7 @@ dequeue(NThread,me)=
       Monitor::notifyAll(me)
     )else(
       --waiting+=1
+      --if(x==NThread) then div else
       VarWaiting::setValue!(x+1) ->
       --while(queue.isEmpty && !done) wait()
       Monitor::whileWait(me, \ktrue,kfalse @
@@ -41,6 +50,7 @@ dequeue(NThread,me)=
       );
       --waiting -= 1
       VarWaiting::getValue?y:{1..NThread}->
+      --if (y==0) then div else
       VarWaiting::setValue!(y-1)->
       SKIP
     )
@@ -51,7 +61,7 @@ dequeue(NThread,me)=
     Monitor::exit(me);
     Return!me!(DequeueReturnNone) ->
     --the thread should stop any work
-    STOP
+    RUN({queueStopped})
   ) else (
     VarQueue::getValue?q:{q|q<-TypeQueue, not qEmpty(q)} ->
     --if qEmpty(q) then DIV else
