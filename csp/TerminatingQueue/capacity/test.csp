@@ -1,34 +1,40 @@
 include "../common.csp"
 include "../correct.csp"
-include "lin.csp"
 include "queue.csp"
+include "lin.csp"
 
-System1 = runWith(True,True,
-  runP(enqueue(T1,A); dequeue(T1))
-)
-assert Linearizers({T1}) [T= System1
+Spec1Thread=Linearizers({T1})
+Spec2Thread=Linearizers({T1,T2})
+Spec3Thread=Linearizers({T1,T2,T3})
+Spec4Thread=Linearizers({T1,T2,T3,T4})
+Spec5Thread=Linearizers({T1,T2,T3,T4,T5})
 
-System2 = runWith(True,True,
-  runP(enqueue(T1,A); dequeue(T1)) |||
-  runP(enqueue(T2,B); dequeue(T2))
-)
-assert Linearizers({T1,T2}) [T= System2
+assert Spec2Thread [T= Spec2Thread
 
-System3 = runWith(True,True,
-  runP(enqueue(T1,A); dequeue(T1)) |||
-  runP(dequeue(T2); enqueue(T2,B))
+Thread(NThread,me)=
+  ([]x:TypeData @ 
+    enqueue(NThread,me,x);Thread(NThread,me)
+  ) |~| (
+    dequeue(NThread,me);Thread(NThread,me)
+  )
+System(All)=runWith(True,True,
+  (||| me:All @ Thread(card(All),me)) 
 )
-assert Linearizers({T1,T2}) [T= System3
 
-System4 = runWith(True,True,
-  runP(enqueue(T1,A) |~| dequeue(T1)) |||
-  runP(enqueue(T2,B) |~| dequeue(T2))
-)
-assert Linearizers({T1,T2}) [T= System4
+--Trivial Simple Thread Case
+System1=System({T1})
+System2=System({T1,T2})
+System3=System({T1,T2,T3})
+System4=System({T1,T2,T3,T4})
+System5=System({T1,T2,T3,T4,T5})
 
-System5 = runWith(True,True,
-  runP(enqueue(T1,A) |~| dequeue(T1)) |||
-  runP(enqueue(T2,B) |~| dequeue(T2)) |||
-  runP(enqueue(T3,C) |~| dequeue(T2))
-)
-assert Linearizers({T1,T2,T3}) [T= System4
+assert System1 [T= System1
+assert System2 [T= System2
+assert System3 [T= System3
+
+assert Spec1Thread [T= System1
+assert Spec2Thread [T= System2
+assert Spec3Thread [T= System3
+assert Spec4Thread [T= System4
+assert Spec5Thread [T= System5
+

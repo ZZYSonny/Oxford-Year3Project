@@ -8,19 +8,19 @@ Spec(q)=( length(q)+1<=NQueueCapacity &
 ) [] ( not qEmpty(q) &
   --A thread performing an dequeue operation, and successfully
   --obtained a return value
-  Sync?t!(DequeueCall)!(DequeueReturn.(Some.(head(q)))) ->
+  Sync?t!(DequeueCall)!(DequeueReturn.head(q)) ->
   Spec(tail(q))
 ) [] ( qEmpty(q) & 
   --A thread perfoming an dequeue operation, but all other threads
   --are dequeueing. Every thread returns none exactly once, then
   --system stops. Might be unnecessary?
-  Sync?t!DequeueCall!(DequeueReturn.None) ->
+  Sync?t!DequeueCall!(DequeueReturnNone) ->
   SpecNone(diff(TypeThread,{t}))
 )
 --Every thread performs returns none exactly once
 SpecNone({})=STOP
 SpecNone(s)=
-  Sync?t:s!DequeueCall!(DequeueReturn.None) ->
+  Sync?t:s!DequeueCall!(DequeueReturnNone) ->
   SpecNone(diff(s,{t}))
 
 
@@ -31,12 +31,12 @@ Lin(All,me)=(
   Lin(All,me)
 ) [] (
   Call!me!DequeueCall ->
-  Sync!me!DequeueCall!(DequeueReturn.None) ->
-  Return!me!(DequeueReturn.None) ->
+  Sync!me!DequeueCall!(DequeueReturnNone) ->
+  Return!me!(DequeueReturnNone) ->
   STOP
 ) [] (
   Call!me!DequeueCall ->
-  Sync!me!DequeueCall?EnqueueReturnObj:{|DequeueReturn.Some|} ->
+  Sync!me!DequeueCall?EnqueueReturnObj:{|DequeueReturn|} ->
   Return!me!EnqueueReturnObj ->
   Lin(All,me)  
 )

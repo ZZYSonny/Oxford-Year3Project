@@ -50,6 +50,3 @@ assert Spec2Thread [T= System2
 assert Spec3Thread [T= System3
 assert Spec4Thread [T= System4
 assert Spec5Thread [T= System5
-
-assert SystemWithSpuriousEvent({T1,T2}) :[divergence free]
-

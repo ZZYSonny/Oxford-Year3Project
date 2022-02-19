@@ -9,6 +9,7 @@ qEmpty(q)=q==<>
 qNewQueue=<>
 
 qValidEnqueue(q)=if length(q)>=NQueueCapacity then {} else TypeData
+qCanEnqueue(x)={q|q<-TypeQueue, length(q)<NQueueCapacity}
 qEnqueue(q,x)=q^<x>
 
 qDequeue(<>)={}
