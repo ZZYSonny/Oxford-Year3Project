@@ -2,8 +2,5 @@ include "../lib/common.csp"
 include "../lib/monitor.csp"
 include "../lib/variable.csp"
 
-datatype TypeThreadID = T1 | T2 | T3
-datatype TypeData = A | B | C
-
-channel Call : TypeThreadID.TypeData
-channel Return: TypeThreadID.TypeData
+datatype TypeThreadID = T1 | T2 | T3 | T4 | T5 | T6 | T7
+datatype TypeData = A | B | C | D

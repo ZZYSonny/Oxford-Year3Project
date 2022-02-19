@@ -4,9 +4,17 @@ instance Monitor = ModuleMonitor(TypeThreadID)
 instance Step = ModuleVariable({0,1,2}, 0)
 instance Data = ModuleUninitVariable(TypeData)
 
+channel P1 : TypeThreadID. TypeData            --meid, datasend
+channel P2 : TypeThreadID. TypeData. TypeData  --meid, datasend, res
+channel P1': TypeThreadID. TypeData. TypeData  --meid, datasend, res
+
+Spec(All) =
+  P1?t1:All?t1data ->
+  P2?t2:diff(All,{t1})?t2data!t1data ->
+  P1'!t1!t1data!t2data ->
+  Spec(All)
+
 exchange(me,datasend) = 
-  --Start event for Linearizer
-  Call.me.datasend->
   --Enter Synchronized
   Monitor::enter(me);
     --while(step == 2) wait()
@@ -20,6 +28,8 @@ exchange(me,datasend) =
       Data::setValue!datasend -> 
       --step = 1;
       Step::setValue!1 ->
+      --LP
+      P1!me!datasend ->
       --while(step == 1) wait()
       Monitor::whileWait(me, \ktrue,kfalse @
         Step::getValue?step ->
@@ -30,15 +40,14 @@ exchange(me,datasend) =
       if step!=2 then div else
       --step = 0
       Step::setValue!0 ->
-      --notifyAll()
-      Monitor::notifyAll(me);
       --data
       Data::getValue?res ->(
+      --LP
+      P1'!me!datasend!res ->
+      --notifyAll()
+      Monitor::notifyAll(me);
       --Exit Monitor
-      Monitor::exit(me);
-      --Return result
-      Return.me.res -> 
-      SKIP
+      Monitor::exit(me)
     ))else(
       --val result = data;
       Data::getValue?res -> (
@@ -46,12 +55,12 @@ exchange(me,datasend) =
       Data::setValue!datasend ->
       --step = 2; 
       Step::setValue!2 ->
+      --LP
+      P2!me!datasend!res ->
       --notifyAll()
       Monitor::notifyAll(me);
       --Exit Monitor
-      Monitor::exit(me);
-      Return.me.res -> 
-      SKIP
+      Monitor::exit(me)
     ))
 
 runWith(hideSpurious, hideInternal, p)=

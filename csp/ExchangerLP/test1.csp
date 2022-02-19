@@ -1,0 +1,27 @@
+include "correct.csp"
+System(All) = runWith(True,True,
+  ||| me:All @ runP(|~| data:TypeData @ exchange(me,data))
+)
+SystemNoSpurious(All) = runWith(False,True,
+  ||| me:All @ runP(|~| data:TypeData @ exchange(me,data))
+)
+assert Spec({T1}) [T= System({T1})
+assert Spec({T1,T2}) [T= System({T1,T2})
+assert Spec({T1,T2,T3}) [T= System({T1,T2,T3})
+assert Spec({T1,T2,T3,T4}) [T= System({T1,T2,T3,T4})
+assert Spec({T1,T2,T3,T4,T5}) [T= System({T1,T2,T3,T4,T5})
+assert Spec({T1,T2,T3,T4,T5,T6}) [T= System({T1,T2,T3,T4,T5,T6})
+
+assert System({T1}) [T= System({T1})
+assert System({T1,T2}) [T= System({T1,T2})
+assert System({T1,T2,T3}) [T= System({T1,T2,T3})
+assert System({T1,T2,T3,T4}) [T= System({T1,T2,T3,T4})
+assert System({T1,T2,T3,T4,T5}) [T= System({T1,T2,T3,T4,T5})
+assert System({T1,T2,T3,T4,T5,T6}) [T= System({T1,T2,T3,T4,T5,T6})
+
+assert Spec({T1}) [T= Spec({T1})
+assert Spec({T1,T2}) [T= Spec({T1,T2})
+assert Spec({T1,T2,T3}) [T= Spec({T1,T2,T3})
+assert Spec({T1,T2,T3,T4}) [T= Spec({T1,T2,T3,T4})
+assert Spec({T1,T2,T3,T4,T5}) [T= Spec({T1,T2,T3,T4,T5})
+assert Spec({T1,T2,T3,T4,T5,T6}) [T= Spec({T1,T2,T3,T4,T5,T6})

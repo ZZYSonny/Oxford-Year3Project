@@ -1,0 +1,31 @@
+include "correct.csp"
+include "lin.csp"
+
+System(All) = runWith(True,True,
+  ||| me:All @ runP(|~| data:TypeData @ exchange(me,data))
+)
+SystemNoSpurious(All) = runWith(False,True,
+  ||| me:All @ runP(|~| data:TypeData @ exchange(me,data))
+)
+assert Spec [T= Spec
+
+assert Linearizers({T1}) [T= System({T1})
+assert Linearizers({T1,T2}) [T= System({T1,T2})
+assert Linearizers({T1,T2,T3}) [T= System({T1,T2,T3})
+assert Linearizers({T1,T2,T3,T4}) [T= System({T1,T2,T3,T4})
+assert Linearizers({T1,T2,T3,T4,T5}) [T= System({T1,T2,T3,T4,T5})
+assert Linearizers({T1,T2,T3,T4,T5,T6}) [T= System({T1,T2,T3,T4,T5,T6})
+
+assert System({T1}) [T= System({T1})
+assert System({T1,T2}) [T= System({T1,T2})
+assert System({T1,T2,T3}) [T= System({T1,T2,T3})
+assert System({T1,T2,T3,T4}) [T= System({T1,T2,T3,T4})
+assert System({T1,T2,T3,T4,T5}) [T= System({T1,T2,T3,T4,T5})
+assert System({T1,T2,T3,T4,T5,T6}) [T= System({T1,T2,T3,T4,T5,T6})
+
+assert Linearizers({T1}) [T= Linearizers({T1})
+assert Linearizers({T1,T2}) [T= Linearizers({T1,T2})
+assert Linearizers({T1,T2,T3}) [T= Linearizers({T1,T2,T3})
+assert Linearizers({T1,T2,T3,T4}) [T= Linearizers({T1,T2,T3,T4})
+assert Linearizers({T1,T2,T3,T4,T5}) [T= Linearizers({T1,T2,T3,T4,T5})
+assert Linearizers({T1,T2,T3,T4,T5,T6}) [T= Linearizers({T1,T2,T3,T4,T5,T6})
