@@ -17,7 +17,22 @@
     - For (single) semaphore based object, when one thread update some value, another thread needs to be synchronized to get the updated value. If the implementation is correct then another thread should not read the updated value before the LP event (raise semaphore). If developer forgets about this, this can be captured by P2->P1->P1'.123
 - LP Test for Terminating Queue
   - If `waiting` is also a linearization point, we can probably use it to check terminating condition. Once a thread does `VarWaiting::setValue!N`, then all other thread should do `VarWaiting::setValue!(-=1)`
-
-
+- Feature
+```
+Call.T1.A (wait at 25, deadlock) 
+                                              Call.T2.A (wait at 25, deadlock)
+          Call.T3.IsA (finishes) Return T3.A
+```
+  - The linearizer does not see linearization point of T1, and T2. So it cannot say it is an illegal trace.
+  - Deadlock free test
+    - T1 and T2 can both waked up with Spurious wakeup and perform some events.
+    - Even when spurious wakeup is disabled in monitor, the system does not fail a deadlock free test.
+      - T3 can receive again and release one of the thread. 
+```
+Call.T1.A
+                                  Call.T2.A                          Return.T2.A
+          Call.T3.IsA Return.T3.A            Call.T3.IsA Return.T3.A
+```
+    - Explicit LP should be able to find this feature.
 
 |Number of Participating Thread|Lin State|Lin Transition|

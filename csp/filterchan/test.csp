@@ -60,3 +60,9 @@ System6 = runWith(False,True,
 assert System6 :[deadlock free]
 
 
+System7 = runWith(False,False,
+  runP(send(T1,A)) |||
+  runP(send(T2,A)) |||
+  runP(receive(T3,IsA))
+)
+assert System7 :[deadlock free]

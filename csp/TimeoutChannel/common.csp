@@ -1,10 +1,8 @@
+include "../../lib/common.csp"
+include "../../lib/variable.csp"
+include "../monitor_timeout.csp"
 
-MaxTime=4
-TypeTime={0..MaxTime}
-channel getTime: TypeTime
-clock(now)=
-  (getTime!now -> clock(now))
-  []
-  clock((now+1)%MaxTime)
+datatype TypeThread=T1|T2
+datatype TypeData=A|B
 
-  
+channel tock

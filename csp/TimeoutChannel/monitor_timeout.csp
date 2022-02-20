@@ -5,7 +5,7 @@ module ModuleMonitor(TypeThreadID)
 
   chanset = {|
     Notify, NotifyAll, Exit, Wait,
-    WaitNotify, WaitEnter, SpuriousWake
+    WaitNotify, WaitEnter, SpuriousWake, WaitTimeout
   |}
 
   --A list of event for every event e in s
@@ -43,6 +43,10 @@ module ModuleMonitor(TypeThreadID)
     --spurious wakeup
     waiting!={} & SpuriousWake?a:waiting -> (
       active(cur, diff(waiting, {a}))
+    ) [] (
+      WaitTimeout?a:waiting ->
+      WaitNotify.a ->
+      active(cur,diff(waiting,{a}))
     )
 
   --when no active thread is running
@@ -54,9 +58,14 @@ module ModuleMonitor(TypeThreadID)
     --spurious wakeup
     waiting!={} & SpuriousWake?a:waiting -> (
       inactive(diff(waiting, {a}))
+    )  [] (
+      WaitTimeout?a:waiting ->
+      WaitNotify.a ->
+      inactive(diff(waiting,{a}))
     )
 
 exports
+  channel WaitTimeout: TypeThreadID
   --Given a process that uses the monitor
   --Return the process synchronized with the monitor server process
   --If hide is true, monitor channels are hidden
@@ -92,21 +101,16 @@ exports
 
   --wait()
   wait(me) =
-    Wait.me ->
-    WaitNotify.me ->
-    WaitEnter.me ->
-    SKIP
-  --wait(me) =
-  --  Wait.me -> ((
-  --      WaitNotify.me ->
-  --      WaitEnter.me ->
-  --      SKIP
-  --    ) [] (
-  --      SpuriousWake.me ->
-  --      WaitEnter.me ->
-  --      SKIP
-  --    )
-  --  )
+    Wait.me -> ((
+        WaitNotify.me ->
+        WaitEnter.me ->
+        SKIP
+      ) [] (
+        SpuriousWake.me ->
+        WaitEnter.me ->
+        SKIP
+      )
+    )
   
   whileWait(me,cond) =
     while(cond)(wait(me);SKIP)

@@ -1,0 +1,25 @@
+include "../common.csp"
+instance Monitor=ModuleMonitor(TypeThread)
+
+--runWithTock(p)=p ||| RUN({tock})
+
+channel a,b,c
+clock=tock -> clock
+
+waitUntil(me,timeout)=
+  wait(me) ||| (
+    runENtime(tock,timeout); 
+    WaitTimeout.me ->
+    SKIP
+  )
+
+
+sendWithin(me,x,duration)=(
+  --set variable timeout to true
+  Monitor::enter(me)
+  --in while loop, check timeout variable
+) ||| (
+  runENtime(tock, duration) ->
+  --set variable timeout to false
+)
+
