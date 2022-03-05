@@ -35,3 +35,27 @@ Call.T1.A
     - Explicit LP should be able to find this feature.
 
 |Number of Participating Thread|Lin State|Lin Transition|
+
+
+```
+returnNone can replace ReturnNone
+replace DIV with error.me
+[[ setValue.1 <- setValue.1, setValue.1 <- P1.t.datasend | ... ]]
+System State exploding - symmetry reduction
+To check return answer
+- check by hand
+- add return event, and check spec, return and P1P1' matches.
+Experiment to compare efficiency of renaming and 2event
+Failure check - [] -> |~|
+Use Lin to check 
+QEmpty & all thread dequeue -> Term
+Term, all thread return none, happen only after special signal
+
+Feature: Failure model, non dep
+count #Call, #Return. Availa
+1CallSend, 1CallReturn, 0
+When Sync is possible, the system should be able to return
+Recheck System8
+
+Inf: OK
+```

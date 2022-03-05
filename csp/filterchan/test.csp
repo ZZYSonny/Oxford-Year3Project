@@ -66,3 +66,11 @@ System7 = runWith(False,False,
   runP(receive(T3,IsA))
 )
 assert System7 :[deadlock free]
+
+channel nop
+System8 = runWith(False,False,
+  (send(T1,A) |||
+  send(T2,A) |||
+  (receive(T3,IsA);receive(T3,IsA)));RUN({nop})
+)
+assert System8 :[deadlock free]
