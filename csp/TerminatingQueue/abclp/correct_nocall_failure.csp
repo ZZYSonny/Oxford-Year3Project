@@ -1,0 +1,96 @@
+instance VarQueue=ModuleVariable(TypeQueue,qNewQueue)
+instance VarWaiting=ModuleVariable({0..5},0)
+instance VarDone=ModuleVariable(Bool,false)
+instance Monitor=ModuleMonitor(TypeThread)
+
+channel enqLP: TypeThread.TypeQueue.TypeData            --Thread.Queue before enqueue.Data enqueued
+channel deqLP: TypeThread.TypeQueue.TypeData.TypeQueue  --Thread.Queue before dequeue.Data dequeued.Queue after dequeue
+channel wrongInput: TypeThread
+--Spec(All,q)=(
+--  enqLP?t:All!q?x:qValidEnqueue(q) -> Spec(All,qEnqueue(q,x))
+--) |~| (qEmpty(q) & (
+--  |~| (ans, qtail): qDequeue(q) @
+--  deqLP?t:All!q!ans!qtail -> Spec(All,qtail)
+--))
+
+Spec(All,q)=
+  if (qEmpty(q)) then (
+        (enqLP?t:All!q?x:qValidEnqueue(q) -> Spec(All,qEnqueue(q,x)))
+    |~| (wrongInput?t -> Spec(diff(All,{t}),q)) 
+  )else (
+        (enqLP?t:All!q?x:qValidEnqueue(q) -> Spec(All,qEnqueue(q,x)))
+    |~| (wrongInput?t -> Spec(diff(All,{t}),q))
+    |~| (|~| (ans, qtail): qDequeue(q) @ deqLP?t:All!q!ans!qtail -> Spec(All,qtail))
+  )
+
+enqueue(NThread,me,x)=
+  Monitor::synchronized(me,
+    --if(!done)
+    VarDone::getValue?done ->
+    if (not done) then (
+      --queue.enqueue(x), block until the queue is not full
+      VarQueue::getValue?q ->
+      if(not member(x, qValidEnqueue(q))) then wrongInput!me -> STOP else
+      VarQueue::setValue!(qEnqueue(q,x)) ->
+      enqLP!me!q!x ->
+      --if(waiting > 0) notify()
+      VarWaiting::getValue?waiting ->
+      if(waiting>0) then Monitor::notify(me) else SKIP
+    ) else SKIP
+  );
+  Return!me!(EnqueueReturn) ->
+  SKIP
+  
+dequeue(NThread,me)=
+  Monitor::enter(me);
+  --if(!done && queue.isEmpty)
+  VarDone::getValue?done ->
+  VarQueue::getValue?q ->
+  (if(not done and qEmpty(q)) then (
+    --if(waiting == numWorkers-1)
+    VarWaiting::getValue?x:{0..NThread-1}->
+    if(x==NThread-1) then(
+      --done=true
+      VarDone::setValue!true->
+      --notifyAll
+      Monitor::notifyAll(me)
+    )else(
+      --waiting+=1
+      --if(x==NThread) then div else
+      VarWaiting::setValue!(x+1) ->
+      --while(queue.isEmpty && !done) wait()
+      Monitor::whileWait(me, \ktrue,kfalse @
+        VarQueue::getValue?q ->
+        VarDone::getValue?done ->
+        if(qEmpty(q) and not done) then ktrue else kfalse
+      );
+      --waiting -= 1
+      VarWaiting::getValue?y:{1..NThread}->
+      --if (y==0) then div else
+      VarWaiting::setValue!(y-1)->
+      SKIP
+    )
+  )else SKIP);
+  --if(done) None else Some(queue.dequeue)
+  VarDone::getValue?done ->
+  if (done) then (
+    Monitor::exit(me);
+    --the thread should stop any work
+    STOP
+  ) else (
+    VarQueue::getValue?q:{q|q<-TypeQueue, not qEmpty(q)} ->
+    --if qEmpty(q) then DIV else
+    [] (ans, qtail): qDequeue(q) @
+    VarQueue::setValue!qtail ->
+    deqLP!me!q!ans!qtail ->
+    Monitor::exit(me);
+    SKIP
+)
+
+runWith(hideSpurious,hide,P)=
+  VarQueue::runWith(hide,
+  VarWaiting::runWith(hide,
+  VarDone::runWith(hide,
+  Monitor::runWith(hideSpurious,hide,
+    P
+  ))))
