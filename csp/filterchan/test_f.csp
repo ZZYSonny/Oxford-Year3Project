@@ -1,0 +1,45 @@
+include "correct.csp"
+channel Sync: TypeThreadID.TypeParam.TypeReturn.TypeThreadID.TypeParam.TypeReturn
+
+
+ids(xs)={a|(a,b)<-xs}
+
+Spec1(All,sends,recvs,returns)=
+    let frees=diff(All,union(union(ids(sends),ids(recvs)),ids(returns))) within
+    let matches={(t1,t2,x,p)|(t1,x)<-sends,(t2,p)<-recvs,applyPred(p)(x)} within
+        guarded(
+            frees!={},(\aaa@
+                |~|t:frees@(
+                    --a free thread can call send and enter the matching pool
+                    (|~|x:TypeData@Call!t!(SendParam.x)->Spec1(All,union(sends,{(t,x)}),recvs,returns))
+                    --a free thread can call receive and enter the matching pool
+                 |~|(|~|p:TypePred@Call!t!(RecvParam.p)->Spec1(All,sends,union(recvs,{(t,p)}),returns))
+                )
+            ),matches!={},(\aaa@
+                --t1 t2 can be matched
+                |~|(t1,t2,x,p):matches@
+                    Spec1(All,diff(sends,{(t1,x)}),diff(recvs,{(t2,p)}),union({(t1, SendReturn),(t2,RecvReturn.x)},returns))
+            ),returns!={},(\aaa@
+                |~|(t,rets):returns @
+                    Return!t!rets->
+                    Spec1(All,sends,recvs,diff(returns,{(t,rets)}))
+            )
+        )
+
+guarded(cond1,p1,cond2,p2,cond3,p3)=
+    let conds=<cond1,cond2,cond3> within
+         if conds==<True ,True ,True > then p1(cond1)|~|p2(cond2)|~|p3(cond3)
+    else if conds==<True ,True ,False> then p1(cond1)|~|p2(cond2)
+    else if conds==<True ,False,True > then p1(cond1)|~|p3(cond3)
+    else if conds==<True ,False,False> then p1(cond1)
+    else if conds==<False,True ,True > then p2(cond2)|~|p3(cond3)
+    else if conds==<False,True ,False> then p2(cond2)
+    else if conds==<False,False,True > then p3(cond3)
+    else STOP
+
+thread(me) = runP((|~| x:TypeData @ send(me,x);SKIP) |~| (|~| p:TypePred @ receive(me,p);SKIP))
+System5 = runWith(True,True,
+  thread(T1) |||
+  thread(T2)
+)
+assert Spec1({T1,T2},{},{},{}) [F= System5
