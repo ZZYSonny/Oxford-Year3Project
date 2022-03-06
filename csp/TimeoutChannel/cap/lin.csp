@@ -1,0 +1,71 @@
+channel SyncSuccess: TypeThread. CallParam. TypeThread. ReturnParam
+channel SyncSendFailed: TypeThread. CallParam
+channel SyncRecvFailed: TypeThread. CallParam
+-- Thread1: thread identity, function parameter, function return
+-- Thread2: thread identity, function parameter, function return
+
+-- Spec Process. 
+SpecSync(All) =
+    (SyncSuccess?t1?(SendParam.x.t)?t2:diff(All,{t1})!(RecvReturn.x) -> SpecSync(All))
+  [](SyncSendFailed?t1?param -> SpecSync(All))
+  [](SyncRecvFailed?t1?param -> SpecSync(All))
+
+-- 
+SpecThread(me) =
+    (tock -> SpecThread(me))
+  [](Call!me?(SendParam.x.duration) -> SpecThreadSend(me,SendParam.x.duration,duration))
+  [](Call!me?(RecvParam.duration)   -> SpecThreadRecv(me,duration))
+SpecThreadSend(me,param,0)=
+    (tock -> SpecThreadSend(me,param,0))
+  [](SyncSendFailed!me!param->SpecThread(me))
+SpecThreadSend(me,param,time)=
+    (tock -> SpecThreadSend(me,param,time-1))
+  [](SyncSuccess!me!param?t2?param2->SpecThread(me))
+SpecThreadRecv(me,0)=
+    (tock -> SpecThreadRecv(me,0))
+  [](SyncRecvFailed!me?param->SpecThread(me))
+SpecThreadRecv(me,time)=
+    (tock -> SpecThreadRecv(me,time-1))
+  [](SyncSuccess?t1?param1!me?param->SpecThread(me))
+
+Lin(All,me)=
+  (Call!me?(SendParam.x.duration) -> ((
+        SyncSuccess!me!(SendParam.x.duration)?t2:diff(All,{me})?t2param -> 
+        Return!me!(SendReturn.True) ->
+        Lin(All,me)
+      )[](
+        SyncSendFailed!me!(SendParam.x.duration) -> 
+        Return!me!(SendReturn.False) ->
+        Lin(All,me)
+      )
+    )
+  ) [] 
+  (Call!me?(RecvParam.TypeTime) -> ((
+        SyncSuccess?t2:diff(All,{me})?param1!me?(RecvReturn.x) -> 
+        Return!me!(RecvReturn.x) ->
+        Lin(All,me)
+      )[](
+        SyncRecvFailed!me!(RecvParam.TypeTime) -> 
+        Return!me!(RecvReturnNone) ->
+        Lin(All,me)
+      )
+  ))
+
+LinEvents(All,me)=union({
+  e | e <- {|SyncSuccess|},
+  let SyncSuccess.t1.a.t2.b=e within
+    countList(me,<t1,t2>)==1
+},{|Call.me,Return.me, SyncSendFailed.me, SyncRecvFailed.me|})
+SpecThreadEvents(All,me)=union({
+  e | e <- {|SyncSuccess|},
+  let SyncSuccess.t1.a.t2.b=e within
+    countList(me,<t1,t2>)==1
+},{|Call.me, SyncSendFailed.me, SyncRecvFailed.me,tock|})
+
+Linearizers(All)= ((
+        (|| me: All @ [LinEvents(All,me)] Lin(All,me)) 
+    [|{|SyncSuccess,SyncSendFailed,SyncRecvFailed|}|] 
+        SpecSync(All))
+    [|{|SyncSuccess,SyncSendFailed,SyncRecvFailed,Call|}|]
+        (|| me: All @ [SpecThreadEvents(All,me)] SpecThread(me)) 
+) \ {|SyncSuccess,SyncSendFailed,SyncRecvFailed|}

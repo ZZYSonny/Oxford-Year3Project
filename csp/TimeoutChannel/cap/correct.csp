@@ -1,6 +1,5 @@
 include "../common.csp"
 
-NTock=3
 instance Monitor=ModuleMonitor(TypeThread)
 instance VarNanoTime=ModuleVariable({0..NTock},0)
 instance VarData=ModuleUninitVariable(TypeData)
@@ -18,11 +17,16 @@ whileWaitUntil(me,end,cond)=
   while(cond)(waitUntil(me,end);SKIP)
 
 clock(now)= 
-  tock -> 
-  VarNanoTime::setValue!(now+1)->
-  if(now!=NTock) then clock(now+1) else STOP
+  if(now+1>NTock) then STOP else
+    VarNanoTime::setValue!(now+1)->
+    tock -> 
+    clock(now+1)
+
+channel Call: TypeThread.CallParam
+channel Return: TypeThread.ReturnParam
 
 sendWithin(me,x,duration)=
+  Call!me!(SendParam.x.duration) ->
   --synchronized
   Monitor::enter(me);
   --val start = nanoTime
@@ -39,7 +43,9 @@ sendWithin(me,x,duration)=
   --if(full)
   VarFull::getValue?full1 ->
   if full1 then(
-    --assert(nanoTime-start >= durationNS); false
+    --assert(nanoTime-start >= durationNS);
+    --false
+    Return!me!(SendReturn.False) ->
     SKIP
   )else(
     --data = x;
@@ -59,20 +65,67 @@ sendWithin(me,x,duration)=
     );
     --if(!consumed)
     VarConsumed::getValue?consumed1 ->
-    if consumed1 then (
+    if not consumed1 then (
       --assert(nanoTime-start >= durationNS);
       --consumed = true 
       VarConsumed::setValue!True ->
       --full = false;
       VarFull::setValue!False ->
       --notifyAll();
-      Monitor::notifyAll(me)
+      Monitor::notifyAll(me);
       --false
+      Return!me!(SendReturn.False) ->
+      SKIP
     )else(
       --full = false;
       VarFull::setValue!False ->
       --notifyAll();
-      Monitor::notifyAll(me)
-      --true 
+      Monitor::notifyAll(me);
+      --true
+      Return!me!(SendReturn.True) ->
+      SKIP
     )
   );SKIP
+
+receiveWithin(me,duration)=
+  Call!me!(RecvParam.duration) ->
+  --synchronized
+  Monitor::enter(me);
+  --val start = nanoTime
+  VarNanoTime::getValue?start ->
+  --val end = start+durationNS
+  let end=start+duration within
+  --while(!full && nanoTime-start < durationNS) 
+  --  waitUntil(end)
+  whileWaitUntil(me,end,\ktrue,kfalse @
+    VarFull::getValue?full ->
+    VarNanoTime::getValue?now ->
+    if not full and now<end then ktrue else kfalse
+  );
+  --if(!full)
+  VarFull::getValue?full ->
+  if(not full) then (
+    --assert(nanoTime-start >= durationNS); 
+    --None
+    Return!me!(RecvReturnNone) ->
+    SKIP
+  )else(
+    --full = false;
+    VarFull::setValue!false ->
+    --notifyAll; 
+    Monitor::notifyAll(me);
+    --Some(data)
+    VarData::getValue?data ->
+    Return!me!(RecvReturn.data) ->
+    SKIP
+  )
+
+
+runWith(hideSpurious, hideInternal, p) =
+  Monitor::runWith(hideSpurious, hideInternal,
+  VarNanoTime::runWith(hideInternal,
+  VarData::runWith(hideInternal,
+  VarFull::runWith(hideInternal,
+  VarConsumed::runWith(hideInternal,
+    p ||| clock(0)
+  )))))

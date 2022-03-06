@@ -6,3 +6,8 @@ datatype TypeThread=T1|T2
 datatype TypeData=A|B
 
 channel tock
+NTock=2
+TypeTime={0..NTock}
+
+datatype CallParam = SendParam.TypeData.TypeTime | RecvParam.TypeTime
+datatype ReturnParam = SendReturn.Bool | RecvReturn.TypeData | RecvReturnNone

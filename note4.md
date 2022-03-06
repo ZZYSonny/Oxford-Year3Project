@@ -21,3 +21,5 @@ System can do nothing but spec says it should be able to do `Return.T2.SendRetur
 ```
 Same system can be checked with the old deadlock free test.
 I think this is not captured in my previous work because in the general test case (where every thread can do any operation), I always assume these threads run forever. But this error case only occurs when threads make finite calls. Now I have a new test case (System10 in test.csp), where two threads can repetitively send or receive, or running nop forever. Is `Spec2Thread [T=` Test redundant here?
+
+Failure check for TerminatingQueue seems 
