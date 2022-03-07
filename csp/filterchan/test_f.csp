@@ -26,6 +26,8 @@ Spec1(All,sends,recvs,returns)=
             )
         )
 
+--Workaround for FDR
+--when p1/p2/p3 may fail to compile or be STOP (when the system has other choices)
 guarded(cond1,p1,cond2,p2,cond3,p3)=
     let conds=<cond1,cond2,cond3> within
          if conds==<True ,True ,True > then p1(cond1)|~|p2(cond2)|~|p3(cond3)

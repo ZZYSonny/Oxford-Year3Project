@@ -68,9 +68,27 @@ System7 = runWith(False,False,
 assert System7 :[deadlock free]
 
 channel nop
-System8 = runWith(False,False,
+System8 = runWith(False,True,
   (send(T1,A) |||
   send(T2,A) |||
-  (receive(T3,IsA);receive(T3,IsA)));RUN({nop})
+  (receive(T3,IsA);receive(T3,IsA)))--;RUN({nop})
 )
 assert System8 :[deadlock free]
+assert RUN({|Call,Return|}) [T= System8
+
+
+System9 = runWith(False,False,
+  ((send(T1,A);receive(T1,IsA)) |||
+   (receive(T2,IsA);send(T2,A)));RUN({nop})
+)
+assert System9 :[deadlock free]
+assert RUN({|Call,Return|}) [T= System9
+
+
+thread(me) = chaosP((|~| x:TypeData @ send(me,x);SKIP)|~|(|~| p:TypePred @ receive(me,p);SKIP))
+System10 = runWith(False,True,
+  (thread(T1);RUN({nop})) |||
+  (thread(T2);RUN({nop}))
+)
+assert Spec2Thread ||| RUN({nop}) [T= System10
+assert System10 :[deadlock free]
