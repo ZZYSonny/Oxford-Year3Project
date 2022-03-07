@@ -34,7 +34,18 @@ Call.T1.A
 ```
     - Explicit LP should be able to find this feature.
 
-|Number of Participating Thread|Lin State|Lin Transition|
+- Timeout Channel
+  - For (infinity time) implementation, the thread uses time to check if the operation timeouts. Maybe it is easier to have a separated process to receive `duration` number of tock event, and then set a timeout variable the thread can read? Or is it changing too much code?
+```
+sendWithin(me,x,duration)=(
+  --set variable timeout to true
+  Monitor::enter(me)
+  --in while loop, check timeout variable
+) ||| (
+  runENtime(tock, duration) ->
+  --set variable timeout to false
+)
+```
 
 
 ```
