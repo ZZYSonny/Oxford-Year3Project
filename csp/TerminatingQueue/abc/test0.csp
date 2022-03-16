@@ -1,5 +1,5 @@
 include "../common.csp"
-include "../correct.csp"
+include "../correct_div.csp"
 include "queue.csp"
 include "lin.csp"
 
@@ -8,9 +8,6 @@ Spec2Thread=Linearizers({T1,T2})
 Spec3Thread=Linearizers({T1,T2,T3})
 Spec4Thread=Linearizers({T1,T2,T3,T4})
 Spec5Thread=Linearizers({T1,T2,T3,T4,T5})
-
-assert Spec2Thread [T= Spec2Thread
-
 
 InputRegulatorAs(All,cs)=
      Call?t:diff(All,cs)!(EnqueueCall.A) -> InputRegulatorAs(All,cs)
@@ -31,7 +28,7 @@ Thread(NThread,me)=
 System(All)=runWith(True,True,
   (||| me:All @ Thread(card(All),me)) 
     [|{Call.t.(EnqueueCall.x) | t<-TypeThread, x<-TypeData}|] 
-  InputRegulatorAs({})
+  InputRegulatorAs(All,{})
 )
 
 --Trivial Simple Thread Case
@@ -44,6 +41,9 @@ System5=System({T1,T2,T3,T4,T5})
 assert System1 [T= System1
 assert System2 [T= System2
 assert System3 [T= System3
+assert System4 [T= System4
+assert System5 [T= System5
+
 
 assert Spec1Thread [T= System1
 assert Spec2Thread [T= System2

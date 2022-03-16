@@ -1,5 +1,5 @@
 include "../common.csp"
-include "../correct.csp"
+include "../correct_err.csp"
 include "queue.csp"
 include "lin.csp"
 

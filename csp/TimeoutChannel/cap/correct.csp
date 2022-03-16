@@ -16,7 +16,8 @@ waitUntil(me,end)=
 whileWaitUntil(me,end,cond)=
   while(cond)(waitUntil(me,end);SKIP)
 
-clock(now)= 
+clock(now)=
+  tock -> 
   if(now+1>NTock) then STOP else
     VarNanoTime::setValue!(now+1)->
     tock -> 

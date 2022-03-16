@@ -32,3 +32,33 @@ I think this feature is not captured in my previous work because in the general 
 I now have a working time-limited version and a general linearizer. In the [linearizer](https://github.com/ZZYSonny/Oxford-Year3Project/blob/main/csp/TimeoutChannel/cap/lin.csp), I have the linearizer in the usual way, running in parallel with SpecThread, which ensures if a call success, the sync event is n-tock within the call event.
 
 But the [system implementation](https://github.com/ZZYSonny/Oxford-Year3Project/blob/main/csp/TimeoutChannel/cap/correct.csp) is a bit faulty. I have a clock event, which releases tock events and increments the time counter in two events. The system implementation uses the time counter, and the spec process uses the tock event. In the [T= test, system implementation timeouts, but the spec process never sees the tock event. I think I will straightly use the variable way next time.
+
+
+```
+div does not seem to slow. recheck.
+
+instance VarQueue=ModuleVariable(...)[[ setValue.(qEnqueue(q,x)) <- setValue.(qEnqueue(q,x)), setValue.(qEnqueue(q,x)) <- endLP.t.q.x | ... ]]
+apply renaming to varqueue process. So when see enqLP, value change. normal setValue
+                                                                                     
+Failure test for filterchan
+Lin [] -> |~|, 
+System |~| choose op and data
+~all thread -> send system deadlock -> spec cannot do anything -> deadlock ok
+
+waitUntil ||| only stops when both stops
+better to do clock inside monitor
+
+clock process -> var module but tock directly increases time
+
+spec: fail: must be n tocok event
+but sucess can also be allowed to have >n tock event
+also try failure model
+
+Writing: 
+MenWoman: try failure test
+
+Counter: same chapter
+Exchanger
+
+timeout--
+```

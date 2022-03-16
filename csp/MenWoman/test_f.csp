@@ -1,0 +1,31 @@
+include "correct.csp"
+include "lin_f.csp"
+
+Spec2Thread=Linearizers({TMan1,TWoman1})
+Spec4Thread=Linearizers({TMan1,TMan2,TWoman1,TWoman2})
+
+System1 = runWith(True,True,
+    runP(manSync(TMan1)) |||
+    runP(womanSync(TWoman1))
+)
+assert Spec2Thread [T= System1
+System2 = runWith(False,True,
+    runP(manSync(TMan1)) |||
+    runP(womanSync(TWoman1))
+)
+assert System2 :[deadlock free]
+
+System3 = runWith(True,True,
+    runP(manSync(TMan1)) |||
+    runP(manSync(TMan2)) |||
+    runP(womanSync(TWoman2)) |||
+    runP(womanSync(TWoman1))
+)
+assert Spec4Thread [T= System3
+System4 = runWith(False,True,
+    runP(manSync(TMan1)) |||
+    runP(manSync(TMan2)) |||
+    runP(womanSync(TWoman2)) |||
+    runP(womanSync(TWoman1))
+)
+assert System4 :[deadlock free]

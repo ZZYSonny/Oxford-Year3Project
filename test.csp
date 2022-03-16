@@ -1,3 +1,6 @@
 channel a,b,c,d
-
-A=((a->SKIP)|||(b->SKIP)|||(c->SKIP));(d->STOP)
+A = a -> STOP
+B = A[[a<-a,a<-b]]
+C = a -> c -> STOP
+D = b -> d -> STOP
+E = (B [|{a}|] C) [|{b}|] D
