@@ -2,12 +2,9 @@ include "../lib/common.csp"
 include "../lib/variable.csp"
 include "../lib/monitor.csp"
 
-datatype TypeThreadID = TMan1 | TMan2 | TWoman1 | TWoman2
+datatype TypeThreadID = T1 | T2 | T3 | T4
 datatype TypeOptionThreadID = None | Some.TypeThreadID
 datatype TypeOps = ManSync | WomanSync
-
-TypeMan={TMan1,TMan2}
-TypeWoman={TWoman1,TWoman2}
 
 channel Call : TypeThreadID.TypeOps
 channel Return: TypeThreadID.TypeOps.TypeThreadID

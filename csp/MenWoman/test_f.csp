@@ -1,31 +1,32 @@
 include "correct.csp"
 include "lin_f.csp"
+Thread(me)=
+    (manSync(me);Thread(me))
+ |~|(womanSync(me);Thread(me))
+ |~|STOP
+System(All)=runWith(True,True,||| me:All @ Thread(me))
 
-Spec2Thread=Linearizers({TMan1,TWoman1})
-Spec4Thread=Linearizers({TMan1,TMan2,TWoman1,TWoman2})
+Spec2=Linearizers({T1,T2})
+Spec3=Linearizers({T1,T2,T3})
+Spec4=Linearizers({T1,T2,T3,T4})
 
-System1 = runWith(True,True,
-    runP(manSync(TMan1)) |||
-    runP(womanSync(TWoman1))
-)
-assert Spec2Thread [T= System1
-System2 = runWith(False,True,
-    runP(manSync(TMan1)) |||
-    runP(womanSync(TWoman1))
-)
-assert System2 :[deadlock free]
+System2=System({T1,T2})
+System3=System({T1,T2,T3})
+System4=System({T1,T2,T3,T4})
 
-System3 = runWith(True,True,
-    runP(manSync(TMan1)) |||
-    runP(manSync(TMan2)) |||
-    runP(womanSync(TWoman2)) |||
-    runP(womanSync(TWoman1))
-)
-assert Spec4Thread [T= System3
-System4 = runWith(False,True,
-    runP(manSync(TMan1)) |||
-    runP(manSync(TMan2)) |||
-    runP(womanSync(TWoman2)) |||
-    runP(womanSync(TWoman1))
-)
-assert System4 :[deadlock free]
+--trace refinement assertion
+assert Spec2 [T= System2
+assert Spec3 [T= System3
+assert Spec4 [T= System4
+--failure refinement assertion
+assert Spec2 [F= System2
+assert Spec3 [F= System3
+assert Spec4 [F= System4
+
+--deadlock free before STOP
+channel stopped
+ThreadDF(me)=
+    (manSync(me);Thread(me))
+ |~|(womanSync(me);Thread(me))
+ |~|RUN({stopped})
+SystemDF(All)=runWith(True,True,||| me:All @ Thread(me))
