@@ -45,12 +45,12 @@ Q = VarA::runWith(P)
 
 
 \section{MenWoman}
-The MenWomen object is another synchronization object to be analyzed in this essay. The MenWomen object offers two operations, \textbf{ManSync} and \textbf{WomanSync}. For simplicity, a process calling \textbf{ManSync} is called a man process, and a process calling \textbf{WomanSync} is called a woman process. After the synchronization, a man process pairs with a woman process, and both processes obtain the identity of the other process.
+The MenWomen object is another synchronization object to be analyzed in this essay. The MenWomen object offers two operations, \textbf{ManSync} and \textbf{WomanSync}. For simplicity, a process calling \textbf{ManSync} is called a man process, and a process calling \textbf{WomanSync} is called a woman process. After the synchronization, a man process pairs with a woman process, and both processes obtain the identity of the other process. 
 
 \subsection{Implementation}
 One way to implement the MenWoman object is to use a monitor and a shared variable indicating the stage of synchronization. 
 \begin{itemize}
-  \item A man process enters the synchronization and waits until the current stage is $0$. Then in stage $0$, the man process sets the global variable \textbf{him} inside the \textbf{MenWomen} object to its identity. Then the man process notifies all processes so that a waiting woman process can continue. Finally, the man process waits stage 2.
+  \item A man process enters the synchronization and waits until the current stage is $0$. Then in stage $0$, the man process sets the global variable \textbf{him} inside the \textbf{MenWomen} object to its identity. Then the man process notifies all processes so that a waiting woman process can continue. Finally, the man process waits for stage 2.
   \item A women process enters the synchronization and waits until the current stage is $1$. The woman process sets the global variable \textbf{her} to its identity and returns the value of global variable \textbf{him}.
   \item In stage $2$, the waiting man process in stage $0$ is waked up by the woman process in stage $1$. The man process notifies all waiting processes and returns the value of \textbf{her}.
 \end{itemize}
@@ -129,15 +129,49 @@ womanSync(me)=
 \end{figure}
 
 
-\subsection{Linearization Test}
-The synchronization point of a man process and a woman process is represented by a \textbf{Sync} event. The $Sync.t_1.a.t_2.b$ represents the synchronization of a man process $t_1$ with parameter $a$ with a woman process $t_2$ with parameter $b$.
+\subsection{Test}
+//This technique mostly applies to all objects.
 
-The system to be tested is composed of an arbitrary number of processes, and each process in the system can perform finite or infinite operations from the synchronization object. In CSP, the processes 
+A generic and scalable testing system is introduced to make the test cover as many cases as possible. The testing system includes an arbitrary number of processes, and each process calls any functions provided by the synchronization objects for any finite or infinite number of times. For the CSP implementation, each process non deterministically chooses a function and its parameters, or the process chooses to terminate. Figure \ref{menwomen.csp.testsystem} is the definition of a testing process and a testing system for MenWomen object in CSP.
+
+\begin{figure}[hbtp]
+\begin{cspm}
+Thread(me)=
+    (manSync(me);Thread(me))
+ |~|(womanSync(me);Thread(me))
+ |~|STOP
+System(All)=runWith(True,True,||| me:All @ Thread(me))
+\end{cspm}
+\caption{CSP implementation of the testing processes and system}
+\label{menwomen.csp.testsystem}
+\end{figure}
+  
+There are two properties one should check for the system. First, the traces of the system are valid. If a thread $t_1$ calls \textbf{ManSync} and returns the thread identity $t_2$, then $t_2$ must call \textbf{WomanSync} somewhere. This is done by checking that the system refines a linearization specification (introduced earlier?). Second, the system should not deadlock when matching is possible. This can be done by another specification process, which records the set of men processes and women processes to determine if matching is possible. However, it is easier to modify the linearization specification process and check that the system failure refines the specification process.
+
+The implementation of the linearizer specification relies on the synchronization point. The synchronization point of a man process and a woman process is represented by a \textbf{Sync} event. The $Sync.t_1.a.t_2.b$ represents the synchronization of a man process $t_1$ with parameter $a$ with a woman process $t_2$ with parameter $b$.
+
+With the \textbf{Sync} event, it is simple to define the linearizer for a process. The process can choose to call \textbf{ManSync}, synchronize with a woman process, and return the identity of the woman process. Or, the process can choose to call \textbf{WomanSync}, synchronize with a man process, and return the identity of man process. Also, the process chooses to terminate when it finishes calling a function.
+
+\begin{figure}[hbtp]
+\begin{cspm}
+Lin(All,me)= (
+  Call!me!ManSync->
+  Sync!me?mereturn?other?otherreturn ->
+  Return!me!ManSync!mereturn ->
+  Lin(All,me)
+)|~|(
+  Call!me!WomanSync ->
+  Sync?other?otherreturn!me?mereturn ->
+  Return!me!WomanSync!mereturn ->
+  Lin(All,me)
+)|~|STOP
+\end{cspm}
+\caption{CSP implementation of the testing processes and system}
+\label{menwomen.csp.testsystem}
+\end{figure}
 
 \section{ABC}
-In the ABC object, three threads are involved in each round of synchronization. For simplicity, a process calling \textbf{syncA}, \textbf{syncB}, and \textbf{syncC} is called a A process, B process, C process.  
-
-On the higher level, three different threads call function \textbf{syncA}, \textbf{syncB}, \textbf{syncC} with their arguments respectively, and each function returns the arguments of two other function calls.
+In the ABC object, three threads are involved in each round of synchronization. For simplicity, a process calling \textbf{syncA}, \textbf{syncB}, and \textbf{syncC} is called a A process, B process, C process. In each round of synchronization, A A-process, B-process, and C-process synchronize, and each process returns the argument of two other processes. 
 
 \begin{figure}
 \begin{minted}{scala}
@@ -189,13 +223,13 @@ class ABC[A,B,C] extends ABCT[A,B,C]{
 For the above semaphore implementation of ABC object, In each round
 \begin{itemize}
     \item Initially semaphore \textbf{aClear} is raised.
-    \item An A-process acquire semaphore \textbf{aClear}, sets the shared variable \textbf{a} to its parameter, raises semaphore \textbf{bClear} and waits to acquire semaphore \textbf{aSignal}. Such operations occurs in turn for a B-process and a C-process.
+    \item An A-process acquire semaphore \textbf{aClear}, sets the shared variable \textbf{a} to its parameter, raises semaphore \textbf{bClear} and waits to acquire semaphore \textbf{aSignal}. A B-process and a C-process operates in turn with a slight change of semaphore and variable name.
     \item The A-process is able to continue after a C-process raises semaphore \textbf{aSignal}. The A-process reads the shared variable \textbf{b} and \textbf{c}, raises the semaphore \textbf{bSignal}, and returns. This also happens in turn for the B-process and the C-process.
 \end{itemize}
 
-Using the shared variable and semaphore module, it is easy to translate the Scala implementation to a CSP implementation. 
+Using the shared variable and semaphore module, it is easy to translate the Scala implementation to a CSP implementation.
 
-Unlike Monitor in Java and Scala, raising a semaphore immediately allows another thread waiting to \textbf{down} the semaphore to continue. So in the semaphore implementation, it is essential to take a copy of the two other argument, before raising the semaphore for the next thread. 
+Unlike monitor in Java and Scala, raising a semaphore immediately allows another thread waiting to acquire the semaphore to continue. So in the semaphore implementation, it is essential to take a copy of the two other arguments before raising the semaphore.
 
 On the other hand, what if the implementation of \textbf{syncA} does not take a copy of the argument? It turns out the ABC object still works correctly when only three threads are involved, but fails the linearization test with four threads.
 
