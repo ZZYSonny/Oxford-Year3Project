@@ -1,3 +1,5 @@
+include "correct.csp"
+
 channel Sync: TypeThreadID.TypeThreadID.TypeThreadID.TypeThreadID
 --(Identity of thread calling ManSync).(Return of ManSync).(Identity of thread calling WomanSync).(Return of WomanSync)
 
@@ -9,17 +11,39 @@ Lin(All,me)= (
   Sync!me?mereturn?other?otherreturn ->
   Return!me!ManSync!mereturn ->
   Lin(All,me)
-)[](
+)|~|(
   Call!me!WomanSync ->
   Sync?other?otherreturn!me?mereturn ->
   Return!me!WomanSync!mereturn ->
   Lin(All,me)
-)
+)|~|STOP
 LinEvents(All,me)=union({
   ev | ev<-{|Sync|},
   let Sync.t1.a.t2.b=ev within
     countList(me,<t1,t2>)==1 and
-    member(t1, All) and
-    member(t2, All)
+    member(t1,All) and
+    member(t2,All)
 },{|Call.me,Return.me|})
 Linearizers(All)= ((|| me: All @ [LinEvents(All,me)]  Lin(All,me)) [|{|Sync|}|] Spec) \ {|Sync|}
+Linearizers1(All)= ((|| me: All @ [LinEvents(All,me)]  Lin(All,me)) [|{|Sync|}|] Spec)
+
+
+Thread(me)=chaosP(
+  manSync(me) |~| womanSync(me)
+)
+System(All) = runWith(True, True, ||| me:All @ Thread(me))
+
+System2=System({T1,T2})
+System3=System({T1,T2,T3})
+System4=System({T1,T2,T3,T4})
+System5=System({T1,T2,T3,T4,T5})
+
+Spec2Thread=Linearizers({T1,T2})
+Spec3Thread=Linearizers({T1,T2,T3})
+Spec4Thread=Linearizers({T1,T2,T3,T4})
+Spec5Thread=Linearizers({T1,T2,T3,T4,T5})
+
+assert Spec2Thread [F= System2
+assert Spec3Thread [F= System3
+assert Spec4Thread [F= System4
+assert Spec5Thread [F= System5

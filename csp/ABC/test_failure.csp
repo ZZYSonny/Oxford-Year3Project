@@ -7,23 +7,24 @@ Lin(All,me)=
     |~| t2: diff(All,{me}) @ |~| t3: diff(All,{me,t2}) @ 
     (
       --me synchronizes as thread A
-      Call!me!ASync?a ->
-      Sync!me!a?b?c?t2:diff(All,{me})!b!a!c?t3:diff(All,{me,t2})!c!a!b ->
+      Call!me!ASync!a ->
+      Sync!me!a!b!c!t2!b!a!c!t3!c!a!b ->
       Return!me!ASync!b!c ->
       Lin(All,me)
     ) |~| (
       --me synchronizes as thread B
-      Call!me!BSync?b ->
-      Sync?t2:diff(All,{me})?a!b?c!me!b!a!c?t3:diff(All,{me,t2})!c!a!b ->
+      Call!me!BSync!b ->
+      Sync!t2!a!b!c!me!b!a!c!t3!c!a!b ->
       Return!me!BSync!a!c ->
       Lin(All,me)
     ) |~| (
       --me synchronizes as thread C
-      Call!me!CSync?c ->
-      Sync?t2:diff(All,{me})?a?b!c?t3:diff(All,{me,t2})!b!a!c!me!c!a!b ->
+      Call!me!CSync!c ->
+      Sync!t2!a!b!c!t3!b!a!c!me!c!a!b ->
       Return!me!CSync!a!b ->
       Lin(All,me)
     ) 
+
 
 LinEvents(All,me)=union({
   ev | ev<-{|Sync|},
