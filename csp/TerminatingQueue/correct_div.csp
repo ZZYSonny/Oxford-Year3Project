@@ -31,9 +31,8 @@ dequeue(NThread,me)=
   (if(not done and qEmpty(q)) then (
     --if(waiting == numWorkers-1)
     VarWaiting::getValue?x->
-    if(x>=NThread) then (
-      DIV
-    ) else if(x==NThread-1) then(
+    if(x>=NThread) then DIV
+    else if(x==NThread-1) then(
       --done=true
       VarDone::setValue!true->
       --notifyAll
@@ -50,8 +49,7 @@ dequeue(NThread,me)=
       );
       --waiting -= 1
       VarWaiting::getValue?y->
-      if y==0 then (DIV) else 
-      --if (y==0) then div else
+      if y==0 then DIV else 
       VarWaiting::setValue!(y-1)->
       SKIP
     )
@@ -65,8 +63,7 @@ dequeue(NThread,me)=
     STOP
   ) else (
     VarQueue::getValue?q ->
-    if qEmpty(q) then (DIV) else
-    --if qEmpty(q) then DIV else
+    if qEmpty(q) then DIV else
     [] (ans, qtail): qDequeue(q) @
     VarQueue::setValue!qtail ->
     Monitor::exit(me);

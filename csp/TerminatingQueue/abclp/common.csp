@@ -1,0 +1,51 @@
+include "../common.csp"
+include "queue.csp"
+module ModuleQueueVariable
+  Var(q) = getValue!q -> Var(q)
+        [] enqLP?t!q?x:qValidEnqueue(q) -> Var(qEnqueue(q,x))
+        [] qDequeue(q)!={} & ( [] (qhead,qtail):qDequeue(q) @
+           deqLP?t!q!qhead!qtail -> Var(qtail)
+        )
+exports
+  channel getValue: TypeQueue
+  runWith(hide,P) = (Var(qNewQueue) [|{|enqLP,deqLP,getValue|}|] P) \
+                    (if hide then {|getValue|} else {})
+endmodule
+
+
+instance VarQueue=ModuleQueueVariable
+instance VarWaiting=ModuleVariable({0..5},0)
+instance VarDone=ModuleVariable(Bool,false)
+instance Monitor=ModuleMonitor(TypeThread)
+
+channel enqLP: TypeThread.TypeQueue.TypeData            --Thread.Queue before enqueue.Data enqueued
+channel deqLP: TypeThread.TypeQueue.TypeData.TypeQueue  --Thread.Queue before dequeue.Data dequeued.Queue after dequeue
+
+--runVarQueueWith(hide,P)=
+
+runWith(hideSpurious,hide,P)=
+  VarQueue::runWith(hide,
+  VarWaiting::runWith(hide,
+  VarDone::runWith(hide,
+  Monitor::runWith(hideSpurious,hide,
+    P
+  ))))
+
+
+SpecT(All,q)=(
+  enqLP?t:All!q?x:qValidEnqueue(q) -> SpecT(All,qEnqueue(q,x))
+) [] (
+  [] (ans, qtail): qDequeue(q) @
+  deqLP?t:All!q!ans!qtail -> SpecT(All,qtail)
+) 
+
+
+SpecF(All,q)=
+  if (qEmpty(q)) then (
+        (enqLP?t:All!q?x:qValidEnqueue(q) -> SpecF(All,qEnqueue(q,x)))
+    --|~| (wrongInput?t -> SpecF(diff(All,{t}),q)) 
+  )else (
+        (enqLP?t:All!q?x:qValidEnqueue(q) -> SpecF(All,qEnqueue(q,x)))
+    --|~| (wrongInput?t -> SpecF(diff(All,{t}),q))
+    |~| (|~| (ans, qtail): qDequeue(q) @ deqLP?t:All!q!ans!qtail -> SpecF(All,qtail))
+  )

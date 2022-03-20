@@ -27,3 +27,4 @@ qDequeue(QAAs)=  {(A,Q0A),(A,QAAs)}
 qDequeue(QAsB0C)={(A,QAsB0C),(B,Q0C)}
 qDequeue(QAsBCCs)={(A,QAsBCCs),(B,QCCs)}
 qDequeue(QCCs)={(C,Q0C),(C,QCCs)}
+qDequeue(_)={}

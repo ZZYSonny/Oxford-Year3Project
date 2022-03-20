@@ -1,6 +1,14 @@
-channel a,b,c,d
-A = a -> STOP
-B = A[[a<-a,a<-b]]
-C = a -> c -> STOP
-D = b -> d -> STOP
-E = (B [|{a}|] C) [|{b}|] D
+channel C: {0..2}
+
+P = C?a -> STOP
+
+Q = C!0 -> STOP
+|~| C!1 -> STOP
+|~| C!2 -> STOP
+
+R = C!0 -> STOP
+ [] C!1 -> STOP
+ [] C!2 -> STOP
+
+assert P [F= Q
+assert P [F= R

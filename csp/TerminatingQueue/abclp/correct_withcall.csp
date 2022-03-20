@@ -1,18 +1,3 @@
-instance VarQueue=ModuleVariable(TypeQueue,qNewQueue)
-instance VarWaiting=ModuleVariable({0..5},0)
-instance VarDone=ModuleVariable(Bool,false)
-instance Monitor=ModuleMonitor(TypeThread)
-
-channel enqLP: TypeThread.TypeQueue.TypeData            --Thread.Queue before enqueue.Data enqueued
-channel deqLP: TypeThread.TypeQueue.TypeData.TypeQueue  --Thread.Queue before dequeue.Data dequeued.Queue after dequeue
-
-Spec(All,q)=(
-  enqLP?t:All!q?x:qValidEnqueue(q) -> Spec(All,qEnqueue(q,x))
-) [] (
-  [] (ans, qtail): qDequeue(q) @
-  deqLP?t:All!q!ans!qtail -> Spec(All,qtail)
-) 
-
 enqueue(NThread,me,x)=
   Call!me!(EnqueueCall.x) ->
   Monitor::synchronized(me,
@@ -21,7 +6,6 @@ enqueue(NThread,me,x)=
     if (not done) then (
       --queue.enqueue(x), block until the queue is not full
       VarQueue::getValue?q:qCanEnqueue(x) ->
-      VarQueue::setValue!(qEnqueue(q,x)) ->
       enqLP!me!q!x ->
       --if(waiting > 0) notify()
       VarWaiting::getValue?waiting ->
@@ -73,7 +57,7 @@ dequeue(NThread,me)=
     VarQueue::getValue?q:{q|q<-TypeQueue, not qEmpty(q)} ->
     --if qEmpty(q) then DIV else
     [] (ans, qtail): qDequeue(q) @
-    VarQueue::setValue!qtail ->
+    --VarQueue::setValue!qtail ->
     deqLP!me!q!ans!qtail ->
     Monitor::exit(me);
     Return!me!(DequeueReturn.ans) ->
