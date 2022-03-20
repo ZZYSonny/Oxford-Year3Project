@@ -1,9 +1,5 @@
-158 177
-5130 9637
-120221 298222
+After rechecking using blocking, error event and DIV for error handling in Terminating Queue, I find all implementations have the same number of states and transitions, and the total checking time does not differ too much. Now I am using DIV for all other places.
 
-108 117
-2947 5371
-62805 152662
-1210659 3637361
-22214089 79041746
+I implemented "renaming trick" for TerminatingQueue ABCLP test. Since my variable module makes the Var process private, I am unable rename the variable process. So I have another module for TerminatingQueue [here](https://github.com/ZZYSonny/Oxford-Year3Project/blob/main/csp/TerminatingQueue/abclp/common.csp)
+
+I implemented the most generic test (which finds the feature in Filterchan) for [MenWomen](https://github.com/ZZYSonny/Oxford-Year3Project/blob/main/csp/MenWoman/test_chaos.csp) and [ABC](https://github.com/ZZYSonny/Oxford-Year3Project/blob/main/csp/ABC/test_chaos.csp). And I am using failure refinement test (for [MenWomen](https://github.com/ZZYSonny/Oxford-Year3Project/blob/main/csp/MenWoman/test_failure.csp) and [ABC](https://github.com/ZZYSonny/Oxford-Year3Project/blob/main/csp/ABC/test_failure.csp)) to check the system deadlock only when all processes do ManSync/WomanSync.
