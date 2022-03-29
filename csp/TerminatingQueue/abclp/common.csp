@@ -12,6 +12,15 @@ exports
                     (if hide then {|getValue|} else {})
 endmodule
 
+module ModuleQueueVariable1
+  Var(value) = getValue!value -> Var(value)
+            [] setValue?value -> Var(value)
+exports
+  runWith(hide,P) = (Var(qNewQueue)[[setValue.newq | me<-Typethread, newq<-TypeQueue]]
+                      [|{|enqLP,deqLP,getValue|}|] P) \ (if hide then {|getValue|} else {})
+  channel getValue, setValue: TypeValue
+endmodule
+
 
 instance VarQueue=ModuleQueueVariable
 instance VarWaiting=ModuleVariable({0..5},0)
