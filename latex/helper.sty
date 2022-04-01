@@ -1,0 +1,147 @@
+\ProvidesPackage{helper}
+\RequirePackage{listings}
+
+\lstset{
+  captionpos=b,
+  frame=single,framerule=1pt
+}
+
+
+\lstnewenvironment{scalainline}[2]{
+  %TC:ignore
+  \renewcommand{\lstlistingname}{Figure}
+  \lstset{
+    language=scala,
+    label=#1,
+    caption={#2}
+  }
+}{
+  %TC:endignore
+}
+
+
+\lstnewenvironment{scalafloat}[2]{
+  %TC:ignore
+  \renewcommand{\lstlistingname}{Figure}
+  \lstset{
+    language=scala,
+    label=#1,
+    caption={#2},
+    float
+  }
+}{
+  %TC:endignore
+}
+
+\lstnewenvironment{cspinline}[2]{
+  %TC:ignore
+  \global\@ignoretrue\bgroup
+  \renewcommand{\lstlistingname}{Figure}
+  \lstset{
+    label=#1,
+    caption={#2},
+    language=cspm, % columns=fixed, 
+    escapechar=£, basewidth={0.7em,0.45em},
+    keepspaces=true,
+    basicstyle=\cspmstyle\cspmDisplaySize,
+    % moredelim=[is][\underbar]{"}{"}, % for emphasis
+    literate={ -> }  {{$\then$}}1             % prefixing
+             { ! }   {{$\jotX\mathbin{!}\jotX$}}2         % !
+             { ? }   {{$\jotX\mathbin{?}\jotX$}}1         % !
+             { . }   {{$\jotX\mathbin{.}\jotX$}}1         % !
+             { \\ }  {{$\null\hide\null$}}1         % hiding
+             { | }   {{$\mid$\outRenaming}}1  % mid symbol (*) see below
+             { [ }   {{$[$}}1                  % open 2-alphabet parallel
+             { ] }   {{$]$}}1                  % close 2-alphabet parallel
+             { < }   {{\scriptsize$<$}}2              % <
+             { > }   {{\scriptsize$>$}}2              % >
+             { <> }  {{\scriptsize$<\,>$}}3     % <>
+             { [] }  {{$\optextchoice$}}1        % external choice
+             { |~| } {{$\optintchoice$}}1       % nondet choice
+             { [> }  {{$\timeout$}}1          % sliding choice
+             { /\\ } {{$\interrupt$}}1       % interrupt
+             { || }  {{$\optparallel$}}1         % parallel 
+             { ||| } {{$\optinterleave$}}2      % interleaving
+             { [| }  {{$[\mathord{\mid}$}}1      % open parallel
+             { |] }  {{$\mathord{\mid}]$}}1      % close parallel
+             { [[ }  {{$\mathord{[\![}$\inRenaming}}1    % open renaming
+             { ]] }  {{$\mathord{]\!]}$\outRenaming}}1   % close renaming
+             { <- }  {{$\optLeftArrowd$}}1     % renaming/generator arrow
+             { <-> } {{$\leftrightarrow$}}1
+             { \{| } {{$\{\!\mathord{\mid}$}}1  % open event set
+             { |\} } {{$\mathord{\mid}\!\}$}}1  % close event set
+             { (| } {{$(\!\mathord{\mid}$}}1      % open mapping
+             { |) } {{$\mathord{\mid}\!)$}}1 % close mapping
+             { @ }   {{$\bullet$}}1            % bullet 
+             { @@ }  {{@@}}2               % double bullet ``as''
+             { ** }  {{\indexify}}1      % make following operator indexed
+             { >= }  {{\scriptsize$\geq$}}2              % >=
+             { <= }  {{\scriptsize$\leq$}}2              % <=
+             { != }  {{\scriptsize$\neq$}}2              % !=
+             { == }  {{\scriptsize$=$}}2             % ==
+             { ^ }   {{$\,\widehat{\ }\,$}}1                   % ^
+             { [T= } {{$\;\refinedby_T\;$}}2  % traces refinement
+             { [F= } {{$\;\refinedby_F\;$}}2  % failures refinement
+             { [FD= }{{$\;\refinedby_{FD}\;$}}3,  % FD refinement
+  }\def\baselinestretch{1.1}
+}{
+  \egroup
+  %TC:endignore
+}
+
+\lstnewenvironment{cspfloat}[2]{
+  %TC:ignore
+  \global\@ignoretrue\bgroup
+  \renewcommand{\lstlistingname}{Figure}
+  \lstset{
+    label=#1,
+    caption={#2},
+    float,
+    language=cspm, % columns=fixed, 
+    escapechar=£, basewidth={0.7em,0.45em},
+    keepspaces=true,
+    basicstyle=\cspmstyle\cspmDisplaySize,
+    % moredelim=[is][\underbar]{"}{"}, % for emphasis
+    literate={ -> }  {{$\then$}}1             % prefixing
+             { ! }   {{$\jotX\mathbin{!}\jotX$}}2         % !
+             { ? }   {{$\jotX\mathbin{?}\jotX$}}1         % !
+             { . }   {{$\jotX\mathbin{.}\jotX$}}1         % !
+             { \\ }  {{$\null\hide\null$}}1         % hiding
+             { | }   {{$\mid$\outRenaming}}1  % mid symbol (*) see below
+             { [ }   {{$[$}}1                  % open 2-alphabet parallel
+             { ] }   {{$]$}}1                  % close 2-alphabet parallel
+             { < }   {{\scriptsize$<$}}2              % <
+             { > }   {{\scriptsize$>$}}2              % >
+             { <> }  {{\scriptsize$<\,>$}}3     % <>
+             { [] }  {{$\optextchoice$}}1        % external choice
+             { |~| } {{$\optintchoice$}}1       % nondet choice
+             { [> }  {{$\timeout$}}1          % sliding choice
+             { /\\ } {{$\interrupt$}}1       % interrupt
+             { || }  {{$\optparallel$}}1         % parallel 
+             { ||| } {{$\optinterleave$}}2      % interleaving
+             { [| }  {{$[\mathord{\mid}$}}1      % open parallel
+             { |] }  {{$\mathord{\mid}]$}}1      % close parallel
+             { [[ }  {{$\mathord{[\![}$\inRenaming}}1    % open renaming
+             { ]] }  {{$\mathord{]\!]}$\outRenaming}}1   % close renaming
+             { <- }  {{$\optLeftArrowd$}}1     % renaming/generator arrow
+             { <-> } {{$\leftrightarrow$}}1
+             { \{| } {{$\{\!\mathord{\mid}$}}1  % open event set
+             { |\} } {{$\mathord{\mid}\!\}$}}1  % close event set
+             { (| } {{$(\!\mathord{\mid}$}}1      % open mapping
+             { |) } {{$\mathord{\mid}\!)$}}1 % close mapping
+             { @ }   {{$\bullet$}}1            % bullet 
+             { @@ }  {{@@}}2               % double bullet ``as''
+             { ** }  {{\indexify}}1      % make following operator indexed
+             { >= }  {{\scriptsize$\geq$}}2              % >=
+             { <= }  {{\scriptsize$\leq$}}2              % <=
+             { != }  {{\scriptsize$\neq$}}2              % !=
+             { == }  {{\scriptsize$=$}}2             % ==
+             { ^ }   {{$\,\widehat{\ }\,$}}1                   % ^
+             { [T= } {{$\;\refinedby_T\;$}}2  % traces refinement
+             { [F= } {{$\;\refinedby_F\;$}}2  % failures refinement
+             { [FD= }{{$\;\refinedby_{FD}\;$}}3,  % FD refinement
+  }\def\baselinestretch{1.1}
+}{
+  \egroup
+  %TC:endignore
+}

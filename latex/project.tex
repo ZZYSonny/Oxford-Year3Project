@@ -1,64 +1,94 @@
 \documentclass{article}
-\usepackage{minted}
+\usepackage{listing}
 \usepackage{csp}
 \usepackage{cspm}
-
+\usepackage{helper}
+%\usepackage{tikz}
 \begin{document}
+
+
 \section{Common Objects}
 \subsection{Shared Variable}
-The usage of shared variables is common in concurrent datatypes. For example, some concurrent datatypes may temporarily store an integer value sent by a thread in its variable. However, CSP is more like a functional programming language and does not support mutable variables. 
+The usage of shared variables is common in concurrent datatypes. For example, some concurrent datatypes may temporarily store the identity of a waiting process. However, CSP is more like a functional programming language and does not support mutable variables. 
 
-The behavior of a shared variable can be captured by a recursive function in CSP. The recursive process holds the value of the variable in its parameter. At any time, the variable process is willing to answer a query for the variable value in channel \textbf{getValue}. Or the process can receive an update on the variable value in channel \textbf{getValue}, after which the function recurses with the new variable value.
+A recursive process in CSP can capture the behaviour of a shared variable. The recursive process holds the value of the variable in its parameter. At any time, the variable process is willing to answer a query for the variable value in channel \CSPM{getValue}. Alternatively, the process can receive an update on the variable value in channel \CSPM{getValue}, after which the function recurses with the new variable value.
 
-Because it is natural for a concurrent datatype to use multiple shared variables, the global variable is implemented as a CSP module, so that these concurrent datatypes can use multiple variables without conflicts. When other synchronization objects use the shared variable module, the process of the object needs to run in parallel with the process of the variable. This is implemented by the \textbf{runWith} function for all common objects. Such encapsulation reduces the complexity in the synchronization object implementation.
+Because it is natural for a concurrent datatype to use multiple shared variables, the global variable is implemented as a CSP module, as shown in Figure \ref{globalvar.csp.init}. The module requires two parameters. \CSPM{TypeValue} is the set of possible values for the variable, and \CSPM{initialValue} is the value before any process modifies the variable. An uninitialized variable module is also available in Figure \ref{globalvar.csp.uninit}, with the only difference that the variable non-deterministically chooses an initial value from \CSPM{TypeValue} at start time. \CSPM{runWith} is a convenient helper function to run a given process \CSPM{P} with the \CSPM{Var} process. If the parameter \CSPM{hide} is true, \CSPM{runWith} function hides all events introduced by the shared variable. In later chapters, we will see how the \CSPM{runWith} function helps reduce the code complexity of the synchronization object implementation.
 
-\begin{figure}[hbtp]
-\begin{cspm}
+\begin{cspinline}{globalvar.csp.init}{CSP implementation of global variable process module}
 module ModuleVariable(TypeValue, initialValue)
   Var(value) = getValue!value -> Var(value)
-            [] setValue?value -> Var(value)
+             [] setValue?value -> Var(value)
   chanset = {|getValue, setValue|}
 exports
+  //(Bool, Proc) -> Proc
   runWith(hide,P) = if hide then (Var(initialValue) [|chanset|] P) \ chanset
                             else  Var(initialValue) [|chanset|] P
   channel getValue, setValue: TypeValue
 endmodule
-\end{cspm}
-\caption{CSP implementation of global variable process module}
-\label{globalvar.csp}
-\end{figure}
+\end{cspinline}
 
-The example CSP code in figure \ref{globalvar.csp.example} is a simple example of a process using the shared variable. The first line in the examples creates a shared variable called \textbf{VarA}. The process \textbf{P} first reads the value of the variable, then discards it and sets the variable value to $1$. The process \textbf{Q} is the combined process of \textbf{P} and variable process.
+\begin{cspinline}{globalvar.csp.uninit}{CSP implementation of global variable process module}
+module ModuleUninitVariable(TypeValue)
+  Var(value) = getValue!value -> Var(value)
+            [] setValue?value -> Var(value)
+  chanset = {|getValue, setValue|}
+exports
+  runWith(hide,P) = 
+    if hide then ((|~| x:TypeValue @ Var(x)) [| chanset |] P) \ chanset
+    else (|~| x:TypeValue @ Var(x)) [| chanset |] P
+  channel getValue, setValue: TypeValue
+endmodule
+\end{cspinline}
 
-\begin{figure}[hbtp]
-\begin{cspm}
-instance VarA = ModuleVariable({0,1,2},0)
-P = VarA::getValue?a -> VarA::setValue!a -> STOP
-Q = VarA::runWith(P)
-\end{cspm}
-\caption{CSP Example of a process using a shared variable}
-\label{globalvar.csp.example}
-\end{figure}
+Figure \ref{globalvar.csp.example} is an example of two processes using a shared variable. The first line in the example creates a shared variable \CSPM{VarA} with value ranging from $0$ to $2$ and initialized with $0$. Process \CSPM{P} increments \CSPM{VarA} modulo $3$ forever and process \CSPM{Q} reads \CSPM{VarA} forever. Process \CSPM{P} interleaves with process \CSPM{Q}, and the combined process is further synchronized with the variable \CSPM{VarA} process. In the resulting process \CSPM{System}, changes to \CSPM{VarA} made by process \CSPM{P} is visible to process \CSPM{Q}.
+
+\begin{cspinline}{globalvar.csp.example}{CSP Example of a process using a shared variable}
+instance VarA = ModuleVariable({0..2},0)
+P = VarA::getValue?a -> VarA::setValue!((a+1)%3) -> P
+Q = VarA::getValue?a -> Q
+System = VarA::runWith(false,P|||Q)
+\end{cspinline}
 
 
 \subsection{Semaphore}
+Semaphore is a simple but powerful concurrent primitive. The essay shall describe and use a simplified binary semaphore from [TODO: Reference], which removes interrupts and timeout operations. 
 
+A binary semaphore can either be raised or unraised. A \CSPM{down} function call, usually by a process that previously acquired the semaphore, raises the semaphore regardless of the semaphore state. If a process calls the \CSPM{up} method when the semaphore is raised, the semaphore becomes unraised. However, if the semaphore is unraised, the process waits until another process calls \CSPM{down} and proceeds to put down the semaphore. Depending on the initial state of the semaphore, a binary semaphore can be further classified as a mutex semaphore or a signalling semaphore.
 
-\section{MenWoman}
-The MenWomen object is another synchronization object to be analyzed in this essay. The MenWomen object offers two operations, \textbf{ManSync} and \textbf{WomanSync}. For simplicity, a process calling \textbf{ManSync} is called a man process, and a process calling \textbf{WomanSync} is called a woman process. After the synchronization, a man process pairs with a woman process, and both processes obtain the identity of the other process. 
+Modelling a semaphore is simple in CSP. A process may call \CSPM{up} function or \CSPM{down} function via channel \CSPM{upChan} or channel \CSPM{downChan} respectively. The semaphore is modelled by a process implemented by two mutually recursive functions \CSPM{Semaphore(True)} and \CSPM{Semaphore(False)}. The semaphore process representing an unraised state accepts a \CSPM{upChan} event by any process and proceeds to the raised process. The semaphore process representing a raised state can either accept a \CSPM{upChan} event and recurse to the raised process, or accept a \CSPM{downChan} event and proceed to the unraised process.
+
+\begin{cspinline}{semaphore.csp}{Implementation of a binary semaphore in CSP}
+module ModuleSemaphore(TypeThreadID, initialState)
+  --Raised
+  Semaphore(True) = downChan?id -> Semaphore(False)
+                   [] upChan?id -> Semaphore(True)
+  --Unraised
+  Semaphore(False)= upChan?id   -> Semaphore(True)
+  
+  chanset = {|upChan, downChan|}
+exports
+  --runWith::(Bool,Proc) -> Proc
+  runWith(hide,P) = (Mutex [| chanset |] P) \ 
+                     (if hide then chanset else {})
+  channel upChan, downChan: TypeThreadID
+endmodule
+\end{cspinline}
+
+\section{MenWomen}
+The MenWomen object is another synchronization object to be analyzed in this essay. The MenWomen object offers two operations, \CSPM{ManSync} and \CSPM{WomanSync}. For simplicity, a process calling \CSPM{ManSync} is called a man process, and a process calling \CSPM{WomanSync} is called a woman process. After the synchronization, a man process pairs with a woman process, and both processes obtain the identity of the other process. 
 
 \subsection{Implementation}
-One way to implement the MenWoman object is to use a monitor and a shared variable indicating the stage of synchronization. 
+One way to implement the MenWomen object is to use a monitor and a shared variable indicating the stage of synchronization. Figure \ref{menwomen.scala.correct} is a Scala implementation of the MenWomen object with monitor.
 \begin{itemize}
-  \item A man process enters the synchronization and waits until the current stage is $0$. Then in stage $0$, the man process sets the global variable \textbf{him} inside the \textbf{MenWomen} object to its identity. Then the man process notifies all processes so that a waiting woman process can continue. Finally, the man process waits for stage 2.
-  \item A women process enters the synchronization and waits until the current stage is $1$. The woman process sets the global variable \textbf{her} to its identity and returns the value of global variable \textbf{him}.
-  \item In stage $2$, the waiting man process in stage $0$ is waked up by the woman process in stage $1$. The man process notifies all waiting processes and returns the value of \textbf{her}.
+  \item A man process enters the synchronization and waits until the current stage is $0$. Then in stage $0$, the man process sets the global variable \CSPM{him} inside the \CSPM{MenWomen} object to its identity. Then the man process notifies all processes so that a waiting woman process can continue. Finally, the man process waits for stage 2.
+  \item A women process enters the synchronization and waits until the current stage is $1$. The woman process sets the global variable \CSPM{her} to its identity and returns the value of global variable \CSPM{him}.
+  \item In stage $2$, the waiting man process in stage $0$ is wakened up by the woman process in stage $1$. The man process notifies all waiting processes and returns the value of \CSPM{her}.
 \end{itemize}
 
 The code snippet in Figure \ref{menwomen.scala.correct} is a Scala implementation of the MenWomen process using a monitor by Gavin Lowe. The Scala code is further translated to a CSP code in Figure \ref{menwomen.csp.correct}. Every function call begins with a Call event containing all parameters. And every function call ends with a Return event containing the return value.
 
-\begin{figure}[hbtp]
-\begin{minted}{scala}
+\begin{scalafloat}{menwomen.scala.correct}{Scala implementation of the MenWomen process using a monitor}
 class MenWomen extends MenWomenT{
   private var stage = 0
   private var him = -1
@@ -76,13 +106,9 @@ class MenWomen extends MenWomenT{
     her = me; stage = 2; notifyAll();
   }
 }
-\end{minted}
-\caption{Scala implementation of the MenWomen process using a monitor}
-\label{menwomen.scala.correct}
-\end{figure}
+\end{scalafloat}
 
-\begin{figure}[hbtp]
-\begin{cspm}
+\begin{cspfloat}{menwomen.csp.correct}{CSP implementation of the MenWomen}
 instance VarStage = ModuleVariable({0,1,2},0) 
 instance VarHim = ModuleUninitVariable(TypeThreadID)
 instance VarHer = ModuleUninitVariable(TypeThreadID)
@@ -123,10 +149,7 @@ womanSync(me)=
   Return!me!WomanSync!ans->
   SKIP
   )
-\end{cspm}
-\caption{CSP implementation of the MenWomen}
-\label{menwomen.csp.correct}
-\end{figure}
+\end{cspfloat}
 
 
 \subsection{Test}
@@ -134,26 +157,20 @@ womanSync(me)=
 
 A generic and scalable testing system is introduced to make the test cover as many cases as possible. The testing system includes an arbitrary number of processes, and each process calls any functions provided by the synchronization objects for any finite or infinite number of times. For the CSP implementation, each process non deterministically chooses a function and its parameters, or the process chooses to terminate. Figure \ref{menwomen.csp.testsystem} is the definition of a testing process and a testing system for MenWomen object in CSP.
 
-\begin{figure}[hbtp]
-\begin{cspm}
+\begin{cspinline}{menwomen.csp.testsystem}{CSP implementation of the testing processes and system}
 Thread(me)=
     (manSync(me);Thread(me))
  |~|(womanSync(me);Thread(me))
  |~|STOP
 System(All)=runWith(True,True,||| me:All @ Thread(me))
-\end{cspm}
-\caption{CSP implementation of the testing processes and system}
-\label{menwomen.csp.testsystem}
-\end{figure}
+\end{cspinline}
   
-There are two properties one should check for the system. First, the traces of the system are valid. If a thread $t_1$ calls \textbf{ManSync} and returns the thread identity $t_2$, then $t_2$ must call \textbf{WomanSync} somewhere. This is done by checking that the system refines a linearization specification (introduced earlier?). Second, the system should not deadlock when matching is possible. This can be done by another specification process, which records the set of men processes and women processes to determine if matching is possible. However, it is easier to modify the linearization specification process and check that the system failure refines the specification process.
+There are two properties one should check for the system. First, the traces of the system are valid. If a thread $t_1$ calls \CSPM{ManSync} and returns the thread identity $t_2$, then $t_2$ must call \CSPM{WomanSync} somewhere. This is done by checking that the system refines a linearization specification (introduced earlier?). Second, the system should not deadlock when matching is possible. This can be done by another specification process, which records the set of men processes and women processes to determine if matching is possible. However, it is easier to modify the linearization specification process and check that the system failure refines the specification process.
 
-The implementation of the linearizer specification relies on the synchronization point. The synchronization point of a man process and a woman process is represented by a \textbf{Sync} event. The $Sync.t_1.a.t_2.b$ represents the synchronization of a man process $t_1$ with parameter $a$ with a woman process $t_2$ with parameter $b$.
+The implementation of the linearizer specification relies on the synchronization point. The synchronization point of a man process and a woman process is represented by a \CSPM{Sync} event. The $Sync.t_1.a.t_2.b$ represents the synchronization of a man process $t_1$ with parameter $a$ with a woman process $t_2$ with parameter $b$.
 
-With the \textbf{Sync} event, it is simple to define the linearizer for a process. The process can choose to call \textbf{ManSync}, synchronize with a woman process, and return the identity of the woman process. Or, the process can choose to call \textbf{WomanSync}, synchronize with a man process, and return the identity of man process. Also, the process chooses to terminate when it finishes calling a function.
-
-\begin{figure}[hbtp]
-\begin{cspm}
+With the \CSPM{Sync} event, it is simple to define the linearizer for a process. The process can choose to call \CSPM{ManSync}, synchronize with a woman process, and return the identity of the woman process. Or, the process can choose to call \CSPM{WomanSync}, synchronize with a man process, and return the identity of man process. Also, the process chooses to terminate when it finishes calling a function.
+\begin{cspinline}{menwomen.csp.testsystem}{CSP implementation of the testing processes and system}
 Lin(All,me)= (
   Call!me!ManSync->
   Sync!me?mereturn?other?otherreturn ->
@@ -165,16 +182,12 @@ Lin(All,me)= (
   Return!me!WomanSync!mereturn ->
   Lin(All,me)
 )|~|STOP
-\end{cspm}
-\caption{CSP implementation of the testing processes and system}
-\label{menwomen.csp.testsystem}
-\end{figure}
+\end{cspinline}
 
 \section{ABC}
-In the ABC object, three threads are involved in each round of synchronization. For simplicity, a process calling \textbf{syncA}, \textbf{syncB}, and \textbf{syncC} is called a A process, B process, C process. In each round of synchronization, A A-process, B-process, and C-process synchronize, and each process returns the argument of two other processes. 
+In the ABC object, three threads are involved in each round of synchronization. For simplicity, a process calling \CSPM{syncA}, \CSPM{syncB}, and \CSPM{syncC} is called a A process, B process, C process. In each round of synchronization, A A-process, B-process, and C-process synchronize, and each process returns the argument of two other processes. 
 
-\begin{figure}
-\begin{minted}{scala}
+\begin{scalafloat}{abc.scala.correct}{Scala implementation of the ABC using semaphores}
 class ABC[A,B,C] extends ABCT[A,B,C]{
   // The identities of the current (or previous) threads.
   private var a: A = _
@@ -215,28 +228,26 @@ class ABC[A,B,C] extends ABCT[A,B,C]{
     result
   }
 }      
-\end{minted}
-\caption{Scala implementation of the ABC using semaphores}
-\label{abc.scala.correct}
-\end{figure}
+\end{scalafloat}
 
 For the above semaphore implementation of ABC object, In each round
 \begin{itemize}
-    \item Initially semaphore \textbf{aClear} is raised.
-    \item An A-process acquire semaphore \textbf{aClear}, sets the shared variable \textbf{a} to its parameter, raises semaphore \textbf{bClear} and waits to acquire semaphore \textbf{aSignal}. A B-process and a C-process operates in turn with a slight change of semaphore and variable name.
-    \item The A-process is able to continue after a C-process raises semaphore \textbf{aSignal}. The A-process reads the shared variable \textbf{b} and \textbf{c}, raises the semaphore \textbf{bSignal}, and returns. This also happens in turn for the B-process and the C-process.
+    \item Initially semaphore \CSPM{aClear} is raised.
+    \item An A-process acquire semaphore \CSPM{aClear}, sets the shared variable \CSPM{a} to its parameter, raises semaphore \CSPM{bClear} and waits to acquire semaphore \CSPM{aSignal}. A B-process and a C-process operates in turn with a slight change of semaphore and variable name.
+    \item The A-process is able to continue after a C-process raises semaphore \CSPM{aSignal}. The A-process reads the shared variable \CSPM{b} and \CSPM{c}, raises the semaphore \CSPM{bSignal}, and returns. This also happens in turn for the B-process and the C-process.
 \end{itemize}
 
 Using the shared variable and semaphore module, it is easy to translate the Scala implementation to a CSP implementation.
 
 Unlike monitor in Java and Scala, raising a semaphore immediately allows another thread waiting to acquire the semaphore to continue. So in the semaphore implementation, it is essential to take a copy of the two other arguments before raising the semaphore.
 
-On the other hand, what if the implementation of \textbf{syncA} does not take a copy of the argument? It turns out the ABC object still works correctly when only three threads are involved, but fails the linearization test with four threads.
+On the other hand, what if the implementation of \CSPM{syncA} does not take a copy of the argument? It turns out the ABC object still works correctly when only three threads are involved, but fails the linearization test with four threads.
 
 \subsection{Testing}
-Using the standard linearization testing technique, the following \textbf{Sync} channel can be used to represent the synchronization of three involved threads. For example, the event $Sync.t_1.a.b.c.t_2.d.e.f.t_3.g.h.i$ represents the synchronizations of three threads, $t_1,t_2,t_3$, in which the first process $t_1$ calls \textbf{aSync} with $a$ and returns $(b,c)$, the second process $t_2$ calls \textbf{bSync} with $d$ and returns $(e,f)$, and last process $t_3$ calls \textbf{cSync} with $g$ and returns $(h,i)$. The spec process should then check that for each synchronization point, the return value of each functional call is the pair of arguments of the two other function call.
+For the MenWomen object, 
+Using the standard linearization testing technique, the following \CSPM{Sync} channel can be used to represent the synchronization of three involved threads. For example, the event $Sync.t_1.a.b.c.t_2.d.e.f.t_3.g.h.i$ represents the synchronizations of three threads, $t_1,t_2,t_3$, in which the first process $t_1$ calls \CSPM{aSync} with $a$ and returns $(b,c)$, the second process $t_2$ calls \CSPM{bSync} with $d$ and returns $(e,f)$, and last process $t_3$ calls \CSPM{cSync} with $g$ and returns $(h,i)$. The spec process should then check that for each synchronization point, the return value of each functional call is the pair of arguments of the two other function call.
 
-\begin{cspm}
+\begin{cspinline}{}{}
 channel Sync: TypeThreadID.TypeData.TypeData.TypeData.
               TypeThreadID.TypeData.TypeData.TypeData.
               TypeThreadID.TypeData.TypeData.TypeData
@@ -245,40 +256,39 @@ Spec = Sync?aid?a?b?c
            ?bid:diff(TypeThreadID,{aid})!b!a!c
            ?cid:diff(TypeThreadID,{aid,bid})!c!a!b 
     -> Spec
-\end{cspm}
-
+\end{cspinline}
 //Preparation of test case: I will describe 
-There are two test cases. The first test case involves three threads. Each of the thread chooses a data non-deterministically and then calls one of \textbf{aSync}, \textbf{bSync}, \textbf{cSync}. The second test case involves four thread, which chooses a data non-deterministically and calls \textbf{aSync}. In both cases, the systems should be traced refined (is it this direction in words) by the specification process. In addition, both systems should never deadlock. Because in both system, there are always threads willing to communicate as \textbf{aSync}, \textbf{bSync}, \textbf{cSync} respectively.
+There are two test cases. The first test case involves three threads. Each of the thread chooses a data non-deterministically and then calls one of \CSPM{aSync}, \CSPM{bSync}, \CSPM{cSync}. The second test case involves four thread, which chooses a data non-deterministically and calls \CSPM{aSync}. In both cases, the systems should be traced refined (is it this direction in words) by the specification process. In addition, both systems should never deadlock. Because in both system, there are always threads willing to communicate as \CSPM{aSync}, \CSPM{bSync}, \CSPM{cSync} respectively.
 
 When testing with both the correct and the faulty versions of ABC object, FDR finishes the first test case relatively quickly, but requires a long time to finish the second test. With logging message from FDR, it was found the compilation of specification process took the longest time. 
 //TODO: Table
 
 \subsubsection{Speeding up model compilation}
-Consider the specification process. Let $N$ be the number of threads in the system, $M$ be the size of the set of all possible arguments. The specification process is the alphabetized parallel of $N$ individual linearizers. In each linearizer, the process first chooses to perform one of \textbf{aSync}, \textbf{bSync} or \textbf{cSync}, chooses the argument of the functional call for \textbf{Call} event, then chooses the rest of arguments for \textbf{Sync} event, and finally performs one event before recursing into itself.
+Consider the specification process. Let $N$ be the number of threads in the system, $M$ be the size of the set of all possible arguments. The specification process is the alphabetized parallel of $N$ individual linearizers. In each linearizer, the process first chooses to perform one of \CSPM{aSync}, \CSPM{bSync} or \CSPM{cSync}, chooses the argument of the functional call for \CSPM{Call} event, then chooses the rest of arguments for \CSPM{Sync} event, and finally performs one event before recursing into itself.
 
-There are $O(3*N^3M^9)$ different transitions before the individual linearizer recurses into itself. However, according to the specification process, once the argument and return value of \textbf{syncA} is determined, all remaining arguments and return value are also determined. So only $O(3*N^3M^3)$ transitions are valid according to the specification. 
+There are $O(3*N^3M^9)$ different transitions before the individual linearizer recurses into itself. However, according to the specification process, once the argument and return value of \CSPM{syncA} is determined, all remaining arguments and return value are also determined. So only $O(3*N^3M^3)$ transitions are valid according to the specification. 
 
-\begin{cspm}
+\begin{cspinline}{}{}
   Call!me!ASync?a->
     Sync!me!a?b?c 
         ?t2:diff(All,{me})?t2b?t2a?t2c 
         ?t3:diff(All,{me,t2})?t3c?t3a?t3b ->
     Return!me!ASync!b!c ->
     Lin(All,me)
-\end{cspm}
+\end{cspinline}
     
 With the above analysis, it is tempting to optimize the individual linearizer by using the information from the specification process. Instead of choosing all possible remaining arguments, the individual linearizer could choose arguments that are correct according to the specification process.
 
-\begin{cspm}
+\begin{cspinline}{}{}
   Sync!me!a?b?c 
       ?t2:diff(All,{me})!b!a!c
       ?t3:diff(All,{me,t2})!c!a!b ->
   Return!me!ASync!b!c
-\end{cspm}
+\end{cspinline}
 
-It is possible to further simplify the \textbf{Sync} channel, as now the arguments representing return value are redundant. This change does not reduce the number of transitions for an individual linearizer, but it may help FDR simulating the model faster.
+It is possible to further simplify the \CSPM{Sync} channel, as now the arguments representing return value are redundant. This change does not reduce the number of transitions for an individual linearizer, but it may help FDR simulating the model faster.
 
-\begin{cspm}
+\begin{cspinline}{}{}
 channel Sync: TypeThreadID.TypeThreadID.TypeThreadID.
               TypeData.TypeData.TypeData
 
@@ -288,7 +298,7 @@ Lin(All,me)= (
   Return!me!ASync!b!c ->
   Lin(All,me)
 ) ...
-\end{cspm}
+\end{cspinline}
 
 With the above optimizations, the testing finishes quickly for both test cases.
 
@@ -299,14 +309,13 @@ With the traces of the counterexample from FDR, it is possible to see what goes 
 
 //TODO: Draw diagram using Scala code for this.
 \begin{itemize}
-  \item Thread $T_A$, $T_B$, $T_C$ call \textbf{aSync}, \textbf{bSync} or \textbf{cSync} respectively, and put down its argument in turn.
-  \item Thread $T_A$ raises \textbf{bSignal} without saving a copy of   return value {(b,c)}. The other two threads $T_B$, $T_C$ are able   to continue and exit. 
-  \item Thread $T_D$, $T_B$, $T_C$ call \textbf{aSync}, \textbf{bSync} or \textbf{cSync} respectively, and put down its argument in turn.
+  \item Thread $T_A$, $T_B$, $T_C$ call \CSPM{aSync}, \CSPM{bSync} or \CSPM{cSync} respectively, and put down its argument in turn.
+  \item Thread $T_A$ raises \CSPM{bSignal} without saving a copy of   return value {(b,c)}. The other two threads $T_B$, $T_C$ are able   to continue and exit. 
+  \item Thread $T_D$, $T_B$, $T_C$ call \CSPM{aSync}, \CSPM{bSync} or \CSPM{cSync} respectively, and put down its argument in turn.
   \item Thread $T_A$ uses the wrong overwritten $(b,c)$ as return value. 
   
 \end{itemize}
 
 \subsubsection{Conclusion}
 In the above section, we tested a semaphore based concurrent datatypes. With the testing result, we showed that it is important to be reminded that a thread waiting for the semaphore to raise can immediately continue and overwrite shared variables, after the semaphore is raised by another process.
-
 \end{document}
