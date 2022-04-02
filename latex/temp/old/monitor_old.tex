@@ -1,13 +1,3 @@
-\documentclass{article}
-\usepackage{listing}
-\usepackage{csp}
-\usepackage{cspm}
-\usepackage{helper}
-\usepackage{tikz}
-
-\begin{document}
-\subsection{Monitor}
-
 //TODO: Describing Java Monitor.
 
 //I find the state graph useful for explaining the CSP implementation
@@ -28,11 +18,7 @@ There are a few corner cases to consider.
 
 In Java, when a process calls notify, but there is no waiting process to wake up, the function call does nothing. However, if the server process sends a \textbf{Notify} event when no process is waiting, the server process will simply deadlock. Thus, it is essential to prevent the server process doing a \textbf{Notify} event in such case.
 
-One way to achieve this is to maintain a list of waiting processes. When the server process needs to do a \textbf{Notify}, after the running process sends a \textbf{Notify} event, the server process non-deterministically picks a waiting process from the list and send a \textbf{WaitNotify} event. Similarly, for notifyAll, the server process non-deterministically sends \textbf{WaitNotify} to all waiting process. It is also possible to simplify the lists of waiting processes to the number of waiting processes, because when the server sends a \textbf{WaitNotify} event, only waiting processes will be synchronized. 
-
+ 
 The monitor may spuriously wake up some processes at some time. For this purpose, the server process may non-deterministically choose to wake up processes whenever possible. //TODO: Livelock.
 
 Now that waiting processes may be waked up spuriously, it becomes helpful to use \textbf{wait} with a while loop like \textbf{while(cond) wait()}, to check if variable has actually been changed. While loop, again, is not in CSP. Also \textbf{cond} is a bit unusual, because when evaluating the condition, the process may need to read global variable. For this reason, a generic while loop is defined. //TODO: While loop
-
-
-\end{document}
