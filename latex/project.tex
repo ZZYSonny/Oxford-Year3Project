@@ -9,17 +9,32 @@
 \usetikzlibrary{decorations.text}
 
 \begin{document}
+\section{Linearization}
+Proving a concurrent datatype's correctness is usually more complicated than proving for a single-threaded data structure. In addition to the state explosion when more and more processes are involved, scheduling is one particular reason that proving is difficult. For example, two processes are enqueuing their data to a concurrent queue. The process calling earlier may be descheduled and interact with the queue after the other process.
 
+The linearizability test from [TODO:reference] is one way to prove that a sequence of process interactions is correct using only trivially measurable information - pairs of calling and returning time of every function call made by every process.   From the history of function calls, The linearizability test tries to find a synchronization point for each call, where the call appears to make an effect. In addition, the series of synchronization points should satisfy the specification of the concurrent datatype.
 
+In order to show that a system using a concurrent datatype is correct, the linearizability test works by running the system many times and checking the traces. In this essay, we use CSP models and the linearizer framework to prove the correctness of a concurrent datatype.
+
+CSP is ... Trace is ... Trace refinement is ... FDR is ...
+
+In the CSP model, the history of all function call is represented using related events. \CSPM{Call.t.op.p} represents a process calls function \CSPM{op} with parameter \CSPM{p}. \CSPM{Return.t.op.ans} represents a process returns from calling \CSPM{op} with return value \CSPM{ans}.
+
+In CSP, trace refinement is a valuable tool to analyze the history of function calls described in the linearizability test. If the testing system, which produces possible function calls and function returns in CSP, refines a CSP specification of the system, then the testing system cannot do anything incorrect and thus must be correct. One way to construct the specification is to use the linearizer framework.
+
+The linearizer has two core components - the linearizer process and the specification process for the \CSPM{Sync} event. The linearizer process generates endless pairs of \CSPM{Call} and \CSPM{Return} events with its synchronization point for a specific process. When all linearizer processes, together with the specification process for \CSPM{Sync}, run in parallel, the combined process produces all possible histories in CSP. Figure \ref{intro.linearizer.combine} shows how to create the combined processes in FDR. In Section ... we shall see more concrete instances of the linearizer framework.
+\begin{cspinline}{intro.linearizer.combine}{Creation of the specification from the linearizers}
+(( || me: All @ [LinEvents(All,me)]  Lin(All,me)) [|{|Sync|}|] Spec) \ {|Sync|}
+\end{cspinline}
 \section{Common Objects}
 \subsection{Shared Variable}
 The usage of shared variables is common in concurrent datatypes. For example, some concurrent datatypes may temporarily store the identity of a waiting process. However, CSP is more like a functional programming language and does not support mutable variables. 
 
 A recursive process in CSP can capture the behaviour of a shared variable. The recursive process holds the value of the variable in its parameter. At any time, the variable process is willing to answer a query for the variable value in channel \CSPM{getValue}. Alternatively, the process can receive an update on the variable value in channel \CSPM{getValue}, after which the function recurses with the new variable value.
 
-Because it is natural for a concurrent datatype to use multiple shared variables, the global variable is implemented as a CSP module, as shown in Figure \ref{globalvar.csp.init}. The module requires two parameters. \CSPM{TypeValue} is the set of possible values for the variable, and \CSPM{initialValue} is the value before any process modifies the variable. An uninitialized variable module is also available in Figure \ref{globalvar.csp.uninit}, with the only difference that the variable non-deterministically chooses an initial value from \CSPM{TypeValue} at start time. \CSPM{runWith} is a convenient helper function to run a given process \CSPM{P} with the \CSPM{Var} process. If the parameter \CSPM{hide} is true, \CSPM{runWith} function hides all events introduced by the shared variable. In later chapters, we will see how the \CSPM{runWith} function helps reduce the code complexity of the synchronization object implementation.
+Because it is natural for a concurrent datatype to use multiple shared variables, the global variable is implemented as a CSP module, as shown in Figure \ref{globalvar.csp}. The module requires two parameters. \CSPM{TypeValue} is the set of possible values for the variable, and \CSPM{initialValue} is the value before any process modifies the variable. An uninitialized variable module is also available in the same figure \ref{globalvar.csp}, with the only difference that the variable non-deterministically chooses an initial value from \CSPM{TypeValue} at start time. \CSPM{runWith} is a convenient helper function to run a given process \CSPM{P} with the \CSPM{Var} process. If the parameter \CSPM{hide} is true, \CSPM{runWith} function hides all events introduced by the shared variable. In later chapters, we will see how the \CSPM{runWith} function helps reduce the code complexity of the synchronization object implementation.
 
-\begin{cspinline}{globalvar.csp.init}{CSP implementation of global variable process module}
+\begin{cspinline}{globalvar.csp}{CSP implementation of global variable process module}
 module ModuleVariable(TypeValue, initialValue)
   Var(value) = getValue!value -> Var(value)
              [] setValue?value -> Var(value)
@@ -30,9 +45,7 @@ exports
                             else  Var(initialValue) [|chanset|] P
   channel getValue, setValue: TypeValue
 endmodule
-\end{cspinline}
 
-\begin{cspinline}{globalvar.csp.uninit}{CSP implementation of global variable process module}
 module ModuleUninitVariable(TypeValue)
   Var(value) = getValue!value -> Var(value)
             [] setValue?value -> Var(value)
@@ -83,7 +96,15 @@ endmodule
 A Monitor is another powerful concurrent primitive. This essay will also use a simplified monitor from [TODO:reference].
 
 \begin{scalainline}{monitor.scala.example}{Description}
+class MenWomen {
+  private var a = 0;
+  def op1():Unit = synchronized{
+    a+=1;
+  }
+}
 \end{scalainline}
+
+Usually, code (protected by the monitor) is wrapped inside a synchronized block, as shown in Figure \ref{monitor.scala.example}. But before the process runs code inside the synchronized block, the process needs to check if others have obtained the monitor lock. Also, an exiting process needs to release the monitor lock so that other processes can continue. In Figure \ref{monitor.states}, edge 1 represents a process entering the synchronized block, and edge 6 describes the transition of a process exiting the synchronized block. Inside the synchronized block, the process may call \CSPM{notify}, \CSPM{notifyAll}, \CSPM{wait} function. A running process calling \CSPM{wait} blocks execution and waits to be notified. When a running process notifies a waiting process, the waiting process becomes runnable and waits to obtain the monitor lock. Note that the waiting process can only continue execution after the current process exits its synchronized block, unlike that a process waiting to acquire the semaphore can immediately continue after another process raises the semaphore. All above transitions are represented by edge 2,3,4,5 in diagram \ref{monitor.states} respectively. 
 
 \begin{figure}
   \centering
@@ -120,7 +141,7 @@ A Monitor is another powerful concurrent primitive. This essay will also use a s
 \caption{Time Line}
 \label{monitor.states}
 \end{figure}
-Usually, code (protected by the monitor) is wrapped inside a synchronized block, as shown in Figure \ref{monitor.scala.example}. But before the process runs code inside the synchronized block, the process needs to check if others have obtained the monitor lock. Also, an exiting process needs to release the monitor lock so that other processes can continue. In Figure \ref{monitor.states}, edge 1 represents a process entering the synchronized block, and edge 6 describes the transition of a process exiting the synchronized block. Inside the synchronized block, the process may call \CSPM{notify}, \CSPM{notifyAll}, \CSPM{wait} function. A running process calling \CSPM{wait} blocks execution and waits to be notified. When a running process notifies a waiting process, the waiting process becomes runnable and waits to obtain the monitor lock. Note that the waiting process can only continue execution after the current process exits its synchronized block, unlike that a process waiting to acquire the semaphore can immediately continue after another process raises the semaphore. All above transitions are represented by edge 2,3,4,5 in diagram \ref{monitor.states} respectively. 
+
 
 In the CSP implementation of monitors, the monitor process does most of the work. Most monitor methods are implemented simply by sending an event to the monitor process, except for the \CSPM{wait}. Recall that a running process calling \CSPM{wait} first waits for notification and reobtains the monitor lock. So after sending the \CSPM{Wait} event, the process waits for a notify event or a spurious wakeup event. Finally, the waiting process remains for a \CSPM{WaitEnter} event, which gives the process the monitor lock. In practice, the \CSPM{wait} function is often guarded with a while loop to prevent spurious wakeup. Again CSPM does not have a built-in while loop, and a generic while statement is implemented in continuation pass style. (Maybe leave this continuation pass style while loop in appendix?)
 
@@ -128,8 +149,122 @@ The monitor process has two states. When there is no running process, the monito
 
 There is a corner case to highlight in the CSP implementation. In Java, if a running process calls \CSPM{notify} method when there is no waiting processing, the function call does nothing. To make sure that the running process is not blocked in this case, when the running process calls \CSPM{notify} method, the process send a \CSPM{notify} to the server. Then if there are process waiting to be notified, the server process sends a \CSPM{waitNotify} event to the waiting process.
 
+\begin{cspfloat}{monitor.csp}{Implementation of Monitor in CSP}
+  module ModuleMonitor(TypeThreadID)
+  channel
+    Notify, NotifyAll, Exit, Wait,
+    WaitNotify, WaitEnter, SpuriousWake: TypeThreadID
+
+  chanset = {| Notify, NotifyAll, Exit, Wait, WaitNotify, WaitEnter, SpuriousWake|}
+
+  --A list of event for every event e in s
+  repeat(ch, s) =
+    if s=={} then SKIP
+    else ch?a:s -> repeat(ch, diff(s, {a}))
+
+  --cur is current active running thread
+  --waiting is a set of threads waiting to be notified
+  active(cur, waiting) =
+    --current running thread notify
+    Notify.cur -> (
+      if waiting=={} then 
+        --do nothing if no thread is waiting
+        active(cur, {})
+      else
+        --wakeup a process
+        WaitNotify?a:waiting -> 
+        active(cur, diff(waiting, {a}))
+    ) []
+    --current running thread notifyAll
+    NotifyAll.cur -> (
+      repeat(WaitNotify, waiting);
+      active(cur, {})
+    ) []
+    --current running thread exit
+    Exit.cur -> (
+      inactive(waiting)
+    ) []
+    --current running thread wait
+    Wait.cur -> (
+      inactive(union(waiting,{cur}))
+    ) []
+    --spurious wakeup
+    waiting!={} & SpuriousWake?a:waiting -> (
+      active(cur, diff(waiting, {a}))
+    )
+
+  --when no active thread is running
+  inactive(waiting) = 
+    --pick a thread that is ready to enter
+    WaitEnter?a -> (
+      active(a, waiting)
+    ) []
+    --spurious wakeup
+    waiting!={} & SpuriousWake?a:waiting -> (
+      inactive(diff(waiting, {a}))
+    )
+
+exports
+  --Given a process that uses the monitor
+  --Return the process synchronized with the monitor server process
+  --If hide is true, monitor channels are hidden
+  runWith(hideSpurious, hideInternal, P) = 
+    let hideset0 = if hideInternal then chanset else {} within
+    let hideset1 = if hideSpurious then hideset0 else diff(hideset0,{|SpuriousWake|}) within
+    (inactive({}) [|chanset|] P) \ hideset1
+  
+  --java-like synchronized function
+  synchronized(me, P)=
+    WaitEnter.me ->
+    P;
+    Exit.me ->
+    SKIP
+
+  enter(me) = 
+    WaitEnter.me ->
+    SKIP
+
+  exit(me) =
+    Exit.me -> 
+    SKIP
+
+  --notify()
+  notify(me) = 
+    Notify.me ->
+    SKIP
+
+  --notifyAll()
+  notifyAll(me) =
+    NotifyAll.me ->
+    SKIP
+
+  --wait()
+  wait(me) =
+    Wait.me -> ((
+        WaitNotify.me ->
+        WaitEnter.me ->
+        SKIP
+      ) [] (
+        SpuriousWake.me ->
+        WaitEnter.me ->
+        SKIP
+      )
+    )
+  
+  whileWait(me,cond) =
+    while(cond)(wait(me);SKIP)
+endmodule
+\end{cspfloat}
+
 \section{MenWomen}
-The MenWomen object is another synchronization object to be analyzed in this essay. The MenWomen object offers two operations, \CSPM{ManSync} and \CSPM{WomanSync}. For simplicity, a process calling \CSPM{ManSync} is called a man process, and a process calling \CSPM{WomanSync} is called a woman process. After the synchronization, a man process pairs with a woman process, and both processes obtain the identity of the other process. 
+The MenWomen problem is a classical synchronization problem. In this problem, some processes need to pair with some other processes, by exchanging their identities. Figure \ref{menwomen.scala.interface} is an interface of a concurrent datatype for the MenWomen problem. For simplicity, a process calling \CSPM{ManSync} is called a man process, and a process calling \CSPM{WomanSync} is called a woman process. 
+
+\begin{scalainline}{menwomen.scala.interface}{Interface}
+trait MenWomenT{
+  def manSync(me: Int): Int
+  def womanSync(me: Int): Int
+}
+\end{scalainline}
 
 \subsection{Implementation}
 One way to implement the MenWomen object is to use a monitor and a shared variable indicating the stage of synchronization. Figure \ref{menwomen.scala.correct} is a Scala implementation of the MenWomen object with monitor.
@@ -205,7 +340,7 @@ womanSync(me)=
 \end{cspfloat}
 
 
-\subsection{Test}
+\subsection{Linearization Test}
 //This technique mostly applies to all objects.
 
 \begin{figure}
