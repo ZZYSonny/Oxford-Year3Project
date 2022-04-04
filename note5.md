@@ -20,3 +20,19 @@ CSP a separate section. See how it goes after sec1 completes
 setValue.q <- if q!=<> then deqLP... else enqLP..., setValue.q <- if length(q)!=max then enqLP  else deqLP
 
 If nThread called > nThread required, then sync must be possible.
+
+
+
+
+
+A certain point sync happens. 
+value of return is correct 
+
+better technique for analyzing. developing technique, libs
+
+
+Semaphore: Mutex 
+
+unraised -> lowered
+
+monitor: example wait and notify
