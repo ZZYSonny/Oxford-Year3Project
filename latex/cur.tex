@@ -1,27 +1,29 @@
 \documentclass{article}
-\usepackage{listing}
 \usepackage{csp}
 \usepackage{cspm}
 \usepackage{helper}
-\usepackage{tikz}
-\usetikzlibrary{arrows.meta}
-\usetikzlibrary{positioning}
-\usetikzlibrary{decorations.text}
 \begin{document}
-Proving a concurrent datatype's correctness is usually more complicated than proving for a single-threaded data structure. In addition to the state explosion when more and more processes are involved, scheduling is one particular reason that proving is difficult. For example, two processes are enqueuing their data to a concurrent queue. The process calling earlier may be descheduled and interact with the queue after the other process.
+%CSP
 
-The linearizability test from [TODO:reference] is one way to prove that a sequence of process interactions is correct using only trivially measurable information - pairs of calling and returning time of every function call made by every process.   From the history of function calls, The linearizability test tries to find a synchronization point for each call, where the call appears to make an effect. In addition, the series of synchronization points should satisfy the specification of the concurrent datatype.
+\subsection{Checking safety property using CSP} 
+The history can be captured as a trace of a system. In addition to performing the function body, each function call sends a \CSPM{Call} event before the function body and a \CSPM{Return} event after the function body. Figure \ref{common.callreturn} is the definition of \CSPM{Call} and \CSPM{Return} channel in CSP. The definition of the channel usually need to include the identity of the calling process, the function called, and its parameter. 
 
-In order to show that a system using a concurrent datatype is correct, the linearizability test works by running the system many times and checking the traces. In this essay, we use CSP models and the linearizer framework to prove the correctness of a concurrent datatype.
-
-CSP is ... Trace is ... Trace refinement is ... FDR is ...
-
-In the CSP model, the history of all function call is represented using related events. \CSPM{Call.t.op.p} represents a process calls function \CSPM{op} with parameter \CSPM{p}. \CSPM{Return.t.op.ans} represents a process returns from calling \CSPM{op} with return value \CSPM{ans}.
-
-In CSP, trace refinement is a valuable tool to analyze the history of function calls described in the linearizability test. If the testing system, which produces possible function calls and function returns in CSP, refines a CSP specification of the system, then the testing system cannot do anything incorrect and thus must be correct. One way to construct the specification is to use the linearizer framework.
-
-The linearizer has two core components - the linearizer process and the specification process for the \CSPM{Sync} event. The linearizer process generates endless pairs of \CSPM{Call} and \CSPM{Return} events with its synchronization point for a specific process. When all linearizer processes, together with the specification process for \CSPM{Sync}, run in parallel, the combined process produces all possible histories in CSP. Figure \ref{intro.linearizer.combine} shows how to create the combined processes in FDR. In Section ... we shall see more concrete instances of the linearizer framework.
-\begin{cspinline}{intro.linearizer.combine}{Creation of the specification from the linearizers}
-(( || me: All @ [LinEvents(All,me)]  Lin(All,me)) [|{|Sync|}|] Spec) \ {|Sync|}
+\begin{cspinline}{common.callreturn}{Definition of call}
+--identity of the calling process
+--function called by the process
+channel Call : TypeThreadID.TypeOps
+--identity of the calling process
+--function called by the process
+--return value of the function call
+channel Return: TypeThreadID.TypeOps.TypeThreadID
 \end{cspinline}
+
+To check the safety property, we check that a testing system built from some processes using the concurrent datatype refines a specification process built from the object definition in CSP trace model.
+
+A generic and scalable system is used for the testing system to generate possible histories of processes using concrete datatype. Each process in the testing system can call any function from the concurrent object with any arguments allowed. Such construction allows to build a system with an arbitrary number of processes, and cover as many histories as possible. 
+The specification generates all valid histories. The process uses the same number of linearizer processes synchronizing on events from the \CSPM{Sync} channel. Each linearizer process repeatedly calls a function, synchronize with zero or some processes, and returns according to the calling argument and extra information from the synchronization point. 
+We shall see a concrete testing system and specification process in the MenWomen section. 
+
+\subsection{Checking liveness property using CSP}
+For liveness property, we check the same generic and scalable testing system refines the same specification process, but in the failure model. Suppose all process calls \CSPM{manSync}. Since a linearizer process calling \CSPM{manSync} sends \CSPM{Return} event only after synchronizing \CSPM{Sync} event with another linearizer process calling \CSPM{womanSync}, the linearizer will refuse to return any function call, which is a expected behavior. One can use a datatype-specific specification process that does not explicitly use any synchronization points. However, reusing the linearizer process is easier. 
 \end{document}

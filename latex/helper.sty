@@ -1,5 +1,7 @@
 \ProvidesPackage{helper}
 \RequirePackage{listings}
+\RequirePackage{float}
+\RequirePackage{svg}
 
 \lstset{
   captionpos=b,
@@ -13,7 +15,8 @@
   \lstset{
     language=scala,
     label=#1,
-    caption={#2}
+    caption={#2},
+    float=h
   }
 }{
   %TC:endignore
@@ -143,4 +146,12 @@
 }{
   \egroup
   %TC:endignore
+}
+
+\newcommand{\svginline}[3]{
+  \begin{figure}[h]
+    \centering\includesvg[inkscapelatex=false]{#1}
+    \caption{#3}
+    \label{#2}
+  \end{figure}    
 }

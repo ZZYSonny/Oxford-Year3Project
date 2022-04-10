@@ -5,6 +5,7 @@ test
 .vscode
 # Latex
 _minted-*
+svg-inkscape
 *.synctex.gz
 *.log
 *.aux

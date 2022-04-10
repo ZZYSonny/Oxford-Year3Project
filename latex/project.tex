@@ -8,24 +8,68 @@
 \usetikzlibrary{positioning}
 \usetikzlibrary{decorations.text}
 
+\makeatletter
+\AtBeginDocument{%
+  \let\c@figure\c@lstlisting
+  \let\thefigure\thelstlisting
+  \let\ftype@lstlisting\ftype@figure % give the floats the same precedence
+}
+\makeatother
+
 \begin{document}
-\section{Linearization}
-Proving a concurrent datatype's correctness is usually more complicated than proving for a single-threaded data structure. In addition to the state explosion when more and more processes are involved, scheduling is one particular reason that proving is difficult. For example, two processes are enqueuing their data to a concurrent queue. The process calling earlier may be descheduled and interact with the queue after the other process.
+\section{Introduction}
+%What is a concurrent datatype
+A concurrent datatype is ... A concurrent datatype offers encapsulation of concurrency and makes writing concurrent programs simpler. 
 
-The linearizability test from [TODO:reference] is one way to prove that a sequence of process interactions is correct using only trivially measurable information - pairs of calling and returning time of every function call made by every process.   From the history of function calls, The linearizability test tries to find a synchronization point for each call, where the call appears to make an effect. In addition, the series of synchronization points should satisfy the specification of the concurrent datatype.
+%Example
+For example, the MenWomen object is a concurrent datatype that captures a classical synchronization problem. In this problem, some processes need to pair with other processes by exchanging their identities. Figure \ref{menwomen.scala.interface} is an interface of a concurrent datatype for the MenWomen problem. 
 
-In order to show that a system using a concurrent datatype is correct, the linearizability test works by running the system many times and checking the traces. In this essay, we use CSP models and the linearizer framework to prove the correctness of a concurrent datatype.
+\begin{scalainline}{menwomen.scala.interface}{Interface}
+  trait MenWomenT{
+    def manSync(me: Int): Int
+    def womanSync(me: Int): Int
+  }
+\end{scalainline}
 
-CSP is ... Trace is ... Trace refinement is ... FDR is ...
+The safety and liveness properties are essential to the correctness of concurrent datatypes. The safety property states that the behaviour of the concurrent object should observe some invariant. For example, if a process with identity $1$ calling \CSPM{manSync} returns $2$, then the process with identity $2$ should call \CSPM{womanSync} and return $1$. The liveness property states that the concurrent object should not block all synchronization when synchronization is possible between one or more processes. For example, a system with one process calling \CSPM{manSync} and one process calling \CSPM{womanSync} should not deadlock.
 
-In the CSP model, the history of all function call is represented using related events. \CSPM{Call.t.op.p} represents a process calls function \CSPM{op} with parameter \CSPM{p}. \CSPM{Return.t.op.ans} represents a process returns from calling \CSPM{op} with return value \CSPM{ans}.
+In this paper, we examine the above two correctness properties for various concurrent datatypes. In addition, we provide a few CSP implementations for objects commonly used in concurrent programming, which can be used in future CSP projects.
 
-In CSP, trace refinement is a valuable tool to analyze the history of function calls described in the linearizability test. If the testing system, which produces possible function calls and function returns in CSP, refines a CSP specification of the system, then the testing system cannot do anything incorrect and thus must be correct. One way to construct the specification is to use the linearizer framework.
+\subsection{Linearization test}
+%Describe lin point
+To verify the correctness of a concurrent datatype, one can carry out the Linearization test described in [TODO: Reference]. The linearization testing framework measures each call's starting and returning time to get a history of function calls and function returns. Then for the observed history, the testing framework attempt to find a series of synchronization point that obeys the safety property. If the framework can not find a valid synchronization point series, then the concurrent datatype implementation is wrong. 
 
-The linearizer has two core components - the linearizer process and the specification process for the \CSPM{Sync} event. The linearizer process generates endless pairs of \CSPM{Call} and \CSPM{Return} events with its synchronization point for a specific process. When all linearizer processes, together with the specification process for \CSPM{Sync}, run in parallel, the combined process produces all possible histories in CSP. Figure \ref{intro.linearizer.combine} shows how to create the combined processes in FDR. In Section ... we shall see more concrete instances of the linearizer framework.
-\begin{cspinline}{intro.linearizer.combine}{Creation of the specification from the linearizers}
-(( || me: All @ [LinEvents(All,me)]  Lin(All,me)) [|{|Sync|}|] Spec) \ {|Sync|}
+In this remaining section we shall look at a few history from the \CSPM{MenWomen} object. The timeline in Figure \ref{timeline.example.simple} visualizes the function call history of two process \CSPM{T1} and \CSPM{T2}. \CSPM{T1} first calls \CSPM{manSync}, then T2 calls \CSPM{womanSync}. A synchronization occurs between \CSPM{T1} and \CSPM{T2}. \CSPM{T1} returns the identity of process \CSPM{T2} then \CSPM{T2} returns the identity of process \CSPM{T1}.
+\svginline{./drawio/manwomen.timeline1.svg}{timeline.example.simple}{Visualized history of T1 calling manSync and T2 calling womanSync}
+
+In Figure \ref{timeline.example.dead}, both processes calls \CSPM{manSync}, and no synchronization is possible. Note that the liveness condition is not invalidated even if the system deadlocks in this case.
+\svginline{./drawio/manwomen.timeline2.svg}{timeline.example.dead}{Visualized history of both T1 and T2 calling womanSync}
+
+Scheduling is one of the reasons validating a history can be complicated. In Figure \ref{timeline.example.descheduled}, process \CSPM{T3} calls \CSPM{manSync} first but gets descheduled. Then \CSPM{T1} calls \CSPM{manSync} and synchronizes with \CSPM{T2} which later calls \CSPM{womanSync}. To find a valid series of synchronization point, the linearization framework usually needs to search a large state. 
+\svginline{./drawio/manwomen.timeline3.svg}{timeline.example.descheduled}{Visualized history of T3 get descheduled}
+
+\subsection{Checking safety property using CSP} 
+The history can be captured as a trace of a system. In addition to performing the function body, each function call sends a \CSPM{Call} event before the function body and a \CSPM{Return} event after the function body. Figure \ref{common.callreturn} is the definition of \CSPM{Call} and \CSPM{Return} channel in CSP. The definition of the channel usually need to include the identity of the calling process, the function called, and its parameter. 
+
+\begin{cspinline}{common.callreturn}{Definition of call}
+--identity of the calling process
+--function called by the process
+channel Call : TypeThreadID.TypeOps
+--identity of the calling process
+--function called by the process
+--return value of the function call
+channel Return: TypeThreadID.TypeOps.TypeThreadID
 \end{cspinline}
+
+To check the safety property, we check that a testing system built from some processes using the concurrent datatype refines a specification process built from the object definition in CSP trace model.
+
+A generic and scalable system is used for the testing system to generate possible histories of processes using concrete datatype. Each process in the testing system can call any function from the concurrent object with any arguments allowed. Such construction allows to build a system with an arbitrary number of processes, and cover as many histories as possible. 
+The specification generates all valid histories. The process uses the same number of linearizer processes synchronizing on events from the \CSPM{Sync} channel. Each linearizer process repeatedly calls a function, synchronize with zero or some processes, and returns according to the calling argument and extra information from the synchronization point. 
+We shall see a concrete testing system and specification process in the MenWomen section. 
+
+\subsection{Checking liveness property using CSP}
+For liveness property, we check the same generic and scalable testing system refines the same specification process, but in the failure model. Suppose all process calls \CSPM{manSync}. Since a linearizer process calling \CSPM{manSync} sends \CSPM{Return} event only after synchronizing \CSPM{Sync} event with another linearizer process calling \CSPM{womanSync}, the linearizer will refuse to return any function call, which is a expected behavior. One can use a datatype-specific specification process that does not explicitly use any synchronization points. However, reusing the linearizer process is easier. 
+
 \section{Common Objects}
 \subsection{Shared Variable}
 The usage of shared variables is common in concurrent datatypes. For example, some concurrent datatypes may temporarily store the identity of a waiting process. However, CSP is more like a functional programming language and does not support mutable variables. 
@@ -257,14 +301,7 @@ endmodule
 \end{cspfloat}
 
 \section{MenWomen}
-The MenWomen problem is a classical synchronization problem. In this problem, some processes need to pair with some other processes, by exchanging their identities. Figure \ref{menwomen.scala.interface} is an interface of a concurrent datatype for the MenWomen problem. For simplicity, a process calling \CSPM{ManSync} is called a man process, and a process calling \CSPM{WomanSync} is called a woman process. 
-
-\begin{scalainline}{menwomen.scala.interface}{Interface}
-trait MenWomenT{
-  def manSync(me: Int): Int
-  def womanSync(me: Int): Int
-}
-\end{scalainline}
+For simplicity, a process calling \CSPM{ManSync} is called a man process, and a process calling \CSPM{WomanSync} is called a woman process. 
 
 \subsection{Implementation}
 One way to implement the MenWomen object is to use a monitor and a shared variable indicating the stage of synchronization. Figure \ref{menwomen.scala.correct} is a Scala implementation of the MenWomen object with monitor.
@@ -381,11 +418,11 @@ Thread(me)=
 System(All)=runWith(True,True,||| me:All @ Thread(me))
 \end{cspinline}
   
-There are two properties one should check for the system. First, the traces of the system are valid. If a thread $t_1$ calls \CSPM{ManSync} and returns the thread identity $t_2$, then $t_2$ must call \CSPM{WomanSync} somewhere. This is done by checking that the system refines a linearization specification (introduced earlier?). Second, the system should not deadlock when matching is possible. This can be done by another specification process, which records the set of men processes and women processes to determine if matching is possible. However, it is easier to modify the linearization specification process and check that the system failure refines the specification process.
+There are two properties one should check for the system. First, the traces of the system are valid. If a thread $t_1$ calls \CSPM{ManSync} and returns the thread identity $t_2$, then $t_2$ must call \CSPM{WomanSync} somewhere. This is done by checking that the system refines a linearisation specification (introduced earlier?). Second, the system should not deadlock when matching is possible. This can be done by another specification process, which records the set of men processes and women processes to determine if matching is possible. However, it is easier to modify the linearisation specification process and check that the system failure refines the specification process.
 
 The implementation of the linearizer specification relies on the synchronization point. The synchronization point of a man process and a woman process is represented by a \CSPM{Sync} event. The $Sync.t_1.a.t_2.b$ represents the synchronization of a man process $t_1$ with parameter $a$ with a woman process $t_2$ with parameter $b$.
 
-With the \CSPM{Sync} event, it is simple to define the linearizer for a process. The process can choose to call \CSPM{ManSync}, synchronize with a woman process, and return the identity of the woman process. Or, the process can choose to call \CSPM{WomanSync}, synchronize with a man process, and return the identity of man process. Also, the process chooses to terminate when it finishes calling a function.
+With the \CSPM{Sync} event, it is simple to define the lineariser for a process. The process can choose to call \CSPM{ManSync}, synchronize with a woman process, and return the identity of the woman process. Or, the process can choose to call \CSPM{WomanSync}, synchronize with a man process, and return the identity of man process. Also, the process chooses to terminate when it finishes calling a function.
 \begin{cspinline}{menwomen.csp.testsystem}{CSP implementation of the testing processes and system}
 Lin(All,me)= (
   Call!me!ManSync->
@@ -457,7 +494,7 @@ Using the shared variable and semaphore module, it is easy to translate the Scal
 
 Unlike monitor in Java and Scala, raising a semaphore immediately allows another thread waiting to acquire the semaphore to continue. So in the semaphore implementation, it is essential to take a copy of the two other arguments before raising the semaphore.
 
-On the other hand, what if the implementation of \CSPM{syncA} does not take a copy of the argument? It turns out the ABC object still works correctly when only three threads are involved, but fails the linearization test with four threads.
+On the other hand, what if the implementation of \CSPM{syncA} does not take a copy of the argument? It turns out the ABC object still works correctly when only three threads are involved, but fails the linearisation test with four threads.
 
 \subsection{Testing}
 For the MenWomen object, 
@@ -480,9 +517,9 @@ When testing with both the correct and the faulty versions of ABC object, FDR fi
 //TODO: Table
 
 \subsubsection{Speeding up model compilation}
-Consider the specification process. Let $N$ be the number of threads in the system, $M$ be the size of the set of all possible arguments. The specification process is the alphabetized parallel of $N$ individual linearizers. In each linearizer, the process first chooses to perform one of \CSPM{aSync}, \CSPM{bSync} or \CSPM{cSync}, chooses the argument of the functional call for \CSPM{Call} event, then chooses the rest of arguments for \CSPM{Sync} event, and finally performs one event before recursing into itself.
+Consider the specification process. Let $N$ be the number of threads in the system, $M$ be the size of the set of all possible arguments. The specification process is the alphabetized parallel of $N$ individual linearisers. In each linearizer, the process first chooses to perform one of \CSPM{aSync}, \CSPM{bSync} or \CSPM{cSync}, chooses the argument of the functional call for \CSPM{Call} event, then chooses the rest of arguments for \CSPM{Sync} event, and finally performs one event before recursing into itself.
 
-There are $O(3*N^3M^9)$ different transitions before the individual linearizer recurses into itself. However, according to the specification process, once the argument and return value of \CSPM{syncA} is determined, all remaining arguments and return value are also determined. So only $O(3*N^3M^3)$ transitions are valid according to the specification. 
+There are $O(3*N^3M^9)$ different transitions before the individual lineariser recurses into itself. However, according to the specification process, once the argument and return value of \CSPM{syncA} is determined, all remaining arguments and return value are also determined. So only $O(3*N^3M^3)$ transitions are valid according to the specification. 
 
 \begin{cspinline}{}{}
   Call!me!ASync?a->
@@ -493,7 +530,7 @@ There are $O(3*N^3M^9)$ different transitions before the individual linearizer r
     Lin(All,me)
 \end{cspinline}
     
-With the above analysis, it is tempting to optimize the individual linearizer by using the information from the specification process. Instead of choosing all possible remaining arguments, the individual linearizer could choose arguments that are correct according to the specification process.
+With the above analysis, it is tempting to optimize the individual lineariser by using the information from the specification process. Instead of choosing all possible remaining arguments, the individual lineariser could choose arguments that are correct according to the specification process.
 
 \begin{cspinline}{}{}
   Sync!me!a?b?c 
@@ -502,7 +539,7 @@ With the above analysis, it is tempting to optimize the individual linearizer by
   Return!me!ASync!b!c
 \end{cspinline}
 
-It is possible to further simplify the \CSPM{Sync} channel, as now the arguments representing return value are redundant. This change does not reduce the number of transitions for an individual linearizer, but it may help FDR simulating the model faster.
+It is possible to further simplify the \CSPM{Sync} channel, as now the arguments representing return value are redundant. This change does not reduce the number of transitions for an individual lineariser, but it may help FDR simulating the model faster.
 
 \begin{cspinline}{}{}
 channel Sync: TypeThreadID.TypeThreadID.TypeThreadID.
