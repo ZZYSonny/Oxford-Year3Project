@@ -13,10 +13,8 @@
   %TC:ignore
   \renewcommand{\lstlistingname}{Figure}
   \lstset{
+    label=#1,caption={#2},float=h,
     language=scala,
-    label=#1,
-    caption={#2},
-    float=h
   }
 }{
   %TC:endignore
@@ -24,13 +22,12 @@
 
 
 \lstnewenvironment{scalafloat}[2]{
+  \newpage
   %TC:ignore
   \renewcommand{\lstlistingname}{Figure}
   \lstset{
-    language=scala,
-    label=#1,
-    caption={#2},
-    float
+    label=#1,caption={#2},
+    language=scala
   }
 }{
   %TC:endignore
@@ -41,8 +38,7 @@
   \global\@ignoretrue\bgroup
   \renewcommand{\lstlistingname}{Figure}
   \lstset{
-    label=#1,
-    caption={#2},
+    label=#1,caption={#2},float=h,
     language=cspm, % columns=fixed, 
     escapechar=£, basewidth={0.7em,0.45em},
     keepspaces=true,
@@ -93,12 +89,12 @@
 }
 
 \lstnewenvironment{cspfloat}[2]{
+  \newpage
   %TC:ignore
   \global\@ignoretrue\bgroup
   \renewcommand{\lstlistingname}{Figure}
   \lstset{
-    label=#1,
-    caption={#2},float,
+    label=#1,caption={#2}, %float,
     language=cspm, % columns=fixed, 
     escapechar=£, basewidth={0.7em,0.45em},
     keepspaces=true,
@@ -149,7 +145,7 @@
 }
 
 \newcommand{\svginline}[3]{
-  \begin{figure}[h]
+  \begin{figure}[H]
     \centering\includesvg[inkscapelatex=false]{#1}
     \caption{#3}
     \label{#2}

@@ -380,33 +380,6 @@ womanSync(me)=
 \subsection{Linearization Test}
 //This technique mostly applies to all objects.
 
-\begin{figure}
-  \centering
-  %\resizebox{\linewidth}{!}{% Resize table to fit within
-  \begin{tikzpicture}[]
-  %draw horizontal line
-  \draw (2em,0em) -- (16em,0em);
-  \draw (2em,2pt) -- (2em,-2pt);
-  \draw (16em,2pt) -- (16em,-2pt);
-  \draw (1em,0em) node[] { \scriptsize $T_2$};
-  \draw (2em,0em) node[below=2pt] { \scriptsize WomanSync($T_2$)};
-  \draw (16em,0em) node[below=2pt] { \scriptsize Returns $T_1$};
-  
-  
-  \draw (4em,1em) -- (18em,1em);
-  \draw (4em,1em+2pt) -- (4em,1em-2pt);
-  \draw (18em,1em+2pt) -- (18em,1em-2pt);
-  \draw (1em,1em) node[] { \scriptsize $T_1$};
-  \draw (4em,1em) node[above=2pt] { \scriptsize ManSync($T_1$)};
-  \draw (18em,1em) node[above=2pt] { \scriptsize Returns $T_2$};
-  
-  \draw [line width=2pt] (10em,0em-2pt) -- (10em,1em+2pt);
-  \draw (10em,0.5em) node[right=4pt] { \scriptsize $Sync.T_1.T_2.T_2.T_1$};
-  \end{tikzpicture}
-  %}
-  \label{menwomen.timeline}
-  \caption{Time Line}
-\end{figure}
 
 A generic and scalable testing system is introduced to make the test cover as many cases as possible. The testing system includes an arbitrary number of processes, and each process calls any functions provided by the synchronization objects for any finite or infinite number of times. For the CSP implementation, each process non deterministically chooses a function and its parameters, or the process chooses to terminate. Figure \ref{menwomen.csp.testsystem} is the definition of a testing process and a testing system for MenWomen object in CSP.
 
