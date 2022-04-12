@@ -125,12 +125,13 @@ System = VarA::runWith(false,P|||Q)
 
 
 \subsection{Semaphore}
-Semaphore is a simple but powerful concurrent primitive. The essay shall describe and use a simplified binary semaphore from [TODO: Reference], which removes interrupts and timeout operations. 
+A Semaphore is a simple but powerful concurrent primitive. This thesis shall describe and use a simplified binary semaphore from [TODO: Reference], which removes interrupts and timeout operations. 
 
-A binary semaphore can either be raised or unraised. A \CSPM{down} function call, usually by a process that previously acquired the semaphore, raises the semaphore regardless of the semaphore state. If a process calls the \CSPM{up} method when the semaphore is raised, the semaphore becomes unraised. However, if the semaphore is unraised, the process waits until another process calls \CSPM{down} and proceeds to put down the semaphore. Depending on the initial state of the semaphore, a binary semaphore can be further classified as a mutex semaphore or a signalling semaphore.
+A binary semaphore can either be raised or lowered. A \CSPM{down} function call raises the semaphore regardless of the semaphore state. If a process calls the \CSPM{down} method when the semaphore is raised, the semaphore becomes unraised. However, if the semaphore is unraised, the process waits until another process calls \CSPM{up} and proceeds to put down the semaphore. Depending on the initial state of the semaphore, a binary semaphore can be further categorized as a mutex semaphore or a signalling semaphore.
 
 Modelling a semaphore is simple in CSP. A process may call \CSPM{up} function or \CSPM{down} function via channel \CSPM{upChan} or channel \CSPM{downChan} respectively. The semaphore is modelled by a process implemented by two mutually recursive functions \CSPM{Semaphore(True)} and \CSPM{Semaphore(False)}. The semaphore process representing an unraised state accepts a \CSPM{upChan} event by any process and proceeds to the raised process. The semaphore process representing a raised state can either accept a \CSPM{upChan} event and recurse to the raised process, or accept a \CSPM{downChan} event and proceed to the unraised process.
 
+Like the shared variable in the earlier subsection, the semaphore is encapsulated in a CSP module. To create a semaphore, one needs to supply two arguments. \CSPM{TypeThreadID} is the set of identities of processes that use this semaphore. \CSPM{initialState} is a boolean value indicating the starting state of the semaphore. If \CSPM{initialState} is true, the semaphore is raised iniitially. Otherwise, the semaphore is lowered. 
 \begin{cspinline}{semaphore.csp}{Implementation of a binary semaphore in CSP}
 module ModuleSemaphore(TypeThreadID, initialState)
   --Raised
@@ -142,69 +143,50 @@ module ModuleSemaphore(TypeThreadID, initialState)
   chanset = {|upChan, downChan|}
 exports
   --runWith::(Bool,Proc) -> Proc
-  runWith(hide,P) = (Mutex [| chanset |] P) \ 
+  runWith(hide,P) = (Semaphore [| chanset |] P) \ 
                      (if hide then chanset else {})
   channel upChan, downChan: TypeThreadID
 endmodule
 \end{cspinline}
 
 \subsection{Monitor}
-A Monitor is another powerful concurrent primitive. This essay will also use a simplified monitor from [TODO:reference].
+A Monitor is another powerful concurrent primitive. This thesis will also use a simplified monitor from [TODO:reference].
 
 \begin{scalainline}{monitor.scala.example}{Description}
-class MenWomen {
+class MonitorExample {
   private var a = 0;
   def op1():Unit = synchronized{
     a+=1;
   }
+
+  private var b = 0;
+  def op2():Unit = synchronized{
+    b+=1;
+    wait();
+    b-=1;
+  }
+
+  def op3():Unit = synchronized{
+    notify();
+  }
+
+  def op4():Unit = synchronized{
+    notifyAll();
+  }
 }
 \end{scalainline}
 
-Usually, code (protected by the monitor) is wrapped inside a synchronized block, as shown in Figure \ref{monitor.scala.example}. But before the process runs code inside the synchronized block, the process needs to check if others have obtained the monitor lock. Also, an exiting process needs to release the monitor lock so that other processes can continue. In Figure \ref{monitor.states}, edge 1 represents a process entering the synchronized block, and edge 6 describes the transition of a process exiting the synchronized block. Inside the synchronized block, the process may call \CSPM{notify}, \CSPM{notifyAll}, \CSPM{wait} function. A running process calling \CSPM{wait} blocks execution and waits to be notified. When a running process notifies a waiting process, the waiting process becomes runnable and waits to obtain the monitor lock. Note that the waiting process can only continue execution after the current process exits its synchronized block, unlike that a process waiting to acquire the semaphore can immediately continue after another process raises the semaphore. All above transitions are represented by edge 2,3,4,5 in diagram \ref{monitor.states} respectively. 
+Usually, code protected by the monitor is wrapped inside a \CSPM{synchronized} block. In Figure \ref{monitor.scala.example}, \CSPM{op1} uses synchronized to prevent race condition on the variable \CSPM{a}. To run a \CSPM{synchronized} block in CSPM, the process first needs to synchronize with the monitor process on a \CSPM{waitEnter} event, which works as a certificate to run code insider block. After running the code inside \CSPM{synchronized} block, the process sends a \CSPM{Exit} event to notify the monitor process that it is exiting.
 
-\begin{figure}
-  \centering
-  \resizebox{\linewidth}{!}{
-  \begin{tikzpicture}[] 
-      \tikzstyle{node}=[
-          draw,
-          circle,
-          minimum size=3.6em
-      ]
-      \tikzstyle{edge}=[
-          -{Latex[length=2mm, width=2mm]}
-      ]
-      \tikzset{near start abs/.style={xshift=1cm}}
-      \node[node] (1) {Free}; 
-      \node[node] [right=13em of 1] (2) {Runnable}; 
-      \node[node] [right=20em of 2] (3) {Running};
-      \node[node] [right=10em of 2, yshift=10em] (4) {Waiting};
-      
-      \draw[edge] (1) -- node[midway, above, sloped]{1.Enter synchronized block} node[midway, below, sloped] {} (2) ;
-      \draw[edge] (2) -- node[midway, above, sloped]{2.Scheduled by monitor} node[midway, below, sloped] {\CSPM{WaitEnter}} (3) ;
-      \draw[edge] (3) -- node[midway, above, sloped]{3.Call \CSPM{wait}} node[midway, below, sloped] {\CSPM{WaitEnter}} (4);
-      \draw[edge] (4) -- node[midway, above, sloped]{4.Notified / Spurious Wakeup} node[midway, below, sloped] {\CSPM{WaitNotify}/\CSPM{SpuriousWake}} (2) ;
-  
-      \draw[edge,bend right=330] (3) to (1);
-      \node[] [xshift=21em,yshift=-5.7em] (10) {6.Exit synchronized block};
-      \node[] [below of=10, yshift=1em]{\CSPM{Exit}};
-  
-      \draw[edge] (3) to [out=315,in=45,looseness=2] (3);
-      \node[] [right of=3, xshift=2.5em,yshift=0.5em] (11) {5.Notify};
-      \node[] [below of=11, xshift=1.5em, yshift=1.6em] {\CSPM{Notify}/\CSPM{NotifyAll}};
-  \end{tikzpicture};
-}
-\caption{Time Line}
-\label{monitor.states}
-\end{figure}
+Inside a \CSPM{synchronized} block, the process can also perform \CSPM{wait}, \CSPM{notify}, and \CSPM{notifyAll}. The method \CSPM{op2} in Figure \ref{monitor.scala.example} first increments \CSPM{b}, wait to be notified, and decrements \CSPM{b}. So the shared variable \CSPM{b} here counts the number of processes waiting to be notified. The method \CSPM{op3} notifies one waiting process and \CSPM{op4} notifies all waiting processes. 
 
+In the CSP implementation, a waiting process first synchronizes a \CSPM{Wait} event with the monitor process to indicate that the process calls \CSPM{wait} and no longer hold the running certificate. The process can then be waked up with \CSPM{waitNotify} or spuriously by a event \CSPM{SpuiousWake} from the monitor process. Finally the process needs to reobtain the certificate \CSPM{WaitEnter} to resume execution. In practice, the \CSPM{wait} function is often guarded with a while loop to prevent spurious wakeup. Again CSPM does not have a built-in while loop, and a generic while statement is implemented in continuation pass style. (Maybe leave this continuation pass style while loop in appendix?)
 
-In the CSP implementation of monitors, the monitor process does most of the work. Most monitor methods are implemented simply by sending an event to the monitor process, except for the \CSPM{wait}. Recall that a running process calling \CSPM{wait} first waits for notification and reobtains the monitor lock. So after sending the \CSPM{Wait} event, the process waits for a notify event or a spurious wakeup event. Finally, the waiting process remains for a \CSPM{WaitEnter} event, which gives the process the monitor lock. In practice, the \CSPM{wait} function is often guarded with a while loop to prevent spurious wakeup. Again CSPM does not have a built-in while loop, and a generic while statement is implemented in continuation pass style. (Maybe leave this continuation pass style while loop in appendix?)
+Note that both \CSPM{WaitNotify} and \CSPM{SpuriousWake} events come from the monitor process. And when a process calls \CSPM{notify} or \CSPM{notifyAll}, it needs to synchronize with the monitor process. This is because normally a process does not know how many processes are waiting. If a process calling \CSPM{notify} directly synchronizes with a waiting process, then the notifying process will block if there are no waiting process. Similarly a process calling \CSPM{notifyAll} does not know how many process it should wake up. 
 
-The monitor process has two states. When there is no running process, the monitor process can allow a free process to enter its synchronized block by synchronizing on a \CSPM{waitEnter} event with the process. When there is a running process, the server process should respond to method calls from the running process, but not allow a process to obtain the monitor lock and proceed to its synchronized block. In either state, the monitor process can spuriously wake up a waiting process.
+The monitor process has two states. The monitor process allows different set of events in two different states. When there is no running process, the monitor can allow a free process to enter its synchronized block by synchronizing on a \CSPM{waitEnter} event with the process. When there is a running process, the server process should respond to method calls from the running process, but the monitor should not allow another process to obtain the monitor lock. In either state, the monitor process can spuriously wake up a waiting process.
 
-There is a corner case to highlight in the CSP implementation. In Java, if a running process calls \CSPM{notify} method when there is no waiting processing, the function call does nothing. To make sure that the running process is not blocked in this case, when the running process calls \CSPM{notify} method, the process send a \CSPM{notify} to the server. Then if there are process waiting to be notified, the server process sends a \CSPM{waitNotify} event to the waiting process.
-
+//Should I split some functions into respective paragraphs here. Or use line number. 
 \begin{cspfloat}{monitor.csp}{Implementation of Monitor in CSP}
   module ModuleMonitor(TypeThreadID)
   channel
@@ -325,7 +307,7 @@ One way to implement the MenWomen object is to use a monitor and a shared variab
 
 The code snippet in Figure \ref{menwomen.scala.correct} is a Scala implementation of the MenWomen process using a monitor by Gavin Lowe. The Scala code is further translated to a CSP code in Figure \ref{menwomen.csp.correct}. Every function call begins with a Call event containing all parameters. And every function call ends with a Return event containing the return value.
 
-\begin{scalafloat}{menwomen.scala.correct}{Scala implementation of the MenWomen process using a monitor}
+\begin{scalainline}{menwomen.scala.correct}{Scala implementation of the MenWomen process using a monitor}
 class MenWomen extends MenWomenT{
   private var stage = 0
   private var him = -1
@@ -343,9 +325,9 @@ class MenWomen extends MenWomenT{
     her = me; stage = 2; notifyAll();
   }
 }
-\end{scalafloat}
+\end{scalainline}
 
-\begin{cspfloat}{menwomen.csp.correct}{CSP implementation of the MenWomen}
+\begin{cspinline}{menwomen.csp.correct}{CSP implementation of the MenWomen}
 instance VarStage = ModuleVariable({0,1,2},0) 
 instance VarHim = ModuleUninitVariable(TypeThreadID)
 instance VarHer = ModuleUninitVariable(TypeThreadID)
@@ -386,7 +368,7 @@ womanSync(me)=
   Return!me!WomanSync!ans->
   SKIP
   )
-\end{cspfloat}
+\end{cspinline}
 
 
 \subsection{Linearization Test}
