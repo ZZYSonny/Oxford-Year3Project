@@ -22,7 +22,6 @@
 
 
 \lstnewenvironment{scalafloat}[2]{
-  \newpage
   %TC:ignore
   \renewcommand{\lstlistingname}{Figure}
   \lstset{
@@ -89,7 +88,6 @@
 }
 
 \lstnewenvironment{cspfloat}[2]{
-  \newpage
   %TC:ignore
   \global\@ignoretrue\bgroup
   \renewcommand{\lstlistingname}{Figure}
@@ -149,5 +147,14 @@
     \centering\includesvg[inkscapelatex=false]{#1}
     \caption{#3}
     \label{#2}
+  \end{figure}    
+}
+
+\newcommand{\svginlinescaled}[4]{
+  \begin{figure}[H]
+    \centering
+      \includesvg[inkscapelatex=false, scale=#2]{#1}
+    \caption{#4}
+    \label{#3}
   \end{figure}    
 }

@@ -63,8 +63,18 @@ channel Return: TypeThreadID.TypeOps.TypeThreadID
 
 To check the safety property, we check that a testing system built from some processes using the concurrent datatype refines a specification process built from the object definition in CSP trace model.
 
-A generic and scalable system is used for the testing system to generate possible histories of processes using concrete datatype. Each process in the testing system can call any function from the concurrent object with any arguments allowed. Such construction allows to build a system with an arbitrary number of processes, and cover as many histories as possible. 
-The specification generates all valid histories. The process uses the same number of linearizer processes synchronizing on events from the \CSPM{Sync} channel. Each linearizer process repeatedly calls a function, synchronize with zero or some processes, and returns according to the calling argument and extra information from the synchronization point. 
+A generic and scalable system is used for the testing system to generate possible histories of processes using concrete datatype. Each process in the testing system can call any function from the concurrent object with any arguments allowed. It is important each process can choose to terminate. Otherwise the testing system only models a system that runs forever when there is no deadlock. And we shall see how this affect correctness checking in FilterChan object. 
+
+The specification generates all valid histories. The process uses the same number of linearizer processes synchronizing on events from the \CSPM{Sync} channel. Event from the \CSPM{Sync} channel should include information from all participating processes, and Figure \ref{common.sync} is the \CSPM{Sync} channel definition for ... Each linearizer process repeatedly calls a function, synchronize with zero or some processes, and returns according to the calling argument and extra information from the synchronization point. To match the definition of the generic and scalable testing system, each linearizer process can also choose to terminate. 
+
+\begin{cspinline}{common.sync}{Definition of call}
+--Identity of thread calling ManSync
+--Return of ManSync
+--Identity of thread calling WomanSync
+--Return of WomanSync
+channel Sync: TypeThreadID.TypeThreadID.TypeThreadID.TypeThreadID
+\end{cspinline}
+  
 We shall see a concrete testing system and specification process in the MenWomen section. 
 
 \subsection{Checking liveness property using CSP}
@@ -76,15 +86,17 @@ The usage of shared variables is common in concurrent datatypes. For example, so
 
 A recursive process in CSP can capture the behaviour of a shared variable. The recursive process holds the value of the variable in its parameter. At any time, the variable process is willing to answer a query for the variable value in channel \CSPM{getValue}. Alternatively, the process can receive an update on the variable value in channel \CSPM{getValue}, after which the function recurses with the new variable value.
 
-Because it is natural for a concurrent datatype to use multiple shared variables, the global variable is implemented as a CSP module, as shown in Figure \ref{globalvar.csp}. The module requires two parameters. \CSPM{TypeValue} is the set of possible values for the variable, and \CSPM{initialValue} is the value before any process modifies the variable. An uninitialized variable module is also available in the same figure \ref{globalvar.csp}, with the only difference that the variable non-deterministically chooses an initial value from \CSPM{TypeValue} at start time. \CSPM{runWith} is a convenient helper function to run a given process \CSPM{P} with the \CSPM{Var} process. If the parameter \CSPM{hide} is true, \CSPM{runWith} function hides all events introduced by the shared variable. In later chapters, we will see how the \CSPM{runWith} function helps reduce the code complexity of the synchronization object implementation.
+Because it is natural for a concurrent datatype to use multiple shared variables, the global variable is implemented as a CSP module in Figure \ref{globalvar.csp} to allow better code reuse. The module requires two parameters. \CSPM{TypeValue} is the set of possible values for the variable, and \CSPM{initialValue} is the value before any process modifies the variable. An uninitialized variable module is also available in the same Figure \ref{globalvar.csp}, with the only difference that the variable non-deterministically chooses an initial value from \CSPM{TypeValue} at start time. \CSPM{runWith} is a convenient helper function to run a given process \CSPM{P} with the \CSPM{Var} process. If the parameter \CSPM{hide} is true, \CSPM{runWith} function hides all events introduced by the shared variable. In later chapters, we will see how the \CSPM{runWith} function helps reduce the code complexity of the synchronization object implementation.
 
 \begin{cspinline}{globalvar.csp}{CSP implementation of global variable process module}
+--set of possible value for the variable
+--inital value for the variable
 module ModuleVariable(TypeValue, initialValue)
   Var(value) = getValue!value -> Var(value)
              [] setValue?value -> Var(value)
   chanset = {|getValue, setValue|}
 exports
-  //(Bool, Proc) -> Proc
+  --(Bool, Proc) -> Proc
   runWith(hide,P) = if hide then (Var(initialValue) [|chanset|] P) \ chanset
                             else  Var(initialValue) [|chanset|] P
   channel getValue, setValue: TypeValue
@@ -322,12 +334,12 @@ class MenWomen extends MenWomenT{
   def manSync(me: Int): Int = synchronized{
     while(stage != 0) wait()         
     him = me; stage = 1; notifyAll() 
-    while(stage != 2) wait
+    while(stage != 2) wait()
     stage = 0; notifyAll(); her
   }
 
   def womanSync(me: Int): Int = synchronized{
-    while(stage != 1) wait
+    while(stage != 1) wait()
     her = me; stage = 2; notifyAll();
   }
 }
@@ -378,24 +390,24 @@ womanSync(me)=
 
 
 \subsection{Linearization Test}
-//This technique mostly applies to all objects.
 
+Recall that in the testing system, each process can call any function provided by the concurrent datatype or choose to terminate. In the CSP implementation for processes in the testing system, each process first non deterministically choose to perform \CSPM{manSync} with its identity, \CSPM{womanSync} with its identity or \CSPM{STOP}. 
 
-A generic and scalable testing system is introduced to make the test cover as many cases as possible. The testing system includes an arbitrary number of processes, and each process calls any functions provided by the synchronization objects for any finite or infinite number of times. For the CSP implementation, each process non deterministically chooses a function and its parameters, or the process chooses to terminate. Figure \ref{menwomen.csp.testsystem} is the definition of a testing process and a testing system for MenWomen object in CSP.
-
+All processes in the testing system interleaves with other processes and synchronize with the processes of shared variables and the process of the monitor. Since the testing system should only include the \CSPM{Call} and \CSPM{Return}, all other events are hidden using the first two boolean flags in \CSPM{runWith} defined in earlier subsection. 
 \begin{cspinline}{menwomen.csp.testsystem}{CSP implementation of the testing processes and system}
 Thread(me)=
-    (manSync(me);Thread(me))
+   (manSync(me);Thread(me))
  |~|(womanSync(me);Thread(me))
  |~|STOP
 System(All)=runWith(True,True,||| me:All @ Thread(me))
 \end{cspinline}
-  
-There are two properties one should check for the system. First, the traces of the system are valid. If a thread $t_1$ calls \CSPM{ManSync} and returns the thread identity $t_2$, then $t_2$ must call \CSPM{WomanSync} somewhere. This is done by checking that the system refines a linearisation specification (introduced earlier?). Second, the system should not deadlock when matching is possible. This can be done by another specification process, which records the set of men processes and women processes to determine if matching is possible. However, it is easier to modify the linearisation specification process and check that the system failure refines the specification process.
 
-The implementation of the linearizer specification relies on the synchronization point. The synchronization point of a man process and a woman process is represented by a \CSPM{Sync} event. The $Sync.t_1.a.t_2.b$ represents the synchronization of a man process $t_1$ with parameter $a$ with a woman process $t_2$ with parameter $b$.
+Similarly, a linearizer process can non-deterministically choose to perform \CSPM{manSync}, synchronize with another linearizer process calling \CSPM{womanSync}, and return with the identity it received from the \CSPM{Sync} event. Also, the linearizer can choose to call \CSPM{womanSync} or terminate. \CSPM{Linearizers(All)} puts all linearizers processes in parallel. 
 
-With the \CSPM{Sync} event, it is simple to define the lineariser for a process. The process can choose to call \CSPM{ManSync}, synchronize with a woman process, and return the identity of the woman process. Or, the process can choose to call \CSPM{WomanSync}, synchronize with a man process, and return the identity of man process. Also, the process chooses to terminate when it finishes calling a function.
+The \CSPM{Linearizers} function creates a combined linearizer process in three steps. First it put all linearizer process in parallel using Replicated Generalized Parallel in CSPM. Specfically,  General Parallel uses three argument, the linearizer identity set, the linearizer process, and a synchronization alphabet set. The synchronization alphabet set for a process identity is the set of \CSPM{Sync} event where the process identity appears on first or third argument. If the a linearizer process wants to send a event in its synchronization alphabet set, the process must synchronize with all other linearizer process whose synchronization alphabet set include this event. 
+Then \CSPM{Linearizers} runs the paralleled process with the specification process of \CSPM{Sync} event. For \CSPM{MenWomen} object, the synchronization is stateless and only requires the return value is the identity of the other process.
+Finally, like the testing system, all \CSPM{Sync} event are hidden to provide all valid histories.
+
 \begin{cspinline}{menwomen.csp.testsystem}{CSP implementation of the testing processes and system}
 Lin(All,me)= (
   Call!me!ManSync->
@@ -408,7 +420,48 @@ Lin(All,me)= (
   Return!me!WomanSync!mereturn ->
   Lin(All,me)
 )|~|STOP
+
+LinEvents(All,me)=union({
+  ev | ev<-{|Sync|},
+  let Sync.t1.a.t2.b=ev within
+    countList(me,<t1,t2>)==1 and
+    member(t1, All) and
+    member(t2, All)
+},{|Call.me,Return.me|})
+
+Linearizers(All)=((|| me: All @ [LinEvents(All,me)] Lin(All,me)) [|{|Sync|}|] Spec) 
+                  \{|Sync|}
 \end{cspinline}
+
+Figure \ref{menwomen.lin.timeline.simple} visualizes how the linearizer process can generate the trace that corresponds to the history described in Figure \ref{timeline.example.simple}, where one process calls \CSPM{manSync} and another process calls \CSPM{womanSync}. And \ref{menwomen.lin.timeline.dead} visualizes the linearizer deadlocks as required if both processes calls \CSPM{manSync}.
+
+\svginline{./drawio/menwomen.timeline.lin0.svg}{menwomen.lin.timeline.simple}{Linearizers generating the history where one process calls manSync and another process calling womenSync}
+\svginline{./drawio/menwomen.timeline.lin1.svg}{menwomen.lin.timeline.dead}{Linearizers generating the history where one process calls manSync and another process calling womenSync}
+
+Finally we perform the test using trace refinement for safety property and failure refinement for liveness. As expected, the correct implementation passes all tests. 
+\begin{cspinline}{menwomen.csp.test}{CSP implementation of the testing processes and system}
+System2=System({T1,T2})
+System3=System({T1,T2,T3})
+System4=System({T1,T2,T3,T4})
+System5=System({T1,T2,T3,T4,T5})
+
+Spec2Thread=Linearizers({T1,T2})
+Spec3Thread=Linearizers({T1,T2,T3})
+Spec4Thread=Linearizers({T1,T2,T3,T4})
+Spec5Thread=Linearizers({T1,T2,T3,T4,T5})
+
+assert Spec2Thread [T= System2
+assert Spec3Thread [T= System3
+assert Spec4Thread [T= System4
+assert Spec5Thread [T= System5
+
+assert Spec2Thread [F= System2
+assert Spec3Thread [F= System3
+assert Spec4Thread [F= System4
+assert Spec5Thread [F= System5
+\end{cspinline}
+
+\subsection{A faulty version}
 
 \section{ABC}
 In the ABC object, three threads are involved in each round of synchronization. For simplicity, a process calling \CSPM{syncA}, \CSPM{syncB}, and \CSPM{syncC} is called a A process, B process, C process. In each round of synchronization, A A-process, B-process, and C-process synchronize, and each process returns the argument of two other processes. 
