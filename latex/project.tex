@@ -368,7 +368,6 @@ womanSync(me)=
 
 
 \subsection{Linearization Test}
-
 Recall that in the testing system, each process can call any function provided by the concurrent datatype or choose to terminate. In the CSP implementation a helper function is used. \CSPM{chaosP(P)} runs the process \CSPM{P} that terminate with \CSPM{SKIP} any number of time. With the helper function, the process \CSPM{P} only needs to non-deterministically choose to perform \CSPM{manSync} or \CSPM{womanSync} with its identity.
 
 All processes in the testing system interleaves with other processes and synchronize with the processes of shared variables and the process of the monitor. Since the testing system should only include \CSPM{Call} and \CSPM{Return} events, all other events are hidden using the first two boolean flags in \CSPM{runWith} defined in earlier subsection. 
@@ -413,31 +412,56 @@ Figure \ref{menwomen.lin.timeline.simple} visualizes how the linearizer process 
 \svginline{./drawio/menwomen.timeline.lin0.svg}{menwomen.lin.timeline.simple}{Linearizers generating the history where one process calls manSync and another process calling womenSync}
 \svginline{./drawio/menwomen.timeline.lin1.svg}{menwomen.lin.timeline.dead}{Linearizers generating the history where one process calls manSync and another process calling womenSync}
 
-Finally we perform the test using trace refinement for safety property and failure refinement for liveness. As expected, the correct implementation passes all tests. 
+Finally, we perform the test using trace refinement for safety property and failure refinement for liveness. As expected, the correct implementation passes all tests. 
 \begin{cspinline}{menwomen.csp.test}{CSP implementation of the testing processes and system}
 System2=System({T1,T2})
-System3=System({T1,T2,T3})
-System4=System({T1,T2,T3,T4})
-System5=System({T1,T2,T3,T4,T5})
-
 Spec2Thread=Linearizers({T1,T2})
-Spec3Thread=Linearizers({T1,T2,T3})
-Spec4Thread=Linearizers({T1,T2,T3,T4})
-Spec5Thread=Linearizers({T1,T2,T3,T4,T5})
-
 assert Spec2Thread [T= System2
-assert Spec3Thread [T= System3
-assert Spec4Thread [T= System4
-assert Spec5Thread [T= System5
-
 assert Spec2Thread [F= System2
+
+System3=System({T1,T2,T3})
+Spec3Thread=Linearizers({T1,T2,T3})
+assert Spec3Thread [T= System3
 assert Spec3Thread [F= System3
-assert Spec4Thread [F= System4
-assert Spec5Thread [F= System5
 \end{cspinline}
 
 \subsection{A faulty version}
+We shall examine another MenWomen implementation in Figure \ref{menwomen.scala.faulty}. One key difference in this faulty MenWomen object is that it uses \CSPM{Option} data in the shared variables to store the identity of the process calling \CSPM{manSync} and the process calling \CSPM{womanSync}. 
 
+\begin{scalainline}{menwomen.scala.faulty}{Faulty Scala implementation of MenWomen object}
+class FaultyMenWomen extends MenWomenT{
+  private var him: Option[Int] = None
+  private var her: Option[Int] = None
+
+  def manSync(me: Int): Int = synchronized{
+    while(him.nonEmpty) wait()
+    him = Some(me); notifyAll()
+    while(her.isEmpty) wait()   
+    val Some(res) = her
+    her = None; notifyAll()
+    res
+  }
+
+  def womanSync(me: Int): Int = synchronized{
+    while(her.nonEmpty) wait()
+    her = Some(me); notifyAll()
+    while(him.isEmpty) wait()  
+    val Some(res) = him
+    him = None; notifyAll()
+    res
+  }
+}
+\end{scalainline}
+
+The safetyness property test shows that this implementation handles scheduling carelessly. This implementation fails the test \CSPM{Spec2Thread [T= System2}, and FDR provides a trace that voilates the safetyness specification, shown in Figure \ref{menwomen.faulty.trace}. FDR further allows the user to expand the hidden $\tau$ events in the testing system, which are normally processes' interaction with shared variable and monitor. By understanding the expanded trace in CSP, we can find a equivalent way to trigger the bug in Scala.
+
+\svginlinescaled{./drawio/menwomen.faulty.trace.svg}{0.95}{menwomen.faulty.trace}{Trace}
+
+\begin{itemize}
+  \item A process \CSPM{T1} calls \CSPM{manSync}. On first line, since the shared variable \CSPM{him} is initially \CSPM{None}, \CSPM{T1} skips the \CSPM{wait}, set \CSPM{him} to \CSPM{Some(T1)} and waits for a process calling \CSPM{womanSync}.
+  \item A process \CSPM{T2} calls \CSPM{womanSync} and returns \CSPM{T1}. At this stage, there is no waiting process waiting to run \CSPM{womanSync} and the shared variable is not \CSPM{None}. So \CSPM{T2} does not wait at any point, notifies all waiting process, and returns.
+  \item Before \CSPM{T1} reenters the \CSPM{synchronized} block, process \CSPM{T2} calls \CSPM{womanSync} again. \CSPM{him} has not been reset by \CSPM{T1} yet. So \CSPM{T2} pairs with \CSPM{T1} again, which should not be allowed. 
+\end{itemize}
 \section{ABC}
 With an ABC object, three processes can exchange data with each other two processes. More specifically, one process calling \CSPM{aSync}, one process calling \CSPM{bSync}, and one process calling \CSPM{cSync} synchronizes. Then each of the three processes returns with the arguments of two other processes. For simplicity, we shall call a process calling \CSPM{syncA} as an A-process, a process calling \CSPM{syncB} as a B-process, and a process calling \CSPM{syncC} as a C-process. 
 
@@ -548,7 +572,6 @@ Lin(All,me)=(
 )
 \end{cspinline}
 
-Test
 \begin{cspinline}{abc.csp.test}{Test}
 System3=System({T1,T2,T3})
 System4=System({T1,T2,T3,T4})
