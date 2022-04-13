@@ -171,9 +171,11 @@ Note that both \CSPM{WaitNotify} and \CSPM{SpuriousWake} events come from the mo
 
 The monitor process has two states. The monitor process allows a different set of events in two different states. When there is no running process, the monitor can allow a free process to enter its synchronized block by synchronizing on a \CSPM{waitEnter} event with the process. When there is a running process, the monitor process should respond to method calls from the running process, but the monitor should not allow another process to obtain the monitor lock. In either state, the monitor process can spuriously wake up a waiting process.
 
+It is note worthing that a monitor can create divergence in CSP under convention of linearization tests. The monitor can spuriously wake up a process waiting. The process wakes up, find the condition unsatisfied, and waits again. These are all $\tau$ event in the testing system, since non of these events are \CSPM{Call} and \CSPM{Return} event. To solve the problem, the monitor supports disabling spurious wake up with the parameter \CSPM{disableSpurious}.
+
 //Should I split some functions into respective paragraphs here. Or use line number. 
 \begin{cspfloat}{monitor.csp.1}{The CSP monitor module - private part}
-module ModuleMonitor(TypeThreadID)
+module ModuleMonitor(TypeThreadID, disableSpurious)
   channel
     Notify, NotifyAll, Exit, Wait,
     WaitNotify, WaitEnter, SpuriousWake: TypeThreadID
@@ -264,16 +266,21 @@ exports
 
   --wait()
   wait(me) =
-    Wait.me -> ((
-        WaitNotify.me ->
-        WaitEnter.me ->
-        SKIP
-      ) [] (
-        SpuriousWake.me ->
-        WaitEnter.me ->
-        SKIP
-      )
+    Wait.me -> 
+    if disableSpurious then ((
+      WaitNotify.me ->
+      WaitEnter.me ->
+      SKIP
+    ) [] (
+      SpuriousWake.me ->
+      WaitEnter.me ->
+      SKIP
     )
+  ) else (
+      WaitNotify.me ->
+      WaitEnter.me ->
+      SKIP
+  )
   
   whileWait(me,cond) =
     while(cond)(wait(me);SKIP)
@@ -568,7 +575,9 @@ Thread(me)=chaosP( |~| x:TypeData @ (
 ))
 \end{cspinline}
 
-Using the standard linearization testing technique, tthe \CSPM{Sync} channel in Figure \ref{abc.csp.sync} is used to represent the synchronization of three involved threads. For example, the event $Sync.t_1.a.b.c.t_2.d.e.f.t_3.g.h.i$ represents the synchronizations of three threads, $t_1,t_2,t_3$, in which the first process $t_1$ calls \CSPM{aSync} with $a$ and returns $(b,c)$, the second process $t_2$ calls \CSPM{bSync} with $d$ and returns $(e,f)$, and last process $t_3$ calls \CSPM{cSync} with $g$ and returns $(h,i)$. The Sync specification process, shown in the same figure, should then check that for each synchronization point, the return value of each functional call is the pair of arguments of the two other function call. Finally a linearizer process is defined in a similar format. 
+The testing specification uses the same component, the \CSPM{Sync} channel, linearizer processes, and linEventns. The definition of \CSPM{Sync} channel is shown in Figure \ref{abc.csp.sync}. The event $Sync.t_1.a.b.c.t_2.d.e.f.t_3.g.h.i$ represents the synchronizations between three threads, $t_1,t_2,t_3$. Process $t_1$ calls \CSPM{aSync} with $a$ and returns $(b,c)$. The second process $t_2$ calls \CSPM{bSync} with $d$ and returns $(e,f)$. And the last process $t_3$ calls \CSPM{cSync} with $g$ and returns $(h,i)$. The Sync specification process, shown in the same figure, checks that in each \CSPM{Sync} events, the return value of each process is the pair of arguments of the two other function call. 
+
+Figure \ref{abc.csp.lin} is the definition of a linearizer process, written a similar format with the MenWomen object.
 
 \begin{cspinline}{abc.csp.sync}{Definition of Sync channel and specification of Sync event}
 --thread identity calling ASync. ASync parameter a. ASync return pair (b,c)
@@ -655,5 +664,55 @@ For the test \CSPM{Spec4Thread [T= System4}, FDR displays a trace of the testing
   \item Now $T_A$ returns with $(b,c)$ from the second round, which may not be the argument of \CSPM{bSync} and \CSPM{cSync} in the first round.
 \end{itemize}
 
-\section{Barrier}
+\section{Barrier Counter}
+Barrier synchronization is commonly used in concurrent programming ... A barrier object takes an argument $p$. A process calling \CSPM{sync} blocks until all \CSPM{p} processes call \CSPM{sync}. 
+
+This section shall examine a barrier object with an internal counter. When a \CSPM{sync} call exits, it returns the number of times barrier synchronization has happened. 
+
+\subsection{Implementation}
+
+In this section, we shall use a monitor based barrier counter. Additionaly, this implementation uses three shared variables. \CSPM{seqNumber} is the number of synchronization that happened. \CSPM{count} is the number of processes participating in the current round of synchronization and is waiting to return. \CSPM{leaving} indicates if processes are leaving.
+
+There are two stages in each round of synchronization. 
+\begin{itemize}
+    \item In the first stage, a new process comes and waits for all $p$ processes. Each process increments \CSPM{count}. 
+    \item If a process finds the value of \CSPM{count} is $p$ after incrementing \CSPM{count}, the process knows it is the last process in this round. The $p$-th process sets leaving to \CSPM{true} and notifies all waiting processes to allow other processes in this round to leave and blocks any new coming processes. 
+    \item In the second stage, all $p$ processes, including the $p$-th process, decrements \CSPM{count} to and returns with the value of the shared variable \CSPM{seqNumber}. 
+    \item If a process finds the value of \CSPM{count} equal to $0$, then the process knows it is the last process to leave in this round. Before exiting, it increments \CSPM{seqNumber} and sets \CSPM{leaving} to \CSPM{true}, to allow a new round to start.
+\end{itemize}
+
+\begin{scalafloat}{barriercounter.scala.correct}{Implementation of Barrier Counter in Scala} 
+class BarrierCounter(n: Int) extends BarrierCounterT{
+  private var seqNumber = 0 // the current sequence number
+  private var count = 0 // The number of waiting threads.
+  private var leaving = false // Are we in the leaving phase?
+
+  def sync = synchronized{
+    while(leaving) wait() // Wait for previous round to finish
+    count += 1
+    if(count == n){ 
+      leaving = true; 
+      count -= 1; 
+      notifyAll(); 
+      seqNumber 
+    } else{ 
+      while(!leaving) wait()
+      count -= 1
+      if(count == 0){ 
+        // Allow next round to continue
+        leaving = false; 
+        notifyAll() 
+        // Increment sequence number for next round
+        seqNumber += 1; 
+        seqNumber-1 
+      }
+      else seqNumber
+    }
+  }
+}  
+\end{scalafloat}
+
+\subsection{A stateful concurrent datatypes}
+\newpage
+\section{Terminating Queue}
 \end{document}
