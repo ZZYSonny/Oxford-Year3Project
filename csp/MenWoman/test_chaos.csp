@@ -1,4 +1,4 @@
-include "correct.csp"
+include "faulty.csp"
 include "lin.csp"
 
 Thread(me)=chaosP(
