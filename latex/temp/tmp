@@ -1,0 +1,22 @@
+|--aSync(1)--|--bSync(2)--|--cSync(3)--|
+|aClear.down |            |            |            |
+|a = me      |            |            |            |
+|bClear.up   |bClear.down |            |            |
+|            |b = me      |            |            |
+|            |cClear.up   |            |            |
+|            |            |cClear.down |            |
+|            |            |c = me      |            |
+|aSignal.down|            |aSignal.up  |            |
+|bSignal.up  |bSignal.down|            |            |
+|            |result=(1,3)|            |            |
+|            |cSignal.up  |cSignal.down|            |
+|            |---(1,3)----|result=(1,2)|--aSync(4)--|
+|            |            |aClear.up   |aClear.down |
+|            |            |---(1,4)----|a = me      |
+|            |            |            |bClear.up   |
+|            |--bSync(5)--|--cSync(6)--|
+|            |b = me      |            |            |
+|            |cClear.up   |            |            |
+|            |            |cClear.down |            |
+|            |            |c = me      |            |
+|aSignal.down|            |aSignal.up  |            |
