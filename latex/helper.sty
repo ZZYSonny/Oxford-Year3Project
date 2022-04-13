@@ -142,19 +142,19 @@
   %TC:endignore
 }
 
-\newcommand{\svginline}[3]{
+\newcommand{\svginline}[2]{
   \begin{figure}[H]
-    \centering\includesvg[inkscapelatex=false]{#1}
-    \caption{#3}
-    \label{#2}
+    \centering\includesvg[inkscapelatex=false]{./drawio/#1.svg}
+    \caption{#2}
+    \label{#1}
   \end{figure}    
 }
 
-\newcommand{\svginlinescaled}[4]{
+\newcommand{\svginlinescaled}[3]{
   \begin{figure}[H]
     \centering
-      \includesvg[inkscapelatex=false, scale=#2]{#1}
-    \caption{#4}
-    \label{#3}
+      \includesvg[inkscapelatex=false, scale=#2]{./drawio/#1.svg}
+    \caption{#3}
+    \label{#1}
   \end{figure}    
 }
