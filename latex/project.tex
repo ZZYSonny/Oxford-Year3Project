@@ -11,6 +11,7 @@
   \let\ftype@lstlisting\ftype@figure % give the floats the same precedence
 }
 \makeatother
+\renewcommand\floatpagefraction{0.1}
 
 \begin{document}
 \section{Introduction}
@@ -128,7 +129,7 @@ A binary semaphore can either be raised or lowered. A \CSPM{down} function call 
 Modelling a semaphore is simple in CSP. A process may call \CSPM{up} function or \CSPM{down} function via channel \CSPM{upChan} or channel \CSPM{downChan} respectively. The semaphore is modelled by a process implemented by two mutually recursive functions \CSPM{Semaphore(True)} and \CSPM{Semaphore(False)}. The semaphore process representing an unraised state accepts a \CSPM{upChan} event by any process and proceeds to the raised process. The semaphore process representing a raised state can either accept a \CSPM{upChan} event and recurse to the raised process, or accept a \CSPM{downChan} event and proceed to the unraised process.
 
 Like the shared variable in the earlier subsection, the semaphore is encapsulated in a CSP module. To create a semaphore, one needs to supply two arguments. \CSPM{TypeThreadID} is the set of identities of processes that use this semaphore. \CSPM{initialState} is a boolean value indicating the starting state of the semaphore. If \CSPM{initialState} is true, the semaphore is raised initially. Otherwise, the semaphore is lowered. 
-\begin{cspinline}{semaphore.csp}{The binary semaphore module in CSP}
+\begin{cspfloat}{semaphore.csp}{The binary semaphore module in CSP}
 module ModuleSemaphore(TypeThreadID, initialState)
   --Raised
   Semaphore(True) = downChan?id -> Semaphore(False)
@@ -143,7 +144,7 @@ exports
                      (if hide then chanset else {})
   channel upChan, downChan: TypeThreadID
 endmodule
-\end{cspinline}
+\end{cspfloat}
 
 \subsection{Monitor}
 A Monitor is another powerful concurrent primitive. This thesis will also use a simplified monitor from [TODO:reference].
@@ -151,24 +152,12 @@ A Monitor is another powerful concurrent primitive. This thesis will also use a 
 \begin{scalainline}{monitor.scala.example}{A simple Scala class that uses a monitor internally}
 class MonitorExample {
   private var a = 0;
-  def op1():Unit = synchronized{
-    a+=1;
-  }
-
   private var b = 0;
-  def op2():Unit = synchronized{
-    b+=1;
-    wait();
-    b-=1;
-  }
 
-  def op3():Unit = synchronized{
-    notify();
-  }
-
-  def op4():Unit = synchronized{
-    notifyAll();
-  }
+  def op1():Unit = synchronized{ a+=1; }
+  def op2():Unit = synchronized{ b+=1;wait();b-=1; }
+  def op3():Unit = synchronized{ notify(); }
+  def op4():Unit = synchronized{ notifyAll(); }
 }
 \end{scalainline}
 
@@ -183,7 +172,7 @@ Note that both \CSPM{WaitNotify} and \CSPM{SpuriousWake} events come from the mo
 The monitor process has two states. The monitor process allows a different set of events in two different states. When there is no running process, the monitor can allow a free process to enter its synchronized block by synchronizing on a \CSPM{waitEnter} event with the process. When there is a running process, the monitor process should respond to method calls from the running process, but the monitor should not allow another process to obtain the monitor lock. In either state, the monitor process can spuriously wake up a waiting process.
 
 //Should I split some functions into respective paragraphs here. Or use line number. 
-\begin{cspfloat}{monitor.csp}{The monitor module in CSP}
+\begin{cspfloat}{monitor.csp.1}{The CSP monitor module - private part}
 module ModuleMonitor(TypeThreadID)
   channel
     Notify, NotifyAll, Exit, Wait,
@@ -237,7 +226,8 @@ module ModuleMonitor(TypeThreadID)
     waiting!={} & SpuriousWake?a:waiting -> (
       inactive(diff(waiting, {a}))
     )
-
+\end{cspfloat}
+\begin{cspfloat}{monitor.csp.2}{The CSP monitor module - public part}
 exports
   --Given a process that uses the monitor
   --Return the process synchronized with the monitor server process
@@ -290,6 +280,7 @@ exports
 endmodule
 \end{cspfloat}
 
+\newpage
 \section{MenWomen}
 For simplicity, a process calling \CSPM{ManSync} is called a man process, and a process calling \CSPM{WomanSync} is called a woman process. 
 
@@ -303,7 +294,7 @@ One way to implement the MenWomen object is to use a monitor and a shared variab
 
 The code snippet in Figure \ref{menwomen.scala.correct} is a Scala implementation of the MenWomen process using a monitor by Gavin Lowe. With the shared variable and monitor module, the Scala code is further translated to a CSP code in Figure \ref{menwomen.csp.correct}. With the convention described in the introduction section, every function call begins with a Call event containing all parameters. And every function call ends with a Return event containing the return value.
 
-\begin{scalainline}{menwomen.scala.correct}{A correct MenWomen object implementation in Scala}
+\begin{scalafloat}{menwomen.scala.correct}{A correct MenWomen object implementation in Scala}
 class MenWomen extends MenWomenT{
   private var stage = 0
   private var him = -1
@@ -321,7 +312,7 @@ class MenWomen extends MenWomenT{
     her = me; stage = 2; notifyAll();
   }
 }
-\end{scalainline}
+\end{scalafloat}
 
 \begin{cspfloat}{menwomen.csp.correct}{Translated CSP code for the correct MenWomen object immplementation}
 instance VarStage = ModuleVariable({0,1,2},0) 
@@ -383,7 +374,7 @@ The \CSPM{Linearizers} function creates a combined linearizer process in three s
 Then \CSPM{Linearizers} runs the paralleled process with the specification process of \CSPM{Sync} event. For \CSPM{MenWomen} object, the synchronization is stateless and only requires the return value to be the identity of the other process.
 Finally, like the testing system, all \CSPM{Sync} events are hidden to provide all valid histories.
 
-\begin{cspinline}{menwomen.csp.testsystem}{Definition of linearizer process in CSP}
+\begin{cspfloat}{menwomen.csp.testsystem}{Definition of linearizer process in CSP}
 Lin(All,me)= (
   Call!me!ManSync->
   Sync!me?mereturn?other?otherreturn ->
@@ -406,7 +397,7 @@ LinEvents(All,me)=union({
 
 Linearizers(All)=((|| me: All @ [LinEvents(All,me)] Lin(All,me)) [|{|Sync|}|] Spec) 
                   \{|Sync|}
-\end{cspinline}
+\end{cspfloat}
 
 Figure \ref{menwomen.lin.simple} visualizes how the linearizer process can generate the trace that corresponds to the history described in Figure \ref{menwomen.timeline.simple}, where one process calls \CSPM{manSync} and another process calls \CSPM{womanSync}. And \ref{menwomen.lin.dead} visualizes the linearizer deadlocks as required if both processes calls \CSPM{manSync}.
 
@@ -419,17 +410,12 @@ System2=System({T1,T2})
 Spec2Thread=Linearizers({T1,T2})
 assert Spec2Thread [T= System2
 assert Spec2Thread [F= System2
-
-System3=System({T1,T2,T3})
-Spec3Thread=Linearizers({T1,T2,T3})
-assert Spec3Thread [T= System3
-assert Spec3Thread [F= System3
 \end{cspinline}
 
 \subsection{A faulty version}
 We shall examine another MenWomen implementation in Figure \ref{menwomen.scala.faulty}. One key difference in this faulty MenWomen object is that it uses \CSPM{Option} data in the shared variables to store the identity of the process calling \CSPM{manSync} and the process calling \CSPM{womanSync}. 
 
-\begin{scalainline}{menwomen.scala.faulty}{A Faulty Scala implementation of MenWomen object}
+\begin{scalafloat}{menwomen.scala.faulty}{A Faulty Scala implementation of MenWomen object}
 class FaultyMenWomen extends MenWomenT{
   private var him: Option[Int] = None
   private var her: Option[Int] = None
@@ -452,7 +438,7 @@ class FaultyMenWomen extends MenWomenT{
     res
   }
 }
-\end{scalainline}
+\end{scalafloat}
 
 The safeness property test shows that this implementation handles scheduling carelessly. This implementation fails the test \CSPM{Spec2Thread [T= System2}, and FDR provides a trace that violates the safeness specification, shown in Figure \ref{menwomen.faulty.trace}. FDR further allows the user to expand the hidden $\tau$ events in the testing system, which are normally processes' interactions with shared variables and the monitor. By understanding the expanded trace in CSP, we can find a equivalent way to trigger the bug in Scala.
 
@@ -521,19 +507,65 @@ class ABC[A,B,C] extends ABCT[A,B,C]{
   }
 }      
 \end{scalafloat}
+
+\begin{cspfloat}{abc.csp.correct}{Translated CSP Code for the correct ABC implementation}
+instance VarA = ModuleUninitVariable(TypeData) 
+instance VarB = ModuleUninitVariable(TypeData)
+instance VarC = ModuleUninitVariable(TypeData)
+
+instance aClear = ModuleMutexSemaphore(TypeThreadID)
+instance bClear = ModuleSignallingSemaphore(TypeThreadID)
+instance cClear = ModuleSignallingSemaphore(TypeThreadID)
+instance aSignal = ModuleSignallingSemaphore(TypeThreadID)
+instance bSignal = ModuleSignallingSemaphore(TypeThreadID)
+instance cSignal = ModuleSignallingSemaphore(TypeThreadID)
+
+runWith(hide,p)=
+  VarA::runWith(hide,
+  VarB::runWith(hide,
+  VarC::runWith(hide,
+  aClear::runWith(hide,
+  bClear::runWith(hide,
+  cClear::runWith(hide,
+  aSignal::runWith(hide,
+  bSignal::runWith(hide,
+  cSignal::runWith(hide,
+    p
+  )))))))))
+
+SyncA(me,avalue) =
+  Call!me!ASync!avalue ->
+  --aClear.down
+  aClear::downChan!me ->
+  --a = me
+  VarA::setValue!avalue ->
+  --bClear.up
+  bClear::upChan!me ->
+  --aSignal.down
+  aSignal::downChan!me ->
+  --(b,c)
+  VarB::getValue?b ->
+  VarC::getValue?c ->
+  --bSignal.up
+  bSignal::upChan!me ->
+  --result ->
+  Return!me!ASync!(b.c) ->
+  SKIP
+
+...
+\end{cspfloat}
+
 \subsection{Testing}
 Similar for the MenWomen object, a testing system is defined through any number of working processes and a specification is built from a \CSPM{Sync} channel, linearizer processes, and a synchronization alphabet set. 
 
 One key difference of the \CSPM{ABC} object is that processes can call with any argument from the set \CSPM{TypeData}, whereas in \CSPM{MenWomen} object, processes can only call with their identity. As shown in Figure \ref{abc.csp.worker} So inside \CSPM{chaosP}, the processes also choose an argument with General Non-Deterministic Choice. 
 
 \begin{cspinline}{abc.csp.worker}{Definition of processes in the testing system.}
-Thread(me)=chaosP(
-  |~|x:TypeData @ (
-        SyncA(me,x) 
-    |~| SyncB(me,x) 
-    |~| SyncC(me,x)
-  )
-)
+Thread(me)=chaosP( |~| x:TypeData @ (
+    SyncA(me,x) 
+  |~| SyncB(me,x) 
+  |~| SyncC(me,x)
+))
 \end{cspinline}
 
 Using the standard linearization testing technique, tthe \CSPM{Sync} channel in Figure \ref{abc.csp.sync} is used to represent the synchronization of three involved threads. For example, the event $Sync.t_1.a.b.c.t_2.d.e.f.t_3.g.h.i$ represents the synchronizations of three threads, $t_1,t_2,t_3$, in which the first process $t_1$ calls \CSPM{aSync} with $a$ and returns $(b,c)$, the second process $t_2$ calls \CSPM{bSync} with $d$ and returns $(e,f)$, and last process $t_3$ calls \CSPM{cSync} with $g$ and returns $(h,i)$. The Sync specification process, shown in the same figure, should then check that for each synchronization point, the return value of each functional call is the pair of arguments of the two other function call. Finally a linearizer process is defined in a similar format. 
@@ -552,7 +584,7 @@ Spec = Sync?aid?a?b?c
     -> Spec
 \end{cspinline}
 
-\begin{cspinline}{abc.csp.lin}{Definition of linearizer process}
+\begin{cspfloat}{abc.csp.lin}{Definition of linearizer process}
 --Linearizer for a process
 Lin(All,me)=(
   --me synchronizes as thread A
@@ -573,7 +605,7 @@ Lin(All,me)=(
   Return!me!CSync!a!b ->
   Lin(All,me)
 )
-\end{cspinline}
+\end{cspfloat}
 
 \begin{cspinline}{abc.csp.test}{Part of test for ABC object. This tests a system with three processes.}
 System3=System({T1,T2,T3})
@@ -591,6 +623,8 @@ The last transition in the diagram is the \CSPM{Sync} event between three proces
     
 With the above analysis, it is tempting to reduce the redundancy in \CSPM{Sync} event. Optimize the linearizer process by using the information from the specification process. Instead of choosing all possible remaining arguments, the individual linearizer could choose correct arguments according to the specification process. Figure \ref{abc.csp.simple1} includes part of the simplified code. This change does not reduce the number of transitions in the resulting specification, but it helps FDR build the process faster.
 
+With this optimization, the testing for less than 5 processes finishes quickly.
+
 \begin{cspinline}{abc.csp.simple1}{Simplified definition of Sync channel and part of simplified linearizer}
 channel Sync: TypeThreadID.TypeThreadID.TypeThreadID.
               TypeData.TypeData.TypeData
@@ -602,8 +636,6 @@ Lin(All,me)= (
   Lin(All,me)
 ) ...
 \end{cspinline}
-
-With the above optimization, the testing finishes quickly for both test cases.
 
 \subsection{Faulty version}
 Recall that in Java and Scala, raising a semaphore immediately allows another thread waiting to acquire the semaphore to continue. So it is essential to take a copy of the two other arguments before raising the semaphore.
@@ -622,4 +654,6 @@ For the test \CSPM{Spec4Thread [T= System4}, FDR displays a trace of the testing
   \item Another round of synchronization starts. Thread $T_D$, $T_B$, $T_C$ call \CSPM{aSync}, \CSPM{bSync} or \CSPM{cSync} respectively, and overwites the shared variable \CSPM{a,b,c} in turn.
   \item Now $T_A$ returns with $(b,c)$ from the second round, which may not be the argument of \CSPM{bSync} and \CSPM{cSync} in the first round.
 \end{itemize}
+
+\section{Barrier}
 \end{document}

@@ -13,7 +13,7 @@
   %TC:ignore
   \renewcommand{\lstlistingname}{Figure}
   \lstset{
-    label=#1,caption={#2},float=h,
+    label=#1,caption={#2},
     language=scala,
   }
 }{
@@ -25,7 +25,7 @@
   %TC:ignore
   \renewcommand{\lstlistingname}{Figure}
   \lstset{
-    label=#1,caption={#2},
+    label=#1,caption={#2},float=p,
     language=scala
   }
 }{
@@ -37,7 +37,7 @@
   \global\@ignoretrue\bgroup
   \renewcommand{\lstlistingname}{Figure}
   \lstset{
-    label=#1,caption={#2},float=h,
+    label=#1,caption={#2},
     language=cspm, % columns=fixed, 
     escapechar=£, basewidth={0.7em,0.45em},
     keepspaces=true,
@@ -92,7 +92,7 @@
   \global\@ignoretrue\bgroup
   \renewcommand{\lstlistingname}{Figure}
   \lstset{
-    label=#1,caption={#2}, %float,
+    label=#1,caption={#2}, float=p,
     language=cspm, % columns=fixed, 
     escapechar=£, basewidth={0.7em,0.45em},
     keepspaces=true,
