@@ -296,7 +296,7 @@ For simplicity, a process calling \CSPM{ManSync} is called a man process, and a 
 \subsection{Implementation}
 One way to implement the MenWomen object is to use a monitor and a shared variable indicating the stage of synchronization. Figure \ref{menwomen.scala.correct} is a Scala implementation of the MenWomen object with monitor.
 \begin{itemize}
-  \item A man process enters the synchronization and waits until the current stage is $0$. Then in stage $0$, the man process sets the global variable \CSPM{him} inside the \CSPM{MenWomen} object to its identity. Then the man process notifies all processes so that a waiting woman process can continue. Finally, the man process waits for stage 2.
+  \item A man process enters the synchronization and waits until the current stage is $0$. Then in stage $0$, the man process sets the global variable \CSPM{him} inside the t\CSPM{MenWomen} object to its identity. Then the man process notifies all processes so that a waiting woman process can continue. Finally, the man process waits for stage 2.
   \item A women process enters the synchronization and waits until the current stage is $1$. The woman process sets the global variable \CSPM{her} to its identity and returns the value of global variable \CSPM{him}.
   \item In stage $2$, the waiting man process in stage $0$ is wakened up by the woman process in stage $1$. The man process notifies all waiting processes and returns the value of \CSPM{her}.
 \end{itemize}
@@ -589,8 +589,6 @@ Lin(All,me)= (
 
 With the above optimization, the testing finishes quickly for both test cases.
 
-//TOADD: Table of compilation time
-
 \subsection{Faulty version}
 Recall that in Java and Scala, raising a semaphore immediately allows another thread waiting to acquire the semaphore to continue. So it is essential to take a copy of the two other arguments before raising the semaphore.
 
@@ -598,7 +596,9 @@ On the other hand, what if the implementation of \CSPM{syncA} does not take a co
 
 
 \subsubsection{Explanation of the error case}
-For the test \CSPM{Spec4Thread [T= System4}, FDR displays a trace of the testing system that does not satisfy the specification. By translating the trace back to scala execution, it is possible to see what goes wrong in the faulty version when there are four threads.
+For the test \CSPM{Spec4Thread [T= System4}, FDR displays a trace of the testing system that voilates the specification. From the trace, it seems that process \CSPM{T1} synchronizes with \CSPM{T2} and \CSPM{T3} in the first round, and should return \CSPM{(B,C)}, but \CSPM{(E,F)}, the argument in the second round is returned. By expanding the $\tau$ event and translate CSP traces into program traces, it is possible to see what goes wrong in the faulty version when there are four threads.
+
+\svginlinescaled{./drawio/abc.faulty.trace.svg}{0.9}{abc.faulty.trace}{Trace that violates the specification}
 
 \begin{itemize}
   \item In the first round of synchronization, process $T_A$, $T_B$, $T_C$ call \CSPM{aSync}, \CSPM{bSync} or \CSPM{cSync} respectively, and put down its argument in turn.
