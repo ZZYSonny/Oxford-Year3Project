@@ -1,0 +1,72 @@
+\section{Introduction}
+%What is a concurrent datatype
+A concurrent datatype offers encapsulation of concurrency and makes writing concurrent programs simpler. With the concurrent datatype, programmers can write code with multiple threads as if they are writing a single-threaded code. 
+
+%Example
+The MenWomen object is one of the concurrent objects. The object captures a classical synchronization problem, in which some processes need to pair with other processes by exchanging their identities. Figure \ref{menwomen.scala.interface} is an interface of a concurrent datatype for the MenWomen problem. 
+
+\begin{scalainline}{menwomen.scala.interface}{Interface of a MenWomen object}
+  trait MenWomenT{
+    def manSync(me: Int): Int
+    def womanSync(me: Int): Int
+  }
+\end{scalainline}
+
+It is vital to know the correctness of the concurrent datatype. If the implementation of the concurrent datatype is wrong, a programmer's code using the implementation will also be buggy. 
+
+There are two main properties to check for a concurrent datatype, the safety property and the liveness property. The safety property states that the behaviour of the concurrent object should observe some invariant. For example, if a process with identity $1$ calling \CSPM{manSync} returns $2$, then the process with identity $2$ should call \CSPM{womanSync} and return $1$. The liveness property states that the concurrent object should not refuse to synchronize when synchronization is possible between one or more processes. For example, a system with one process calling \CSPM{manSync} and one process calling \CSPM{womanSync} should not deadlock.
+
+In this paper, we examine the above two correctness properties for various concurrent datatypes. In addition, we provide a few CSP implementations for objects commonly used in concurrent programming, which can be used in future CSP projects.
+
+\subsection{Linearization test}
+%Describe lin point
+To verify the correctness of a concurrent datatype, one can carry out the Linearization test described in the paper Testing for Linearizability \cite{linearizability-testing}. The linearization testing framework measures each call's starting and returning time to get a history of function calls and returns. Then for the observed history, the testing framework attempt to find a series of synchronization point that obeys the safety property. The concurrent datatype implementation is considered buggy if the framework can not find a valid synchronization point series. 
+
+In this remaining section we shall look at a few history from the \CSPM{MenWomen} object. The timeline in Figure \ref{menwomen.timeline.simple} visualizes the function call history of two process \CSPM{T1} and \CSPM{T2}. \CSPM{T1} first calls \CSPM{manSync}, then T2 calls \CSPM{womanSync}. A synchronization occurs between \CSPM{T1} and \CSPM{T2}. \CSPM{T1} returns the identity of process \CSPM{T2} then \CSPM{T2} returns the identity of process \CSPM{T1}.
+\svginline{menwomen.timeline.simple}{Visualized history of T1 calling manSync and T2 calling womanSync}
+
+In Figure \ref{menwomen.timeline.dead}, both processes calls \CSPM{manSync}, and no synchronization is possible. Note that the liveness condition is not invalidated even if the system deadlocks in this case.
+\svginline{menwomen.timeline.dead}{Visualized history of both T1 and T2 calling womanSync}
+
+Scheduling is one of the reasons validating a history can be complicated. In Figure \ref{menwomen.timeline.deschedule}, process \CSPM{T3} calls \CSPM{manSync} first but gets descheduled. Then \CSPM{T1} calls \CSPM{manSync} and synchronizes with \CSPM{T2} which later calls \CSPM{womanSync}. The linearization framework usually needs to search a large state to find a valid series of synchronization points. 
+\svginline{menwomen.timeline.deschedule}{Visualized history of T3 get descheduled}
+
+\subsection{Checking safety property using CSP} 
+The history can be captured as a trace of a CSP system. In addition to performing the function body, each function call sends a \CSPM{Call} event before the function body and a \CSPM{Return} event after the function body. Figure \ref{common.callreturn} is the definition of \CSPM{Call} and \CSPM{Return} channel in CSP. The definition of the channel usually needs to include all the identity of the calling process, the function called, and its parameter. 
+
+\begin{cspinline}{common.callreturn}{Definition of Call and Return channel}
+--identity of the calling process
+--function called by the process
+channel Call : TypeThreadID.TypeOps
+--identity of the calling process
+--function called by the process
+--return value of the function call
+channel Return: TypeThreadID.TypeOps.TypeThreadID
+\end{cspinline}
+
+To check the safety property, we check that a testing system built from some processes using the concurrent datatype refines a specification process built from the object definition in the CSP trace model.
+
+A generic and scalable system is used for the testing system to generate possible histories of processes using concrete datatype. Each process in the testing system can call any function from the concurrent object with any arguments allowed. Each process must be allowed to terminate. Otherwise, the testing system only models a system that runs forever, given that there is no deadlock. We shall see how this affects bug finding in a concurrent datatype in later objects.
+
+The specification generates all valid histories. The process uses the same number of linearizer processes synchronizing on events from the \CSPM{Sync} channel. Event from the \CSPM{Sync} channel should include information from all participating processes, and Figure \ref{common.sync} is the \CSPM{Sync} channel definition for ... Each linearizer process repeatedly calls a function, synchronize with zero or some processes, and returns according to the calling argument and extra information from the synchronization point. To match the definition of the generic and scalable testing system, each linearizer process can also choose to terminate. 
+
+\begin{cspinline}{common.sync}{Definition of Sync channel}
+--Identity of thread calling ManSync
+--Return of ManSync
+--Identity of thread calling WomanSync
+--Return of WomanSync
+channel Sync: TypeThreadID.TypeThreadID.TypeThreadID.TypeThreadID
+\end{cspinline}
+  
+We shall see a concrete testing system and specification process in the MenWomen section. 
+
+\subsection{Checking liveness property using CSP}
+For liveness property, we check the same generic and scalable testing system refines the same specification process, but in the failure model. Suppose all process calls \CSPM{manSync}. Since a linearizer process calling \CSPM{manSync} sends \CSPM{Return} event only after synchronizing \CSPM{Sync} event with another linearizer process calling \CSPM{womanSync}, the linearizer will refuse to return any function call, which is a expected behavior. One can use a datatype-specific specification process that does not explicitly use any synchronization points. However, reusing the linearizer process is easier. 
+
+\subsection{Related work}
+Testing for Linearizability \cite{linearizability-testing} presents a framework to test concurrent datatypes based on observation of histories. The drawback of this method is that it is unlikely to exhaust all possible histories of a system. 
+
+There are also runtime programming tools to detect bugs in concurrent datatypes and as well as concurrent code. Thread Sanitizer \cite{threadsanitizer} detects race conditions and deadlocks in C++ and Go.
+
+In Chapter 19 of Understanding Concurrent Systems \cite{ucs-book}, the author describes a CSP model for shared variables and provides a tool to analyze shared variable programs. But the tool lacks support for objects frequently used in concurrent programming, such as monitors and semaphores.
+
