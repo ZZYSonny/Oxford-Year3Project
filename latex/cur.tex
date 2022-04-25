@@ -4,8 +4,38 @@
 \usepackage{helper}
 \begin{document}
 
-$$
-\frac{1}{2}=0.5
-$$
+
+\subsection{Checking safety property using CSP} 
+The history can be captured as a trace of a CSP system. In addition to performing the function body, each function call sends a \CSPM{Call} event before the function body and a \CSPM{Return} event after the function body. Figure \ref{common.callreturn} is the definition of \CSPM{Call} and \CSPM{Return} channel in CSP. The definition of the channel usually needs to include all the identity of the calling process, the function called, and its parameter. 
+
+\begin{cspinline}{common.callreturn}{Definition of Call and Return channel}
+--identity of the calling process
+--function called by the process
+channel Call : TypeThreadID.TypeOps
+--identity of the calling process
+--function called by the process
+--return value of the function call
+channel Return: TypeThreadID.TypeOps.TypeThreadID
+\end{cspinline}
+
+To check the safety property, we check that a testing system built from some processes using the concurrent datatype refines a specification process built from the object definition in the CSP trace model.
+
+A generic and scalable system is used for the testing system to generate possible histories of processes using concrete datatype. Each process in the testing system can call any function from the concurrent object with any arguments allowed. Each process must be allowed to terminate. Otherwise, the testing system only models a system that runs forever, given that there is no deadlock. We shall see how this affects bug finding in a concurrent datatype in later objects.
+
+The specification generates all valid histories. The process uses the same number of linearizer processes synchronizing on events from the \CSPM{Sync} channel. Event from the \CSPM{Sync} channel should include information from all participating processes, and Figure \ref{common.sync} is the \CSPM{Sync} channel definition for ... Each linearizer process repeatedly calls a function, synchronize with zero or some processes, and returns according to the calling argument and extra information from the synchronization point. To match the definition of the generic and scalable testing system, each linearizer process can also choose to terminate. 
+
+\begin{cspinline}{common.sync}{Definition of Sync channel}
+--Identity of thread calling ManSync
+--Return of ManSync
+--Identity of thread calling WomanSync
+--Return of WomanSync
+channel Sync: TypeThreadID.TypeThreadID.TypeThreadID.TypeThreadID
+\end{cspinline}
+  
+We shall see a concrete testing system and specification process in the MenWomen section. 
+
+\subsection{Checking liveness property using CSP}
+For liveness property, we check the same generic and scalable testing system refines the same specification process, but in the failure model. Suppose all process calls \CSPM{manSync}. Since a linearizer process calling \CSPM{manSync} sends \CSPM{Return} event only after synchronizing \CSPM{Sync} event with another linearizer process calling \CSPM{womanSync}, the linearizer will refuse to return any function call, which is a expected behavior. One can use a datatype-specific specification process that does not explicitly use any synchronization points. However, reusing the linearizer process is easier. 
+
 
 \end{document}

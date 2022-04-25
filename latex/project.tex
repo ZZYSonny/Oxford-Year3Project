@@ -211,7 +211,6 @@ First, note that both \CSPM{WaitNotify} and \CSPM{SpuriousWake} events come from
 Secondly, a monitor can introduce divergence by repetitively spuriously waking up a waiting process, whose condition keeps unsatisfied and never changes. This is an unwanted behaviour in failure testing. So the monitor module has an extra parameter \CSPM{disableSpurious} to disable spurious wakeups. 
 
 
-//Should I split some functions into respective paragraphs here. Or use line number. 
 \begin{cspfloat}{monitor.csp.1}{The CSP Monitor Module - Part 1 - the monitor process}
 module ModuleMonitor(TypeThreadID, disableSpurious)
   channel Notify, NotifyAll, Exit, Wait, 
@@ -266,7 +265,8 @@ exports
   --If hide is true, monitor channels are hidden
   runWith(hideSpurious, hideInternal, P) = 
     let hideset0 = if hideInternal then chanset else {} within
-    let hideset1 = if hideSpurious then hideset0 else diff(hideset0,{|SpuriousWake|}) within
+    let hideset1 = if hideSpurious then hideset0 
+                   else diff(hideset0,{|SpuriousWake|}) within
     (inactive({}) [|chanset|] P) \ hideset1
   
   --java-like synchronized function
@@ -298,7 +298,14 @@ endmodule
 
 \newpage
 \section{MenWomen}
-For simplicity, a process calling \CSPM{ManSync} is called a man process, and a process calling \CSPM{WomanSync} is called a woman process. 
+The MenWomen object is a classical problem from the concurrent programming course. In the problem, some processes need to pair off and share identities between the paired processes. Figure \ref{menwomen.scala.interface} is the interface of the MenWomen object. A process can call \CSPM{manSync} from the object to pair with a process calling \CSPM{womanSync}. Also a process can call \CSPM{womanSync} from the object to pair with another process calling \CSPM{manSync}. For simplicity, if a process is calling \CSPM{manSync}, we shall call it a man process. Similarly, a process calling \CSPM{manSync} is called a woman process.
+
+\begin{scalainline}{menwomen.scala.interface}{Scala Interface of the MenWomen object}
+trait MenWomenT{
+  def manSync(me: Int): Int
+  def womanSync(me: Int): Int
+}
+\end{scalainline}
 
 \subsection{Implementation}
 One way to implement the MenWomen object is to use a monitor and a shared variable indicating the stage of synchronization. Figure \ref{menwomen.scala.correct} is a Scala implementation of the MenWomen object with monitor.
@@ -375,20 +382,47 @@ womanSync(me)=
 
 
 \subsection{Linearization Test}
-Recall that in the testing system, each process can call any function provided by the concurrent datatype or choose to terminate. In the CSP implementation, a helper function is used. \CSPM{chaosP(P)} runs the process \CSPM{P} that terminate with \CSPM{SKIP} any number of time. With the helper function, the process \CSPM{P} only needs to non-deterministically choose to perform \CSPM{manSync} or \CSPM{womanSync} with its identity.
+Recall that in the testing system, each process can call any function provided by the concurrent datatype or choose to terminate. In defining processes in the testing system, a helper function is used. \CSPM{chaosP(P)} runs the process \CSPM{P} forever or terminates after running a finite number of \CSPM{P}. The processes in the testing system simply use \CSPM{chaosP} with a process that non deterministically chooses to perform \CSPM{manSync} or \CSPM{womanSync} with their identities. 
 
+\begin{cspinline}{helper.chaosP}{Definition of helper function chaosP and processes in the testing system}
+chaosP(P) = (P;chaosP(P)) |~| SKIP
+Thread(me)=chaosP(manSync(me) |~| womanSync(me))
+\end{cspinline}
+  
 All processes in the testing system interleave with other processes and synchronize with the processes of shared variables and the process of the monitor. Since the testing system should only include \CSPM{Call} and \CSPM{Return} events, all other events are hidden using the first two boolean flags in \CSPM{runWith} defined in earlier sections. 
 
 \begin{cspinline}{menwomen.csp.testsystem}{Definition of CSP processes in the testing system}
-Thread(me)=chaosP(manSync(me) |~| womanSync(me))
 System(All)=runWith(True,True,||| me:All @ Thread(me))
 \end{cspinline}
 
-Similarly, a linearizer process can non-deterministically choose to perform \CSPM{manSync}, synchronize with another linearizer process calling \CSPM{womanSync}, and return with the identity it received from the \CSPM{Sync} event. Also, the linearizer can choose to call \CSPM{womanSync} or terminate. \CSPM{Linearizers(All)} puts all linearizers processes in parallel. 
+Figure \ref{menwomen.csp.sync} is the definition and specification of \CSPM{Sync} event used internally in the testing specification. A \CSPM{Sync} event takes four parameters, the identity of the man process, the return value of the man process, the identity of the woman process, the return value of the woman process. For each synchronization, we check two properties. First, synchronization occurs between two different processes. Second, the return value of each participating process is the identity of the other participating process. 
 
-The \CSPM{Linearizers} function creates a combined linearizer process in three steps. First, it put all linearizer processes in parallel using Replicated Generalized Parallel in CSPM. Specifically,  General Parallel uses three arguments, the linearizer identity set, the linearizer process, and a synchronization alphabet set. The synchronization alphabet set for a process identity is the set of \CSPM{Sync} events where the process identity appears on the first or the third argument. If a linearizer process wants to send an event in its synchronization alphabet set, it must synchronize with all other linearizer processes whose synchronization alphabet sets include this event. 
-Then \CSPM{Linearizers} runs the paralleled process with the specification process of \CSPM{Sync} event. For \CSPM{MenWomen} object, the synchronization is stateless and only requires the return value to be the identity of the other process.
-Finally, like the testing system, all \CSPM{Sync} events are hidden to provide all valid histories.
+\begin{cspinline}{menwomen.csp.sync}{Definition of Sync channel}
+channel Sync: TypeThreadID.TypeThreadID.TypeThreadID.TypeThreadID
+Spec = Sync?man?woman!woman:diff(TypeThreadID,{man})!man -> Spec
+\end{cspinline}
+
+A linearizer process alone generates all possible \CSPM{Call} and \CSPM{Return} events with \CSPM{Sync} events in between given the identity of process. For \CSPM{MenWomen} object, the linearizer is implemented with three non-deterministic choice branches, shown in Figure \ref{menwomen.csp.lin}. In the first branch, the linearizer calls \CSPM{manSync}, synchronize with another linearizer process calling \CSPM{womanSync}, and returns with the identity it received from the \CSPM{Sync} event. In the second branch, the linearizer performs \CSPM{womanSync}. In the last branch, the linearizer terminates. This construction ensures two properties: the return value of a function call comes from the synchronization, and the synchronization point occurs sometime during the function call. 
+
+\CSPM{Linearizers(All)} creates a linearizer process for every process and puts these linearizers in parallel using replicated generalized parallel in CSPM. By the semantic of the replicated generalized parallel, when a process wants to perform an event, the process must synchronize all other processes which can perform this event. In the case of \CSPM{MenWomen}, when a linearizer for \CSPM{T1} wishes to perform a \CSPM{Call} or a \CSPM{Return} event, the linearizer does not need to synchronize with any processes because no linearizer can call using others' identity. However, when \CSPM{linearizer(T1)} wishes to perform a \CSPM{Sync} event such as \CSPM{Sync.T1.T2.T2.T1}, \CSPM{linearizer(T1)} needs to synchronize with \CSPM{linearizer(T2)} because the latter process can perform this \CSPM{Sync} event. Such construction ensures one more property: a \CSPM{Sync} event must be performed by corresponding processes at the same time. The combined process is then put to run in parallel with specification for the \CSPM{Sync} event, shown earlier in Figure \ref{menwomen.csp.sync}, to ensure all \CSPM{Sync} event represents valid synchronizations. Finally, like the testing system, all \CSPM{Sync} events are hidden, leaving \CSPM{Call} and \CSPM{Return} in \CSPM{Linearizers}.
+
+Figure \ref{menwomen.lin.simple} visualizes trace generated by \CSPM{Linearizers({T1,T2})} in a FDR way. When a linearizer performs \CSPM{Call} and \CSPM{Return}, the linearizer does not synchronize with any process. When \CSPM{linearizer(T1)} performs \CSPM{Sync.T1.T2.T2.T1}, \CSPM{linearizer(T2)} and \CSPM{Spec} must also perform the \CSPM{Sync} event.
+
+\svginline{menwomen.lin.simple}{FDR Visualization of traces of a man process and a woman process synchronize}
+
+Figure \ref{menwomen.lin.dead} is another FDR visualization of traces generated by \CSPM{Linearizers}. In this example, all two linearizers choose to call \CSPM{manSync} and no \CSPM{Sync} event is possible between the two linearizers.
+
+\svginline{menwomen.lin.dead}{FDR Visualization of traces of two man processes deadlock}
+
+All above properties suffice to show that \CSPM{Linearizers(All)} generates all traces that correspond to a valid history and that \CSPM{Linearizers} is a valid specification process for the testing system. Informally, for any valid history, a linearizability test can find a set of synchronization points, which corresponds to a trace of the specification for \CSPM{Sync} events. Furthermore, the valid history can be obtained by adding respective call and return events around synchronization points. 
+
+Finally, we perform the test using trace refinement for safety property and failure refinement for liveness. As expected, the correct implementation passes all tests. 
+\begin{cspinline}{menwomen.csp.test}{Part of liveness and safetyness test in CSP for MenWomen object}
+System2=System({T1,T2})
+Spec2Thread=Linearizers({T1,T2})
+assert Spec2Thread [T= System2
+assert Spec2Thread [F= System2
+\end{cspinline}
 
 \begin{cspfloat}{menwomen.csp.lin}{Definition of linearizer process in CSP}
 Lin(All,me)= (
@@ -414,19 +448,6 @@ LinEvents(All,me)=union({
 Linearizers(All)=((|| me: All @ [LinEvents(All,me)] Lin(All,me)) [|{|Sync|}|] Spec) 
                   \{|Sync|}
 \end{cspfloat}
-
-Figure \ref{menwomen.lin.simple} visualizes how the linearizer process can generate the trace that corresponds to the history described in Figure \ref{chan.timeline.simple}, where one process calls \CSPM{manSync} and another process calls \CSPM{womanSync}. And \ref{menwomen.lin.dead} visualizes the linearizer deadlocks as required if both processes calls \CSPM{manSync}.
-
-\svginline{menwomen.lin.simple}{Linearizers generating the history where one process calls manSync and another process calling womenSync}
-\svginline{menwomen.lin.dead}{Linearizers generating the history where one process calls manSync and another process calling womenSync}
-
-Finally, we perform the test using trace refinement for safety property and failure refinement for liveness. As expected, the correct implementation passes all tests. 
-\begin{cspinline}{menwomen.csp.test}{Part of liveness and safetyness test in CSP for MenWomen object}
-System2=System({T1,T2})
-Spec2Thread=Linearizers({T1,T2})
-assert Spec2Thread [T= System2
-assert Spec2Thread [F= System2
-\end{cspinline}
 
 \subsection{A faulty version}
 We shall examine another MenWomen implementation in Figure \ref{menwomen.scala.faulty}. One key difference in this faulty MenWomen object is that it uses \CSPM{Option} data in the shared variables to store the identity of the process calling \CSPM{manSync} and the process calling \CSPM{womanSync}. 
@@ -673,57 +694,8 @@ For the test \CSPM{Spec4Thread [T= System4}, FDR displays a trace of the testing
   \item Now $T_A$ returns with $(b,c)$ from the second round, which may not be the argument of \CSPM{bSync} and \CSPM{cSync} in the first round.
 \end{itemize}
 
-\section{Barrier Counter}
-Barrier synchronization is commonly used in concurrent programming ... A barrier object takes an argument $p$. A process calling \CSPM{sync} blocks until all \CSPM{p} processes call \CSPM{sync}. 
-
-This section shall examine a barrier object with an internal counter. When a \CSPM{sync} call exits, it returns the number of times barrier synchronization has happened. 
-
-\subsection{Implementation}
-
-In this section, we shall use a monitor based barrier counter. Additionaly, this implementation uses three shared variables. \CSPM{seqNumber} is the number of synchronization that happened. \CSPM{count} is the number of processes participating in the current round of synchronization and is waiting to return. \CSPM{leaving} indicates if processes are leaving.
-
-There are two stages in each round of synchronization. 
-\begin{itemize}
-    \item In the first stage, a new process comes and waits for all $p$ processes. Each process increments \CSPM{count}. 
-    \item If a process finds the value of \CSPM{count} is $p$ after incrementing \CSPM{count}, the process knows it is the last process in this round. The $p$-th process sets leaving to \CSPM{true} and notifies all waiting processes to allow other processes in this round to leave and blocks any new coming processes. 
-    \item In the second stage, all $p$ processes, including the $p$-th process, decrements \CSPM{count} to and returns with the value of the shared variable \CSPM{seqNumber}. 
-    \item If a process finds the value of \CSPM{count} equal to $0$, then the process knows it is the last process to leave in this round. Before exiting, it increments \CSPM{seqNumber} and sets \CSPM{leaving} to \CSPM{true}, to allow a new round to start.
-\end{itemize}
-
-\begin{scalafloat}{barriercounter.scala.correct}{Implementation of Barrier Counter in Scala} 
-class BarrierCounter(n: Int) extends BarrierCounterT{
-  private var seqNumber = 0 // the current sequence number
-  private var count = 0 // The number of waiting threads.
-  private var leaving = false // Are we in the leaving phase?
-
-  def sync = synchronized{
-    while(leaving) wait() // Wait for previous round to finish
-    count += 1
-    if(count == n){ 
-      leaving = true; 
-      count -= 1; 
-      notifyAll(); 
-      seqNumber 
-    } else{ 
-      while(!leaving) wait()
-      count -= 1
-      if(count == 0){ 
-        // Allow next round to continue
-        leaving = false; 
-        notifyAll() 
-        // Increment sequence number for next round
-        seqNumber += 1; 
-        seqNumber-1 
-      }
-      else seqNumber
-    }
-  }
-}  
-\end{scalafloat}
-
-\subsection{A stateful concurrent datatypes}
-\newpage
 \section{Terminating Queue}
+Terminating Queue is another stateful synchronization object tested in this thesis.
 
 \section{Reference}
 \bibliographystyle{acm}
