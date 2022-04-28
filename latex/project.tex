@@ -1,4 +1,4 @@
-\documentclass{article}
+\documentclass[a4paper, 12pt]{article}
 \usepackage{cite}
 \usepackage{listing}
 \usepackage{csp}
@@ -15,11 +15,16 @@
 \renewcommand\floatpagefraction{0.1}
 
 \begin{document}
-Summary
+Abstract
 
 Concurrent objects are convenient tools for programmers. With concurrent objects, programmers can write code with multiple threads as if they are writing a single-threaded code. However, it is crucial to know the correctness of concurrent objects. In this thesis, we study a technique to justify the correctness of synchronization objects. We first present CSP models for common concurrent primitive according to their behaviours. We then systematically build several concurrent objects from their Scala sources. We make assertions of these synchronization objects with a technique derived from linearizability testing. We find these assertions can effectively find bugs in a concurrent datatype and provide a history to give more context for the developer. 
 
 \newpage
+
+
+\tableofcontents
+\newpage
+
 \section{Introduction}
 %What is a concurrent datatype
 Concurrent objects are convenient tools for programmers. With concurrent datatypes, programmers can write code with multiple threads as if they are writing a single-threaded code. However, it is crucial to know the correctness of concurrent objects. If the implementation of a concurrent object is wrong, then code using the concurrent object is very likely to be faulty. 
@@ -695,7 +700,83 @@ For the test \CSPM{Spec4Thread [T= System4}, FDR displays a trace of the testing
 \end{itemize}
 
 \section{Terminating Queue}
-Terminating Queue is another stateful synchronization object tested in this thesis.
+A terminating queue provides thread-safe enqueue and dequeue operations. If a process dequeues when the queue is empty, the process blocks and waits for some process to enqueue. In addition, if all processes dequeue when the queue is empty, the queue terminates and returns \CSPM{None}. Figure \ref{queue.scala.interface} is the interface of a terminating queue.
+
+\begin{scalainline}{queue.scala.interface}{Scala interface of terminating queue}
+trait TerminatingQueueT[A]{ 
+  def enqueue(x: A): Unit
+  def dequeue: Option[A] 
+}
+\end{scalainline}
+
+A terminating queue is a stateful synchronization object, as earlier enqueue and dequeue operation affect later synchronizations. The first diagram below 
+
+\subsection{Implementation}
+The Scala implementation of the Terminating Queue wraps a Scala Queue with a monitor. Upon creation, the object is given the number of processes using the queue \CSPM{numWorkers}. In addition to a internal queue \CSPM{queue}, the terminating queue uses two more shared variables. The shared variable \CSPM{waiting} is the number of processes waiting to dequeue an element from the queue. The shared variable \CSPM{done} indicates if the queue has terminated. If the value of \CSPM{done} is false, then any further function call should do nothing.
+
+Enqueue is a trivial operation. In the synchronized block, the process adds the element to the internal queue and notifies a process waiting to dequeue an element. Dequeuing is also trivial when the internal queue is not empty. The process simply perform dequeue on the internal queue. When the queue is empty, if the value of \CSPM{waiting} is $n-1$, then all processes are now waiting to dequeue, so the queue should terminate. The process notifies all waiting process and returns \CSPM{None}. Otherwise the process increments the counter \CSPM{waiting} and waits. The waiting process may be waken because a new element is added to the queue, all $n$ processes are waiting, and spurious wake up. In the first case, the process decrements \CSPM{waiting} and returns the queue head as normal. In the latter case, the process returns \CSPM{None}.
+
+\begin{scalafloat}{queue.scala.impl}{Scala implementation of terminating queue}
+class TerminatingQueue[A](numWorkers: Int){
+  private val queue = new Queue[A]
+  private var waiting = 0
+  private var done = false
+
+  def enqueue(x: A) = synchronized{ 
+    if(!done){
+      queue.enqueue(x)
+      if(waiting > 0) notify()
+    }
+  }
+
+  def dequeue: Option[A] = synchronized{
+    if(!done && queue.isEmpty){
+      if(waiting == numWorkers-1){  // System should terminate
+        done = true; notifyAll() 
+      }  
+      else{
+        waiting += 1
+        while(queue.isEmpty && !done) wait()
+        waiting -= 1
+      }
+    }
+    if(done) None else Some(queue.dequeue)
+  }
+}
+\end{scalafloat}
+
+//6559
+
+There are a few workarounds required for the CSP implementation, because the set of possible value should be finite so that the communication graph FDR computes is finite and analyzable. For this reason, the range of variable \CSPM{waiting} is limited to integers from 0 to \CSPM{numWorkers} inclusive. However, while building the communication graph, FDR attempts to set the value of \CSPM{waiting} to \CSPM{-1} and \CSPM{numWorkers+1} and errors. Even though the value of \CSPM{waiting} will never be \CSPM{-1} or \CSPM{numWorkers+1} in both the Scala implementation and CSP implementation, FDR is unable to derive such information while building the communication graph for one process. 
+
+To workaround this, we guard \CSPM{waiting} settings with a if statement. A CSP process diverges if it attempts to set a value outside \CSPM{0} to \CSPM{numWorkers}. In the testing system, we check that system is divergence free to show that \CSPM{waiting} works as expected.
+
+Second, the Scala implementation uses a Scala Queue internally, which does not have a capacity limit and results to a infinite choices of queues in CSP. To address this, we use two finite-state queues that captures some properties of a infinite queue. Both queue has extra restrictions on the enqueue operations. Figure ref is the implementation of the two queue, and the two queue are written under the same interface to allow code reuse.
+
+The first queue is a capacity-limited queue and tests , which blocks a process when a process tries sto  the queue has more element than capacity. The first queue tests traces where the size of queue never exceeds some number. 
+
+The second queue is an infinite queue but it only allows enqueue operation in the form of A*BC*. The idea comes from [TODO:Reference] and a system with this queue tests that the terminating queue does not miss or duplicate an element in the queue. The transition of the queue is presented in Figure ref. If a process calls dequeue, the queue non deterministically chooses one dequeue outcome and returns to the process. For example, in the state \CSPM{A*B0C} where the queue has zero or more A, followed by one B and no C, the queue can non deterministically dequeue an A. Or the queue can choose to dequeue an B and transites the the state \CSPM{Q0C}.
+
+\subsection{Linearization Testing}
+We use similar approaches to construct the testing system. Both queue specifies that a process blocks when it performs an invallid enqueue of dequeue. Since the process operating the queue holds the monitor lock and does not release the monitor lock, no other process is able to proceed and the system deadlocks. As a result, traces generated by the testing system always obey the constraint and represents a reasonable portion of traces generated by a system with a infinite queue instead. 
+
+We also use a similar approach to construct the specification. With the terminating queue object, there are three ways a process synchronizes using the object. When a process enqueues or dequeues, it synchronizes with the object and perform action on the internal queue. In the enqueue and dequeue case, the synchronization is represented by a Sync event with the identity of the process, an object representing the function call the return value. When the queue shutdowns and a process returns \CSPM{None}, the process synchronizes with all other processes. In this case, the synchronization is represented by \CSPM{SyncShutdown}. 
+
+The specification of \CSPM{Sync} event is different with earlier \CSPM{Sync} specification because a terminating queue is a stateful synchronization object. For both queue, the \CSPM{Sync} specification should ensure that elements are added and removed in a FIFO order. In addition the \CSPM{Sync} specification should ensure no enqueue operation is allowed when the queue is full. For the second queue, the \CSPM{Sync} specification should ensure the element enqueued are in the form of A*BC*. Figure ref is the specification for the first queue, which is implemented by a process holding the queue in the paramemter. Figure ref is the specificatioon for the second queue. The specification is splitted to several phases, with \CSPM{Spec1} specifying the synchronization before B is added, \CSPM{Spec2} specifying synchronization before B is dequeued, \CSPM{Spec3} specifying the 
+
+[TODO: Update Code]
+
+
+
+\subsection{Linerization Point Test}
+
+
+\subsection{Faulty Implementation}
+In this section we use the linearization test and explicit linearization point test with capacity 
+\section{Conclusion}
+\subsection{Reflection}
+\subsection{Limitation}
+\subsection{Extension}
 
 \section{Reference}
 \bibliographystyle{acm}

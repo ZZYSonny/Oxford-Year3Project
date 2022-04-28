@@ -1,4 +1,4 @@
-instance VarQueue=ModuleVariable(TypeQueue,qNewQueue)
+ instance VarQueue=ModuleVariable(TypeQueue,qNewQueue)
 instance VarWaiting=ModuleVariable({0..5},0)
 instance VarDone=ModuleVariable(Bool,false)
 instance Monitor=ModuleMonitor(TypeThread)

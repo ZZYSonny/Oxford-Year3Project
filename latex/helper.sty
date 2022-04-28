@@ -15,6 +15,7 @@
   \lstset{
     label=#1,caption={#2},
     language=scala,
+    basicstyle=\scriptsize,
   }
 }{
   %TC:endignore
@@ -26,7 +27,8 @@
   \renewcommand{\lstlistingname}{Figure}
   \lstset{
     label=#1,caption={#2},float=p,
-    language=scala
+    language=scala,
+    basicstyle=\scriptsize
   }
 }{
   %TC:endignore
@@ -41,7 +43,7 @@
     language=cspm, % columns=fixed, 
     escapechar=£, basewidth={0.7em,0.45em},
     keepspaces=true,
-    basicstyle=\cspmstyle\cspmDisplaySize,
+    basicstyle=\cspmstyle\cspmDisplaySize\scriptsize,
     % moredelim=[is][\underbar]{"}{"}, % for emphasis
     literate={ -> }  {{$\then$}}1             % prefixing
              { ! }   {{$\jotX\mathbin{!}\jotX$}}2         % !
@@ -96,7 +98,7 @@
     language=cspm, % columns=fixed, 
     escapechar=£, basewidth={0.7em,0.45em},
     keepspaces=true,
-    basicstyle=\cspmstyle\cspmDisplaySize,
+    basicstyle=\cspmstyle\cspmDisplaySize\scriptsize,
     % moredelim=[is][\underbar]{"}{"}, % for emphasis
     literate={ -> }  {{$\then$}}1             % prefixing
              { ! }   {{$\jotX\mathbin{!}\jotX$}}2         % !
