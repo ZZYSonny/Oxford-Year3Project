@@ -1,6 +1,2 @@
-channel c, d : {0..1}
-channel e : Bool.{0..2}
-
-P = (c.0 -> STOP [] d.1 -> STOP)[[c <- e.false, d <- e.true]]
-Q = e.false.0 -> STOP [] e.true.1 -> STOP
-R = P[[c.x <- e.false.(x+1) | x <- {0..1}, x == 0] [c.x <- e.false.(x+1) | x <- {0..1}, x == 0]]
+channel a
+assert RUN({a}) [F= DIV

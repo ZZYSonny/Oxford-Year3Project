@@ -1,5 +1,8 @@
 include "common.csp"
-include "correct_nocall.csp"
+include "../queue_abc.csp"
+include "correct.csp"
+
+instance Monitor=ModuleMonitor(TypeThread, False)
 
 Spec1Thread=SpecT({T1},qNewQueue)
 Spec2Thread=SpecT({T1,T2},qNewQueue)
@@ -7,7 +10,6 @@ Spec3Thread=SpecT({T1,T2,T3},qNewQueue)
 Spec4Thread=SpecT({T1,T2,T3,T4},qNewQueue)
 Spec5Thread=SpecT({T1,T2,T3,T4,T5},qNewQueue)
 
-assert Spec2Thread [T= Spec2Thread
 
 InputRegulatorA=
      enqLP?t?q!A -> InputRegulatorA
@@ -38,17 +40,10 @@ System3=System({T1,T2,T3}) \ {|Call,Return|}
 System4=System({T1,T2,T3,T4}) \ {|Call,Return|}
 System5=System({T1,T2,T3,T4,T5}) \ {|Call,Return|}
 
-assert System1 [T= System1
-assert System2 [T= System2
-assert System3 [T= System3
-
 assert Spec1Thread [T= System1
 assert Spec2Thread [T= System2
 assert Spec3Thread [T= System3
 assert Spec4Thread [T= System4
 assert Spec5Thread [T= System5
-
-assert SystemWithSpuriousEvent({T1,T2}) :[divergence free]
-
 
 assert SpecF({T1},qNewQueue) [F= System1

@@ -1,7 +1,9 @@
 include "../common.csp"
-include "../correct_err.csp"
-include "queue.csp"
+include "../queue_abc.csp"
+include "faulty3.csp"
 include "lin.csp"
+
+instance Monitor=ModuleMonitor(TypeThread, False)
 
 Spec1Thread=Linearizers({T1})
 Spec2Thread=Linearizers({T1,T2})
@@ -9,17 +11,22 @@ Spec3Thread=Linearizers({T1,T2,T3})
 Spec4Thread=Linearizers({T1,T2,T3,T4})
 Spec5Thread=Linearizers({T1,T2,T3,T4,T5})
 
-assert Spec2Thread [T= Spec2Thread
-
-Thread(NThread,me)=
-  ([]x:TypeData @ 
-    enqueue(NThread,me,x);Thread(NThread,me)
-  ) |~| (
-    dequeue(NThread,me);Thread(NThread,me)
-  )
+Thread(NThread,me)= chaosP(
+  (|~| x:TypeData @ enqueue(NThread,me,x))
+  |~| dequeue(NThread,me)
+)
 System(All)=runWith(True,True,
   (||| me:All @ Thread(card(All),me)) 
 )
+
+loop(P)=P;loop(P)
+System111(All)=runWith(False,False,
+  (||| me:All @ loop(
+    ([] x:TypeData @ enqueue(card(All),me,x))
+    [] dequeue(card(All),me)
+  )) 
+)
+
 
 --Trivial Simple Thread Case
 System1=System({T1})
@@ -28,13 +35,10 @@ System3=System({T1,T2,T3})
 System4=System({T1,T2,T3,T4})
 System5=System({T1,T2,T3,T4,T5})
 
-assert System1 [T= System1
-assert System2 [T= System2
-assert System3 [T= System3
-
-assert Spec1Thread [T= System1
 assert Spec2Thread [T= System2
 assert Spec3Thread [T= System3
-assert Spec4Thread [T= System4
-assert Spec5Thread [T= System5
+--assert Spec4Thread [T= System4
+
+assert Spec2Thread [F= System2
+assert Spec3Thread [F= System3
 

@@ -1,4 +1,4 @@
-package synchronisationObject
+ package synchronisationObject
 
 import io.threadcso._
 import scala.collection.mutable.Queue
