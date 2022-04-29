@@ -10,7 +10,7 @@ enqueue(NThread,me,x)=
     if (not done) then (
       --queue.enqueue(x), block until the queue is not full
       VarQueue::getValue?q ->
-      if (not member(x,qValidEnqueue(q))) then DIV
+      if (not member(x,qValidEnqueue(q))) then QUEUE_ERROR_ACTION
       else (
         VarQueue::setValue!(qEnqueue(q,A)) ->
         --if(waiting > 0) notify()

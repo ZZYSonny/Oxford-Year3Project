@@ -65,6 +65,8 @@ exports
     let hideset1 = if hideSpurious then hideset0 else diff(hideset0,{|SpuriousWake|}) within
     (inactive({}) [|chanset|] P) \ hideset1
   
+  specWithSpurious(P) = P ||| RUN({|SpuriousWake|})
+
   --java-like synchronized function
   synchronized(me, P)=
     WaitEnter.me ->

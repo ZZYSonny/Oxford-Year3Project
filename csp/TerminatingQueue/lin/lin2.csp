@@ -1,0 +1,44 @@
+channel Sync: TypeThread.TypeCallParam.TypeReturnParam
+channel SyncShutDown
+channel SyncErrStop: TypeThread.TypeCallParam
+
+Lin(All,me)=(
+  Call!me?enqueueCallObj:{|EnqueueCall|} ->((
+    Sync!me!enqueueCallObj!EnqueueReturn ->
+    Return!me!EnqueueReturn ->
+    Lin(All,me)
+  )[](
+    SyncErrStop!me!enqueueCallObj ->
+    STOP
+  ))
+) |~| (
+  Call!me!DequeueCall -> ((
+    --Only return None when all linearizers reach here
+    --introduce another channel
+    SyncShutDown ->
+    --Without introducing another channel, but add Sync.anyThread.DequeueCall.DequeueReturnNone to linEvents
+    --Sync?t.DequeueCall.DequeueReturnNone ->
+    Return!me!(DequeueReturnNone) ->
+    STOP
+  )[](
+    Sync!me!DequeueCall?EnqueueReturnObj:{|DequeueReturn|} ->
+    Return!me!EnqueueReturnObj ->
+    Lin(All,me)  
+  ))
+) |~| STOP
+LinEvents(All,me)={|Sync.me,Call.me,Return.me,SyncShutDown,SyncErrStop.me|}
+Linearizers(All)=((|| me: All @ [LinEvents(All,me)] Lin(All,me)) [|{|Sync,SyncErrStop|}|] Spec(qNewQueue)) \ {|Sync,SyncShutDown,SyncErrStop|}
+Linearizers1(All)=((|| me: All @ [LinEvents(All,me)] Lin(All,me)) [|{|Sync,SyncErrStop|}|] Spec(qNewQueue))
+
+Spec(q)=
+  (qValidEnqueue(q)!={} & |~| x:qValidEnqueue(q) @ (
+    Sync?t!(EnqueueCall.x)!EnqueueReturn -> 
+    Spec(qEnqueue(q,x))
+  ))|~|
+  (qValidEnqueue(q)!={} & |~| x:diff(TypeData,qValidEnqueue(q)) @ (
+    SyncErrStop?t!(EnqueueCall.x) -> DIV
+  ))|~|
+  (qDequeue(q)!={} & |~|(x,newq):qDequeue(q) @ (
+    Sync?t!(DequeueCall)!(DequeueReturn.x) ->
+    Spec(newq)
+  ))
