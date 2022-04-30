@@ -1,26 +1,37 @@
+instance VarQueue=ModuleVariable(TypeQueue,qNewQueue)
+instance VarWaiting=ModuleVariable({0..5},0)
+instance VarDone=ModuleVariable(Bool,false)
+
 enqueue(NThread,me,x)=
+  Call!me!(EnqueueCall.x) ->
   Monitor::synchronized(me,
     --if(!done)
     VarDone::getValue?done ->
     if (not done) then (
-      VarQueue::getValue?q:qCanEnqueue(x) ->
-      enqLP!me!q!x ->
-      --if(waiting > 0) notify()
-      VarWaiting::getValue?waiting ->
-      if(waiting>0) then Monitor::notify(me) else SKIP
-    ) else SKIP
-  )
+      --queue.enqueue(x), block until the queue is not full
+      VarQueue::getValue?q ->
+      if (not member(x,qValidEnqueue(q))) then QUEUE_ERROR_ACTION
+      else (
+        VarQueue::setValue!(qEnqueue(q,x)) ->
+        --if(waiting > 0) notify()
+        VarWaiting::getValue?waiting ->
+        if(waiting>0) then Monitor::notify(me) else SKIP
+    )) else SKIP
+  );
+  Return!me!(EnqueueReturn) ->
+  SKIP
   
 dequeue(NThread,me)=
+  Call!me!(DequeueCall) ->
   Monitor::enter(me);
   --if(!done && queue.isEmpty)
   VarDone::getValue?done ->
   VarQueue::getValue?q ->
   (if(not done and qEmpty(q)) then (
     --if(waiting == numWorkers-1)
-    VarWaiting::getValue?x:{0..NThread-1}->
-    if(x>=NThread) then DIV
-    else if(x==NThread-1) then(
+    VarWaiting::getValue?x->
+    if(x>NThread) then DIV
+    else if(x==NThread) then(
       --done=true
       VarDone::setValue!true->
       --notifyAll
@@ -46,13 +57,23 @@ dequeue(NThread,me)=
   VarDone::getValue?done ->
   if (done) then (
     Monitor::exit(me);
+    Return!me!(DequeueReturnNone) ->
     --the thread should stop any work
     STOP
   ) else (
-    VarQueue::getValue?q:{q|q<-TypeQueue, not qEmpty(q)} ->
-    --if qEmpty(q) then DIV else
+    VarQueue::getValue?q ->
+    if qEmpty(q) then DIV else
     [] (ans, qtail): qDequeue(q) @
-    deqLP!me!q!ans!qtail ->
+    VarQueue::setValue!qtail ->
     Monitor::exit(me);
+    Return!me!(DequeueReturn.ans) ->
     SKIP
 )
+
+runWith(hideSpurious,hide,P)=
+  VarQueue::runWith(hide,
+  VarWaiting::runWith(hide,
+  VarDone::runWith(hide,
+  Monitor::runWith(hideSpurious,hide,
+    P
+  ))))

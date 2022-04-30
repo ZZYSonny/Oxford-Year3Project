@@ -1,4 +1,4 @@
-module ModuleMonitor(TypeThreadID)
+module ModuleMonitor(TypeThreadID, allowSpurious)
   channel
     Notify, NotifyAll, Exit, Wait,
     WaitNotify, WaitEnter, SpuriousWake: TypeThreadID
@@ -65,6 +65,8 @@ exports
     let hideset1 = if hideSpurious then hideset0 else diff(hideset0,{|SpuriousWake|}) within
     (inactive({}) [|chanset|] P) \ hideset1
   
+  specWithSpurious(P) = P ||| RUN({|SpuriousWake|})
+
   --java-like synchronized function
   synchronized(me, P)=
     WaitEnter.me ->
@@ -92,21 +94,13 @@ exports
 
   --wait()
   wait(me) =
-    Wait.me ->
-    WaitNotify.me ->
-    WaitEnter.me ->
-    SKIP
-  --wait(me) =
-  --  Wait.me -> ((
-  --      WaitNotify.me ->
-  --      WaitEnter.me ->
-  --      SKIP
-  --    ) [] (
-  --      SpuriousWake.me ->
-  --      WaitEnter.me ->
-  --      SKIP
-  --    )
-  --  )
+    Wait.me -> 
+    if allowSpurious then (
+      (WaitNotify.me -> WaitEnter.me -> SKIP)
+    [](SpuriousWake.me -> WaitEnter.me -> SKIP)
+    ) else (
+      (WaitNotify.me -> WaitEnter.me -> SKIP)
+    )
   
   whileWait(me,cond) =
     while(cond)(wait(me);SKIP)

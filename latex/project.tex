@@ -765,7 +765,13 @@ Since a terminating queue is a stateful synchronziation object, the specificatio
 [TODO: Update Code]
 Before testing the safetyness and liveness property, we check that the shared variable \CSPM{waiting} is actually in the range 0 to \CSPM{numWorkers}, by checking the testing system is divergence free when spurious wakeup are visible and invalid enqueue causes a process to \CSPM{STOP} instead of \CSPM{DIV}. For safetyness and liveness property, process diverges when they perform a invalid enqueue, so that they reject any operations
 \subsection{Linerization Point Test}
+sync for synchronization
+1. sync event between call and return, call return agree
+2. return match sync formal spec
 
+Faulty1: Fails all test
+Faulty2: Fails Failure refinement when spurious disabled
+\documentclass[12pt,a4paper]{article}
 
 \subsection{Faulty Implementation}
 In this section we use the linearization test to distinguish the correct implementation with three faulty implementation of the terminating queue.  In the first faulty implementation, element \CSPM{A} is always added to the internal queue regardless of the parameter of enqueue function. In the second faulty implementation, \CSPM{enqueue} method does not use \CSPM{notify} to wake up waiting dequeueing processes. In the third implementation has a miss-by-one error. The termination condition becomes that value of \CSPM{waiting} is \CSPM{numWorkers} before incrementing the variable.   
