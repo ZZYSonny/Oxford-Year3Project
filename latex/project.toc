@@ -22,11 +22,8 @@
 \contentsline {subsubsection}{\numberline {4.3.1}Explanation of the error case}{29}{}%
 \contentsline {section}{\numberline {5}Terminating Queue}{30}{}%
 \contentsline {subsection}{\numberline {5.1}Implementation}{30}{}%
-\contentsline {subsection}{\numberline {5.2}Linearization Testing}{31}{}%
+\contentsline {subsection}{\numberline {5.2}Linearization Testing}{33}{}%
 \contentsline {subsection}{\numberline {5.3}Linerization Point Test}{33}{}%
 \contentsline {subsection}{\numberline {5.4}Faulty Implementation}{33}{}%
 \contentsline {section}{\numberline {6}Conclusion}{34}{}%
-\contentsline {subsection}{\numberline {6.1}Reflection}{34}{}%
-\contentsline {subsection}{\numberline {6.2}Limitation}{34}{}%
-\contentsline {subsection}{\numberline {6.3}Extension}{34}{}%
-\contentsline {section}{\numberline {7}Reference}{34}{}%
+\contentsline {section}{\numberline {7}Reference}{35}{}%
