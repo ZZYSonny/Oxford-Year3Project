@@ -1,7 +1,7 @@
 include "../common.csp"
 include "../queue_abc.csp"
-include "faulty3.csp"
-include "lin1.csp"
+include "faulty2.csp"
+include "lin2.csp"
 
 instance Monitor=ModuleMonitor(TypeThread, True)
 QUEUE_ERROR_ACTION = DIV
@@ -42,5 +42,5 @@ assert Spec2Thread [T= System2
 assert Spec3Thread [T= System3
 --assert Spec4Thread [T= System4
 
-assert Monitor::specWithSpurious(Spec2Thread) [FD= SystemNoHide({T1,T2})
-assert Spec3Thread [FD= SystemNoHide({T1,T2,T3})
+assert Spec2Thread [FD= System({T1,T2})
+assert Spec3Thread [FD= System({T1,T2,T3})

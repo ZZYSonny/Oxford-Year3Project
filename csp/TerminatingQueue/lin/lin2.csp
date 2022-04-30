@@ -12,7 +12,7 @@ Lin(All,me)=(
     STOP
   ))
 ) |~| (
-  Call!me!DequeueCall -> ((
+  Call!me!DequeueCall -> (DIV [] (
     --Only return None when all linearizers reach here
     --introduce another channel
     SyncShutDown ->

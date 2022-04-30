@@ -1,0 +1,80 @@
+include "common.csp"
+
+
+instance VarA = ModuleUninitVariable(TypeData) 
+instance VarB = ModuleUninitVariable(TypeData)
+instance VarC = ModuleUninitVariable(TypeData)
+
+instance aClear = ModuleMutexSemaphore(TypeThreadID)
+instance bClear = ModuleSignallingSemaphore(TypeThreadID)
+instance cClear = ModuleSignallingSemaphore(TypeThreadID)
+instance aSignal = ModuleSignallingSemaphore(TypeThreadID)
+instance bSignal = ModuleSignallingSemaphore(TypeThreadID)
+instance cSignal = ModuleSignallingSemaphore(TypeThreadID)
+
+runWith(hide,p)=
+  VarA::runWith(hide,
+  VarB::runWith(hide,
+  VarC::runWith(hide,
+  aClear::runWith(hide,
+  bClear::runWith(hide,
+  cClear::runWith(hide,
+  aSignal::runWith(hide,
+  bSignal::runWith(hide,
+  cSignal::runWith(hide,
+    p
+  )))))))))
+
+SyncA(me,avalue) =
+  --aClear.down
+  aClear::downChan!me ->
+  --a = me
+  VarA::setValue!avalue ->
+  LP1!me!avalue ->
+  --bClear.up
+  bClear::upChan!me ->
+  --aSignal.down
+  aSignal::downChan!me ->
+  --(b,c)
+  VarB::getValue?b ->
+  VarC::getValue?c ->
+  LP4!me!bvalue!cvalue ->
+  --bSignal.up
+  bSignal::upChan!me ->
+  SKIP
+
+SyncB(me,bvalue) =
+  --bClear.down
+  bClear::downChan!me ->
+  --b=me
+  VarB::setValue!bvalue ->
+  LP2!me!bvalue->
+  --cClear.up
+  cClear::upChan!me ->
+  --bSignal.down
+  bSignal::downChan!me ->
+  --(a,c)
+  VarA::getValue?a ->
+  VarC::getValue?c ->
+  LP5!me!avalue!cvalue ->
+  --cSignal.up
+  cSignal::upChan!me ->
+  SKIP
+
+SyncC(me,cvalue) =
+  --cClear.down
+  cClear::downChan!me ->
+  --c = me
+  VarC::setValue!cvalue ->
+  LP3!me!cvalue ->
+  --aSignal.up
+  aSignal::upChan!me ->
+  --cSignal.down
+  cSignal::downChan!me ->
+  --(a,b)
+  VarA::getValue?a ->
+  VarB::getValue?b ->
+  LP6!me!avalue!bvalue ->
+  --aClear.up
+  aClear::upChan!me ->
+  SKIP

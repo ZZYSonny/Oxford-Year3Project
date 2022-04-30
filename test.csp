@@ -1,2 +1,5 @@
 channel a
-assert RUN({a}) [F= DIV
+channel b
+channel c
+assert a -> RUN({b}) [F= a -> DIV
+assert a -> RUN({b}) [F= a -> STOP

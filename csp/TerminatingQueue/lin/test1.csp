@@ -1,10 +1,10 @@
 include "../common.csp"
 include "../queue_abc.csp"
-include "faulty3.csp"
+include "correct.csp"
 include "lin1.csp"
 
-instance Monitor=ModuleMonitor(TypeThread, False)
-QUEUE_ERROR_ACTION = DIV
+instance Monitor=ModuleMonitor(TypeThread, True)
+QUEUE_ERROR_ACTION = STOP
 
 Spec1Thread=Linearizers({T1})
 Spec2Thread=Linearizers({T1,T2})
@@ -39,8 +39,8 @@ System5=System({T1,T2,T3,T4,T5})
 assert Spec2Thread [T= System2
 assert Spec3Thread [T= System3
 
-assert SystemNoHide({T1,T2}) :[divergence free]
-assert SystemNoHide({T1,T2,T3}) :[divergence free]
+assert System({T1,T2}) :[divergence free]
+assert System({T1,T2,T3}) :[divergence free]
 
 assert Spec2Thread [F= System2
 assert Spec3Thread [F= System3
