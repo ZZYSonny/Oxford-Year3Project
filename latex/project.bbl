@@ -1,0 +1,20 @@
+\begin{thebibliography}{1}
+
+\bibitem{linearizability-testing}
+{\sc Lowe, G.}
+\newblock Testing for linearizability.
+\newblock {\em Concurrency and Computation: Practice and Experience 29}, 4
+  (2017).
+
+\bibitem{ucs-book}
+{\sc Roscoe, A.}
+\newblock {\em Understanding Concurrent Systems}.
+\newblock 01 2011.
+
+\bibitem{threadsanitizer}
+{\sc Serebryany, K., and Iskhodzhanov, T.}
+\newblock Threadsanitizer: data race detection in practice.
+\newblock In {\em Proceedings of the workshop on binary instrumentation and
+  applications\/} (2009), pp.~62--71.
+
+\end{thebibliography}

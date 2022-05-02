@@ -81,3 +81,13 @@ SyncC(me,cvalue) =
   --result
   Return!me!CSync!(a.b) ->
   SKIP
+
+Spec(All) = 
+    LP1?t1:All?a ->
+    LP2?t2:All?b ->
+    LP3?t3:All?c -> ((
+      LP4!t1!b!c -> STOP) |||(
+      LP5!t2!a!c ->
+      LP6!t3!a!b ->
+      Spec(All)
+    ))

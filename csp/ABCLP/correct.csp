@@ -78,3 +78,13 @@ SyncC(me,cvalue) =
   --aClear.up
   aClear::upChan!me ->
   SKIP
+
+
+Spec(All) = 
+    LP1?t1:All?a ->
+    LP2?t2:All?b ->
+    LP3?t3:All?c ->
+    LP4!t1!b!c ->
+    LP5!t2!a!c ->
+    LP6!t3!a!b ->
+    Spec(All)

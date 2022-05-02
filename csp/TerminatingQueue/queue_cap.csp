@@ -1,4 +1,4 @@
-NQueueCapacity=2
+NQueueCapacity=3
 TypeQueue={
   q|
   i<-{0..NQueueCapacity},
