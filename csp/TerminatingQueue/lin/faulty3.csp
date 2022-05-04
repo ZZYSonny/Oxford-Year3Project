@@ -1,3 +1,4 @@
+instance Monitor=ModuleMonitor(TypeThread, True)
 instance VarQueue=ModuleVariable(TypeQueue,qNewQueue)
 instance VarWaiting=ModuleVariable({0..5},0)
 instance VarDone=ModuleVariable(Bool,false)

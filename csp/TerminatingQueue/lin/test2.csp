@@ -1,37 +1,29 @@
 include "../common.csp"
 include "../queue_abc.csp"
-include "faulty2.csp"
-include "lin2.csp"
+include "faulty3.csp"
+include "lin.csp"
 
 instance Monitor=ModuleMonitor(TypeThread, True)
 QUEUE_ERROR_ACTION = DIV
 
-Spec1Thread=Linearizers({T1})
-Spec2Thread=Linearizers({T1,T2})
-Spec3Thread=Linearizers({T1,T2,T3})
-Spec4Thread=Linearizers({T1,T2,T3,T4})
-Spec5Thread=Linearizers({T1,T2,T3,T4,T5})
+
 
 Thread(NThread,me)= chaosP(
   (|~| x:TypeData @ enqueue(NThread,me,x))
   |~| dequeue(NThread,me)
 )
-System(All)=runWith(True,True,
+System(All)=runWith(False,True,
   (||| me:All @ Thread(card(All),me)) 
 )
-SystemNoHide(All)=runWith(False,True,
-  (||| me:All @ Thread(card(All),me)) 
-)
-loop(P)=P;loop(P)
-SystemDebug(All)=runWith(False,False,
-  (||| me:All @ loop(
-    ([] x:TypeData @ enqueue(card(All),me,x))
-    [] dequeue(card(All),me)
-  )) 
-)
+
+SystemSpec(All)=Monitor::specWithSpurious(Linearizers(All))
+Spec1Thread=SystemSpec({T1})
+Spec2Thread=SystemSpec({T1,T2})
+Spec3Thread=SystemSpec({T1,T2,T3})
+Spec4Thread=SystemSpec({T1,T2,T3,T4})
+Spec5Thread=SystemSpec({T1,T2,T3,T4,T5})
 
 
---Trivial Simple Thread Case
 System1=System({T1})
 System2=System({T1,T2})
 System3=System({T1,T2,T3})
@@ -40,7 +32,9 @@ System5=System({T1,T2,T3,T4,T5})
 
 assert Spec2Thread [T= System2
 assert Spec3Thread [T= System3
---assert Spec4Thread [T= System4
 
-assert Spec2Thread [FD= System({T1,T2})
-assert Spec3Thread [FD= System({T1,T2,T3})
+assert System({T1,T2}) :[divergence free]
+assert System({T1,T2,T3}) :[divergence free]
+
+assert Spec2Thread [F= System2
+assert Spec3Thread [F= System3
