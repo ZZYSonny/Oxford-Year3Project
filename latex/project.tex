@@ -724,15 +724,15 @@ SyncA(me,avalue) =
 
 The specification for the \CSPM{LP} events is simple. As described earlier in the section, the synchronization between process occurs in a fixed order. Initially only A-process is able to proceed to set the shared variable, then the B-process and the C-process can proceed in turn. In the second round the A-process, B-process, C-process reads the shared variables in turn. Figure \ref{abc.explicit.sync} is the specification process of \CSPM{LP} events. 
 
-\begin{cspfloat}{abc.explicit.sync}{}
-spec = 
-  LP1?t1!t1 ->
-  LP2?t2!t2 ->
-  LP3?t3!t3 ->
-  LP4?t1!t2!t3 ->
-  LP5?t2!t1!t3 ->
-  LP6?t3!t1!t2 ->
-  spec
+\begin{cspfloat}{abc.explicit.sync}{123}
+spec(All) = 
+  LP1?t1?a ->
+  LP2?t2:diff(All,{t1})?b ->
+  LP3?t3:diff(All,{t1,t2})?c ->
+  LP4?t1!b!c ->
+  LP5?t2!a!c ->
+  LP6?t3!a!b ->
+  spec(All)
 \end{cspfloat}
 
 Immediately we can see the specification process is much simpler than the process in linearization testing. But how fast is the explicit synchronization test? We use FDR to find the size of the state machine of the specification and testing system when three processes are involved. The sizes are organized in the table below. 
