@@ -5,18 +5,18 @@ datatype TypeThreadID = T1 | T2 | T3 | T4 | T5
 datatype TypeData = A | B
 datatype TypeOps = ASync | BSync | CSync
 
-channel LP1: TypeThreadID.TypeThreadID
-channel LP2: TypeThreadID.TypeThreadID
-channel LP3: TypeThreadID.TypeThreadID
-channel LP4: TypeThreadID.TypeThreadID.TypeThreadID
-channel LP5: TypeThreadID.TypeThreadID.TypeThreadID
-channel LP6: TypeThreadID.TypeThreadID.TypeThreadID
+channel LP1: TypeThreadID.TypeData
+channel LP2: TypeThreadID.TypeData
+channel LP3: TypeThreadID.TypeData
+channel LP4: TypeThreadID.TypeData.TypeData
+channel LP5: TypeThreadID.TypeData.TypeData
+channel LP6: TypeThreadID.TypeData.TypeData
 
-spec = 
-    LP1?t1!t1 ->
-    LP2?t2!t2 ->
-    LP3?t3!t3 ->
-    LP4?t1!t2!t3 ->
-    LP5?t2!t1!t3 ->
-    LP6?t3!t1!t2 ->
-    spec
+spec(All) = 
+    LP1?t1?a ->
+    LP2?t2:diff(All,{t1})?b ->
+    LP3?t3:diff(All,{t1,t2})?c ->
+    LP4?t1!b!c ->
+    LP5?t2!a!c ->
+    LP6?t3!a!b ->
+    spec(All)

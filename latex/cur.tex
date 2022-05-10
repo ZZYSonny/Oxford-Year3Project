@@ -2,10 +2,8 @@
 
 \begin{document}
 
-$\lambda$
+The explicit linearization point test builds specification on the linearization point, where the process synchronizes with the object and other processes. To apply the test to \CSPM{ABC} object, we first find lines in the method that synchronizes with the object. A process calling \CSPM{aSync} synchronizes with the object in two places. The process sets the value of the shared variable \CSPM{a} before waiting to lower \CSPM{aSignal}, and the process reads the value of the shared variable \CSPM{b} and \CSPM{c} after lowering semaphore \CSPM{aSignal}. We use LP events to represent these linearization points and the LP events should have the same functionality as the original code. This is achieved by modifying the variable module to listen on \CSPM{LP events}.
 
-$\frac{1}{2}$
 
-123123
-
+    
 \end{document}

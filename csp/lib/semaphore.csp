@@ -48,7 +48,7 @@ module ModuleSemaphore(TypeThreadID, initialState)
   
   chanset = {|upChan, downChan|}
 exports
-  runWith(hide,P) = (Mutex [| chanset |] P) \ 
+  runWith(hide,P) = (Semaphore(initialState) [| chanset |] P) \ 
                     (if hide then chanset else {})
   channel upChan, downChan: TypeThreadID
 endmodule

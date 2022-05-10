@@ -13,7 +13,7 @@
   %TC:ignore
   \renewcommand{\lstlistingname}{Figure}
   \lstset{
-    label=#1,caption={#2},
+    %label=#1,caption={#2},float=h,
     language=scala,
     basicstyle=\scriptsize,
   }
@@ -26,7 +26,7 @@
   %TC:ignore
   \renewcommand{\lstlistingname}{Figure}
   \lstset{
-    label=#1,caption={#2},float=p,
+    label=#1,caption={#2},float=hbtp,
     language=scala,
     basicstyle=\scriptsize
   }
@@ -39,7 +39,7 @@
   \global\@ignoretrue\bgroup
   \renewcommand{\lstlistingname}{Figure}
   \lstset{
-    label=#1,caption={#2},
+    %label=#1,caption={#2},float=h,
     language=cspm, % columns=fixed, 
     escapechar=£, basewidth={0.7em,0.45em},
     keepspaces=true,
@@ -94,7 +94,7 @@
   \global\@ignoretrue\bgroup
   \renewcommand{\lstlistingname}{Figure}
   \lstset{
-    label=#1,caption={#2}, float=p,
+    label=#1,caption={#2}, float=hbtp,
     language=cspm, % columns=fixed, 
     escapechar=£, basewidth={0.7em,0.45em},
     keepspaces=true,
@@ -145,8 +145,12 @@
 }
 
 \newcommand{\svginline}[2]{
+    %\begin{center}
+    %  \includesvg[inkscapelatex=false]{./drawio/#1.svg}
+    %\end{center}
+
   \begin{figure}[H]
-    \centering\includesvg[inkscapelatex=false]{./drawio/#1.svg}
+    \center\includesvg[inkscapelatex=false]{./drawio/#1.svg}
     \caption{#2}
     \label{#1}
   \end{figure}    

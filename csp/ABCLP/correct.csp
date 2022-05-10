@@ -38,7 +38,7 @@ SyncA(me,avalue) =
   --(b,c)
   VarB::getValue?b ->
   VarC::getValue?c ->
-  LP4!me!bvalue!cvalue ->
+  LP4!me!b!c ->
   --bSignal.up
   bSignal::upChan!me ->
   SKIP
@@ -56,7 +56,7 @@ SyncB(me,bvalue) =
   --(a,c)
   VarA::getValue?a ->
   VarC::getValue?c ->
-  LP5!me!avalue!cvalue ->
+  LP5!me!a!c ->
   --cSignal.up
   cSignal::upChan!me ->
   SKIP
@@ -74,7 +74,7 @@ SyncC(me,cvalue) =
   --(a,b)
   VarA::getValue?a ->
   VarB::getValue?b ->
-  LP6!me!avalue!bvalue ->
+  LP6!me!a!b ->
   --aClear.up
   aClear::upChan!me ->
   SKIP

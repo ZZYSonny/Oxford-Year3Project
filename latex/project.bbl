@@ -1,20 +1,33 @@
-\begin{thebibliography}{1}
+\begin{thebibliography}{Low22}
 
-\bibitem{linearizability-testing}
-{\sc Lowe, G.}
+\bibitem[Lea06]{CPinJava}
+Douglas Lea.
+\newblock {\em Concurrent Programming in Java(TM): Design Principles and
+  Patterns (3rd Edition) (Java (Addison-Wesley))}.
+\newblock Addison-Wesley Professional, 2006.
+
+\bibitem[Low17]{linearizability-testing}
+Gavin Lowe.
 \newblock Testing for linearizability.
-\newblock {\em Concurrency and Computation: Practice and Experience 29}, 4
-  (2017).
+\newblock {\em Concurrency and Computation: Practice and Experience}, 29(4),
+  2017.
 
-\bibitem{ucs-book}
-{\sc Roscoe, A.}
+\bibitem[Low22]{ABC}
+Gavin Lowe.
+\newblock Parameterized verification of systems with component identities,
+  using view abstraction.
+\newblock {\em International Journal on Software Tools for Technology
+  Transfer}, 24(2):287--324, Apr 2022.
+
+\bibitem[Ros11]{ucs-book}
+A.W. Roscoe.
 \newblock {\em Understanding Concurrent Systems}.
 \newblock 01 2011.
 
-\bibitem{threadsanitizer}
-{\sc Serebryany, K., and Iskhodzhanov, T.}
+\bibitem[SI09]{threadsanitizer}
+Konstantin Serebryany and Timur Iskhodzhanov.
 \newblock Threadsanitizer: data race detection in practice.
 \newblock In {\em Proceedings of the workshop on binary instrumentation and
-  applications\/} (2009), pp.~62--71.
+  applications}, pages 62--71, 2009.
 
 \end{thebibliography}

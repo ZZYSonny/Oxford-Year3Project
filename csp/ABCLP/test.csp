@@ -1,5 +1,4 @@
-include "faulty.csp"
-include "lin1.csp"
+include "correct.csp"
 
 Thread(me)=chaosP(|~|x:TypeData @ (
     SyncA(me,x) 
@@ -12,10 +11,15 @@ System3=System({T1,T2,T3})
 System4=System({T1,T2,T3,T4})
 System5=System({T1,T2,T3,T4,T5})
 
-Spec3Thread=Linearizers({T1,T2,T3})
-Spec4Thread=Linearizers({T1,T2,T3,T4})
-Spec5Thread=Linearizers({T1,T2,T3,T4,T5})
+Spec3Thread=spec({T1,T2,T3})
+Spec4Thread=spec({T1,T2,T3,T4})
+Spec5Thread=spec({T1,T2,T3,T4,T5})
 
 assert Spec3Thread [T= System3
 assert Spec4Thread [T= System4
 assert Spec5Thread [T= System5
+
+assert Spec3Thread [T= Spec3Thread
+assert System3 [T= System3
+assert Spec4Thread [T= Spec4Thread
+assert System4 [T= System4

@@ -1,5 +1,5 @@
 @book{ucs-book,
-author = {Roscoe, A.},
+author = {Roscoe, A.W.},
 year = {2011},
 month = {01},
 pages = {},
@@ -37,4 +37,28 @@ doi = {10.1007/978-1-84882-258-0}
   booktitle={Proceedings of the workshop on binary instrumentation and applications},
   pages={62--71},
   year={2009}
+}
+
+@Article{ABC,
+author={Lowe, Gavin},
+title={Parameterized verification of systems with component identities, using view abstraction},
+journal={International Journal on Software Tools for Technology Transfer},
+year={2022},
+month={Apr},
+day={01},
+volume={24},
+number={2},
+pages={287-324},
+abstract={The parameterized verification problem seeks to verify all members of some collection of systems. We consider the parameterized verification problem applied to systems that are composed of an arbitrary number of component processes, together with some fixed processes. The components are taken from one or more families, each family representing one role in the system; all components within a family are symmetric to one another. Processes communicate via synchronous message passing. In particular, each component process has an identity, which may be included in messages, and passed to third parties. We extend Abdulla et al.'s technique of view abstraction, together with techniques based on symmetry reduction, to this setting. We give an algorithm and implementation that allows such systems to be verified for an arbitrary number of components: we do this for both safety and deadlock-freedom properties. We apply the techniques to a number of examples. We can model both active components, such as threads, and passive components, such as nodes in a linked list: thus our approach allows the verification of unbounded concurrent datatypes operated on by an unbounded number of threads. We show how to combine view abstraction with additional techniques in order to deal with other potentially infinite aspects of the analysis: for example, we deal with potentially infinite specifications, such as a datatype being a queue; and we deal with unbounded types of data stored in a datatype.},
+issn={1433-2787},
+doi={10.1007/s10009-022-00648-0},
+url={https://doi.org/10.1007/s10009-022-00648-0}
+}
+
+@book{CPinJava,
+author = {Lea, Douglas},
+title = {Concurrent Programming in Java(TM): Design Principles and Patterns (3rd Edition) (Java (Addison-Wesley))},
+year = {2006},
+isbn = {0321256174},
+publisher = {Addison-Wesley Professional}
 }

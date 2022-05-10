@@ -54,3 +54,9 @@ Spec5Thread=Linearizers({T1,T2,T3,T4,T5})
 assert Spec3Thread [F= System3
 assert Spec4Thread [F= System4
 assert Spec5Thread [F= System5
+
+
+assert Spec3Thread [T= Spec3Thread
+assert System3 [T= System3
+assert Spec4Thread [T= Spec4Thread
+assert System4 [T= System4
