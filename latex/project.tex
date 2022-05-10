@@ -222,7 +222,7 @@ Secondly, a monitor can introduce divergence by repetitively spuriously waking u
 
 
 \begin{cspfloat}{monitor.csp.1}{The CSP Monitor Module - Part 1 - the monitor process}
-module ModuleMonitor(TypeThreadID, disableSpurious)
+module ModuleMonitor(TypeThreadID)
   channel Notify, NotifyAll, Exit, Wait, 
           WaitNotify, WaitEnter, SpuriousWake: TypeThreadID
 
@@ -294,13 +294,10 @@ exports
 
   --wait()
   wait(me) =
-    Wait.me -> 
-    if disableSpurious then (
+    Wait.me -> (
       (WaitNotify.me -> WaitEnter.me -> SKIP)
-   [] (SpuriousWake.me -> WaitEnter.me -> SKIP)
-  ) else (
-      (WaitNotify.me -> WaitEnter.me -> SKIP)
-  )
+    [](SpuriousWake.me -> WaitEnter.me -> SKIP)
+    )
   
   whileWait(me,cond) = while(cond)(wait(me);SKIP)
 endmodule
@@ -409,7 +406,7 @@ System(All)=runWith(True,True,||| me:All @ Thread(me))
 
 \begin{cspinline}{menwomen.csp.sync}{Definition of Sync channel}
   channel Sync: TypeThreadID.TypeThreadID.TypeThreadID.TypeThreadID
-  Spec = Sync?man?woman:diff(TypeThreadID,{man})!woman!man -> Spec
+  Spec(All) = Sync?man:All?woman:diff(All,{man})!woman!man -> Spec(All)
 \end{cspinline}
   
 A \CSPM{Sync} event takes four parameters, the identity of the man process, the return value of the man process, the identity of the woman process, the return value of the woman process. For each synchronization, the spec proecess ensure two properties. First, synchronization occurs between two different processes. Second, the return value of each participating process is the identity of the other participating process. 
@@ -425,25 +422,22 @@ All above properties suffice to show that \CSPM{Linearizers(All)} generates all 
 \begin{cspfloat}{menwomen.csp.lin}{Definition of linearizer process in CSP}
 Lin(All,me)= (
   Call!me!ManSync->
-  Sync!me?mereturn?other?otherreturn ->
+  Sync!me?mereturn?other:diff(All,{me})?otherreturn ->
   Return!me!ManSync!mereturn ->
   Lin(All,me)
 )|~|(
   Call!me!WomanSync ->
-  Sync?other?otherreturn!me?mereturn ->
+  Sync?other:diff(All,{me})?otherreturn!me?mereturn ->
   Return!me!WomanSync!mereturn ->
   Lin(All,me)
 )|~|STOP
-
 LinEvents(All,me)=union({
   ev | ev<-{|Sync|},
   let Sync.t1.a.t2.b=ev within
-    countList(me,<t1,t2>)==1 and
-    member(t1, All) and
-    member(t2, All)
+    countList(me,<t1,t2>)==1 and member(t1,All) and member(t2,All)
 },{|Call.me,Return.me|})
-
-Linearizers(All)=((|| me: All @ [LinEvents(All,me)] Lin(All,me)) [|{|Sync|}|] Spec) 
+  
+Linearizers(All)=((|| me: All @ [LinEvents(All,me)] Lin(All,me)) [|{|Sync|}|] Spec(All)) 
                   \{|Sync|}
 \end{cspfloat}
   
@@ -624,10 +618,11 @@ channel Sync: TypeThreadID.TypeData.TypeData.TypeData.
               TypeThreadID.TypeData.TypeData.TypeData.
               TypeThreadID.TypeData.TypeData.TypeData
 
-Spec = Sync?aid?a?b?c
-           ?bid:diff(TypeThreadID,{aid})!b!a!c
-           ?cid:diff(TypeThreadID,{aid,bid})!c!a!b 
-    -> Spec
+Spec(All) = 
+  Sync?t1:All?a?b?c
+      ?t2:diff(All,{t1})!b!a!c
+      ?t3:diff(All,{t1,t2})!c!a!b -> 
+  Spec(All)
 \end{cspfloat}
 
 \begin{cspfloat}{abc.csp.lin}{Definition of linearizer process}
@@ -672,15 +667,36 @@ With the above analysis, it is tempting to reduce the redundancy in \CSPM{Sync} 
 With this optimization, the testing for less than 5 processes finishes quickly.
 
 \begin{cspfloat}{abc.csp.simple1}{Simplified definition of Sync channel and part of simplified linearizer}
-channel Sync: TypeThreadID.TypeThreadID.TypeThreadID.
-              TypeData.TypeData.TypeData
-
-Lin(All,me)= (
-  Call!me!ASync?a ->
-  Sync!me?t2:diff(All,{me})?t3:diff(All,{me,t2})!a?b?c ->
-  Return!me!ASync!b!c ->
-  Lin(All,me)
-) ...
+  --A modified version of lin2
+  --slow
+  channel Sync: TypeThreadID.TypeThreadID.TypeThreadID.TypeData.TypeData.TypeData
+  
+  --Linearizer for a process
+  Lin(All,me)= (
+        --me synchronizes as thread A
+        Call!me!ASync?a ->
+        Sync!me?t2:diff(All,{me})?t3:diff(All,{me,t2})!a?b?c ->
+        Return!me!ASync!b!c ->
+        Lin(All,me)
+      ) |~| (
+        --me synchronizes as thread B
+        Call!me!BSync?b ->
+        Sync?t2:diff(All,{me})!me?t3:diff(All,{me,t2})?a!b?c ->
+        Return!me!BSync!a!c ->
+        Lin(All,me)
+      ) |~| (
+        --me synchronizes as thread C
+        Call!me!CSync?c ->
+        Sync?t2:diff(All,{me})?t3:diff(All,{me,t2}) !me?a?b!c ->
+        Return!me!CSync!a!b ->
+        Lin(All,me)
+      ) |~| STOP
+  LinEvents(All,me)=union({
+    e | e <- {|Sync|},
+    let Sync.t1.t2.t3.a.b.c=e within
+      countList(me,<t1,t2,t3>)==1 and member(t1,All) and member(t2,All) and member(t3,All)
+  },{|Call.me,Return.me|})
+  Linearizers(All)= (|| me: All @ [LinEvents(All,me)]  Lin(All,me)) \ {|Sync|}
 \end{cspfloat}
 
 \subsection{Faulty version}
@@ -726,12 +742,12 @@ The specification for the \CSPM{LP} events is simple. As described earlier in th
 
 \begin{cspfloat}{abc.explicit.sync}{123}
 spec(All) = 
-  LP1?t1?a ->
+  LP1?t1:All?a ->
   LP2?t2:diff(All,{t1})?b ->
   LP3?t3:diff(All,{t1,t2})?c ->
-  LP4?t1!b!c ->
-  LP5?t2!a!c ->
-  LP6?t3!a!b ->
+  LP4!t1!b!c ->
+  LP5!t2!a!c ->
+  LP6!t3!a!b ->
   spec(All)
 \end{cspfloat}
 
@@ -1060,4 +1076,7 @@ For future work, one can build CSP models for synchronization objects from other
 
 \newpage
 \section{Appendix}
+%TC:ignore
+\input{source}
+%TC:endignore
 \end{document}

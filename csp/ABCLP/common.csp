@@ -13,10 +13,41 @@ channel LP5: TypeThreadID.TypeData.TypeData
 channel LP6: TypeThreadID.TypeData.TypeData
 
 spec(All) = 
-    LP1?t1?a ->
+    LP1?t1:All?a ->
     LP2?t2:diff(All,{t1})?b ->
     LP3?t3:diff(All,{t1,t2})?c ->
-    LP4?t1!b!c ->
-    LP5?t2!a!c ->
-    LP6?t3!a!b ->
+    LP4!t1!b!c ->
+    LP5!t2!a!c ->
+    LP6!t3!a!b ->
     spec(All)
+
+module AUninitVariable(TypeValue)
+  Var(a) = LP1?t?newa -> Var(newa)
+        [] LP5?t!a?b -> Var(a)
+        [] LP6?t!a?c -> Var(a)
+  chanset = {|LP1, LP5, LP6|}
+exports
+  runWith(hide,P) = ((|~| x:TypeValue @ Var(x)) [| chanset |] P) \ 
+                    (if hide then chanset else {})
+endmodule
+
+
+module BUninitVariable(TypeValue)
+  Var(b) = LP2?t?newb -> Var(newb)
+        [] LP4?t!b?c -> Var(b)
+        [] LP6?t?a!b -> Var(b)
+  chanset = {|LP2, LP4, LP6|}
+exports
+  runWith(hide,P) = ((|~| x:TypeValue @ Var(x)) [| chanset |] P) \ 
+                    (if hide then chanset else {})
+endmodule
+
+module CUninitVariable(TypeValue)
+  Var(c) = LP3?t?newc -> Var(newc)
+        [] LP4?t?b!c -> Var(c)
+        [] LP5?t?a!c -> Var(c)
+  chanset = {|LP3, LP4, LP5|}
+exports
+  runWith(hide,P) = ((|~| x:TypeValue @ Var(x)) [| chanset |] P) \ 
+                    (if hide then chanset else {})
+endmodule

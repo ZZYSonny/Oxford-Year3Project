@@ -5,12 +5,12 @@ instance VarA = ModuleUninitVariable(TypeData)
 instance VarB = ModuleUninitVariable(TypeData)
 instance VarC = ModuleUninitVariable(TypeData)
 
-instance aClear = ModuleMutexSemaphore(TypeThreadID)
-instance bClear = ModuleSignallingSemaphore(TypeThreadID)
-instance cClear = ModuleSignallingSemaphore(TypeThreadID)
-instance aSignal = ModuleSignallingSemaphore(TypeThreadID)
-instance bSignal = ModuleSignallingSemaphore(TypeThreadID)
-instance cSignal = ModuleSignallingSemaphore(TypeThreadID)
+instance aClear  = ModuleSemaphore(TypeThreadID, True)
+instance bClear  = ModuleSemaphore(TypeThreadID, False)
+instance cClear  = ModuleSemaphore(TypeThreadID, False)
+instance aSignal = ModuleSemaphore(TypeThreadID, False)
+instance bSignal = ModuleSemaphore(TypeThreadID, False)
+instance cSignal = ModuleSemaphore(TypeThreadID, False)
 
 runWith(hide,p)=
   VarA::runWith(hide,

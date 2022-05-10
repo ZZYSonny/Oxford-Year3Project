@@ -1,9 +1,8 @@
 include "../common.csp"
 include "../queue_abc.csp"
-include "faulty3.csp"
+include "correct.csp"
 include "lin.csp"
 
-instance Monitor=ModuleMonitor(TypeThread, True)
 QUEUE_ERROR_ACTION = DIV
 
 

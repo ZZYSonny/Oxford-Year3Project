@@ -1,4 +1,4 @@
-module ModuleMonitor(TypeThreadID, disableSpurious)
+module ModuleMonitor(TypeThreadID)
   channel
     Notify, NotifyAll, Exit, Wait,
     WaitNotify, WaitEnter,

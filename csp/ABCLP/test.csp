@@ -23,3 +23,5 @@ assert Spec3Thread [T= Spec3Thread
 assert System3 [T= System3
 assert Spec4Thread [T= Spec4Thread
 assert System4 [T= System4
+
+P = runWith(False, SyncB(T1,A))

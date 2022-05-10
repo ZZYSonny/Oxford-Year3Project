@@ -5,6 +5,7 @@ channel Sync: TypeThreadIDPermutation. TypeReturns
 Spec(i) = Sync?perm!nElemList(NThread,i) -> Spec((i+1)%M)
 
 Lin(All,me)=
+  STOP |~|
   Call!me ->
   Sync?perms?returns ->
   Return!me!nthList(indexList(me,perms),returns) ->

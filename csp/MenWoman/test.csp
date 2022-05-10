@@ -1,31 +1,27 @@
 include "faulty.csp"
 include "lin.csp"
 
-Spec2Thread=Linearizers({TMan1,TWoman1})
-Spec4Thread=Linearizers({TMan1,TMan2,TWoman1,TWoman2})
+Thread(me)=chaosP(
+  manSync(me) |~| womanSync(me)
+)
+System(All) = runWith(True, True, ||| me:All @ Thread(me))
 
-System1 = runWith(True,True,
-    runP(manSync(TMan1)) |||
-    runP(womanSync(TWoman1))
-)
-assert Spec2Thread [T= System1
-System2 = runWith(False,True,
-    runP(manSync(TMan1)) |||
-    runP(womanSync(TWoman1))
-)
-assert System2 :[deadlock free]
+System2=System({T1,T2})
+System3=System({T1,T2,T3})
+System4=System({T1,T2,T3,T4})
+System5=System({T1,T2,T3,T4,T5})
 
-System3 = runWith(True,True,
-    runP(manSync(TMan1)) |||
-    runP(manSync(TMan2)) |||
-    runP(womanSync(TWoman2)) |||
-    runP(womanSync(TWoman1))
-)
-assert Spec4Thread [T= System3
-System4 = runWith(False,True,
-    runP(manSync(TMan1)) |||
-    runP(manSync(TMan2)) |||
-    runP(womanSync(TWoman2)) |||
-    runP(womanSync(TWoman1))
-)
-assert System4 :[deadlock free]
+Spec2Thread=Linearizers({T1,T2})
+Spec3Thread=Linearizers({T1,T2,T3})
+Spec4Thread=Linearizers({T1,T2,T3,T4})
+Spec5Thread=Linearizers({T1,T2,T3,T4,T5})
+
+assert Spec2Thread [T= System2
+assert Spec3Thread [T= System3
+assert Spec4Thread [T= System4
+assert Spec5Thread [T= System5
+
+assert Spec2Thread [F= System2
+assert Spec3Thread [F= System3
+assert Spec4Thread [F= System4
+assert Spec5Thread [F= System5

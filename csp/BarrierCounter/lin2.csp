@@ -3,6 +3,7 @@ channel Sync: TypeSeqNumber
 Spec(i) = Sync.i -> Spec((i+1)%M)
 
 Lin(All,me)=
+  STOP |~|
   Call!me ->
   Sync?mereturn ->
   Return!me!mereturn ->

@@ -21,16 +21,19 @@ Lin(All,me)=(
     Lin(All,me)  
   ))
 ) |~| STOP
-LinEvents(All,me)={|Sync.me,Call.me,Return.me, SyncShutDown|}
-Linearizers(All)=((|| me: All @ [LinEvents(All,me)] Lin(All,me)) [|{|Sync|}|] Spec(qNewQueue)) \ {|Sync,SyncShutDown|}
-Linearizers1(All)=((|| me: All @ [LinEvents(All,me)] Lin(All,me)) [|{|Sync|}|] Spec(qNewQueue))
+LinEvents(All,me)={|Sync.me,Call.me,Return.me,SyncShutDown|}
+Linearizers(All)=((|| me: All @ [LinEvents(All,me)] Lin(All,me)) [|{|Sync,SyncShutDown|}|] Spec(All,qNewQueue)) \ {|Sync,SyncShutDown|}
 
-Spec(q)=
+Spec(All,q)=
   (qValidEnqueue(q)!={} & [] x:qValidEnqueue(q) @ (
-    Sync?t!(EnqueueCall.x)!EnqueueReturn -> 
-    Spec(qEnqueue(q,x))
+    Sync?t:All!(EnqueueCall.x)!EnqueueReturn -> 
+    Spec(All,qEnqueue(q,x))
   ))[]
   (qDequeue(q)!={} & [](x,newq):qDequeue(q) @ (
-    Sync?t!(DequeueCall)!(DequeueReturn.x) ->
-    Spec(newq)
-  ))
+    Sync?t:All!(DequeueCall)!(DequeueReturn.x) ->
+    Spec(All,newq)
+  ))[]
+  (qDequeue(q)=={} & 
+    SyncShutDown ->
+    STOP
+  )

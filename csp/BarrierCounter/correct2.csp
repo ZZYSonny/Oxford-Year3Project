@@ -3,7 +3,7 @@ include "common.csp"
 instance VarSeqNumber = ModuleVariable({0..M},0)
 instance VarWaiting = ModuleVariable({0..card(TypeThreadID)},0)
 instance WaitSem = ModuleSignallingSemaphore(TypeThreadID)
-instance Mutex = ModuleMutexSemaphore(TypeThreadID)
+instance Mutex = ModuleSemaphore(TypeThreadID, true)
 
 runWith(hideSpurious,hideInternal,p)=
   VarSeqNumber::runWith(hideInternal,

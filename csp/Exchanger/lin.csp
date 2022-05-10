@@ -3,22 +3,25 @@ channel Sync: TypeThreadID. TypeData. TypeData. TypeThreadID. TypeData. TypeData
 -- Thread2: thread identity, function parameter, function return
 
 -- Spec Process. 
-Spec = Sync?ta?aparam?areturn?tb:diff(TypeThreadID,{ta})!areturn!aparam -> Spec
+Spec(All) = 
+  Sync?t1:All?a?b?tb:diff(All,{t1})!b!a -> 
+  Spec(All)
 
 --Linearizer for a process, only accept Sync event regarding me between Call and Return
 Lin(All,me)=
+  STOP |~|
   Call!me?meparam -> ((
-      Sync!me!meparam?mereturn?other?oparam?oreturn ->
+      Sync!me!meparam?mereturn?other:diff(All,{me})?oparam?oreturn ->
       Return!me!mereturn ->
       Lin(All,me)
-    )[](
-      Sync?other?oparam?oreturn!me!meparam?mereturn ->
+    )|~|(
+      Sync?other:diff(All,{me})?oparam?oreturn!me!meparam?mereturn ->
       Return!me!mereturn ->
       Lin(All,me)
   ))
 LinEvents(All,me)=union({
   e | e <- {|Sync|},
   let Sync.t1.a.b.t2.c.d=e within
-    countList(me,<t1,t2>)==1
+    countList(me,<t1,t2>)==1 and member(t1,All) and member(t2,All)
 },{|Call.me,Return.me|})
-Linearizers(All)= ((|| me: All @ [LinEvents(All,me)] Lin(All,me)) [|{|Sync|}|] Spec) \ {|Sync|}
+Linearizers(All)= ((|| me: All @ [LinEvents(All,me)] Lin(All,me)) [|{|Sync|}|] Spec(All)) \ {|Sync|}

@@ -1,16 +1,16 @@
 include "common.csp"
 
 
-instance VarA = ModuleUninitVariable(TypeData) 
-instance VarB = ModuleUninitVariable(TypeData)
-instance VarC = ModuleUninitVariable(TypeData)
+instance VarA = AUninitVariable(TypeData) 
+instance VarB = BUninitVariable(TypeData)
+instance VarC = CUninitVariable(TypeData)
 
-instance aClear = ModuleMutexSemaphore(TypeThreadID)
-instance bClear = ModuleSignallingSemaphore(TypeThreadID)
-instance cClear = ModuleSignallingSemaphore(TypeThreadID)
-instance aSignal = ModuleSignallingSemaphore(TypeThreadID)
-instance bSignal = ModuleSignallingSemaphore(TypeThreadID)
-instance cSignal = ModuleSignallingSemaphore(TypeThreadID)
+instance aClear  = ModuleSemaphore(TypeThreadID, True)
+instance bClear  = ModuleSemaphore(TypeThreadID, False)
+instance cClear  = ModuleSemaphore(TypeThreadID, False)
+instance aSignal = ModuleSemaphore(TypeThreadID, False)
+instance bSignal = ModuleSemaphore(TypeThreadID, False)
+instance cSignal = ModuleSemaphore(TypeThreadID, False)
 
 runWith(hide,p)=
   VarA::runWith(hide,
@@ -29,16 +29,16 @@ SyncA(me,avalue) =
   --aClear.down
   aClear::downChan!me ->
   --a = me
-  VarA::setValue!avalue ->
+  --VarA::setValue!avalue ->
   LP1!me!avalue ->
   --bClear.up
   bClear::upChan!me ->
   --aSignal.down
   aSignal::downChan!me ->
   --(b,c)
-  VarB::getValue?b ->
-  VarC::getValue?c ->
-  LP4!me!b!c ->
+  --VarB::getValue?b ->
+  --VarC::getValue?c ->
+  LP4!me?b?c ->
   --bSignal.up
   bSignal::upChan!me ->
   SKIP
@@ -47,16 +47,16 @@ SyncB(me,bvalue) =
   --bClear.down
   bClear::downChan!me ->
   --b=me
-  VarB::setValue!bvalue ->
+  --VarB::setValue!bvalue ->
   LP2!me!bvalue->
   --cClear.up
   cClear::upChan!me ->
   --bSignal.down
   bSignal::downChan!me ->
   --(a,c)
-  VarA::getValue?a ->
-  VarC::getValue?c ->
-  LP5!me!a!c ->
+  --VarA::getValue?a ->
+  --VarC::getValue?c ->
+  LP5!me?a?c ->
   --cSignal.up
   cSignal::upChan!me ->
   SKIP
@@ -65,16 +65,16 @@ SyncC(me,cvalue) =
   --cClear.down
   cClear::downChan!me ->
   --c = me
-  VarC::setValue!cvalue ->
+  --VarC::setValue!cvalue ->
   LP3!me!cvalue ->
   --aSignal.up
   aSignal::upChan!me ->
   --cSignal.down
   cSignal::downChan!me ->
   --(a,b)
-  VarA::getValue?a ->
-  VarB::getValue?b ->
-  LP6!me!a!b ->
+  --VarA::getValue?a ->
+  --VarB::getValue?b ->
+  LP6!me?a?b ->
   --aClear.up
   aClear::upChan!me ->
   SKIP

@@ -1,0 +1,2458 @@
+\lstset{breaklines,basicstyle=\scriptsize}
+ABC/linattempts/lin1.csp
+\begin{lstlisting}
+--A slightly simplified version of the linearizer
+--by merging the Spec process into individual linearizer process
+channel Sync: TypeThreadID.TypeData.(TypeData.TypeData).TypeThreadID.TypeData.(TypeData.TypeData).TypeThreadID.TypeData.(TypeData.TypeData)
+--same sync definition
+
+--Linearizer for a process
+--With the information from spec process, parameter and return value of ASync
+--it is possible to know the parameter and return of BSync and CSync
+Lin(All,me)=(
+      --me synchronizes as thread A
+      Call!me!ASync?a ->
+      Sync!me!a?b?c?t2:diff(All,{me})!b!a!c?t3:diff(All,{me,t2})!c!a!b ->
+      Return!me!ASync!b!c ->
+      Lin(All,me)
+    ) [] (
+      --me synchronizes as thread B
+      Call!me!BSync?b ->
+      Sync?t2:diff(All,{me})?a!b?c!me!b!a!c?t3:diff(All,{me,t2})!c!a!b ->
+      Return!me!BSync!a!c ->
+      Lin(All,me)
+    ) [] (
+      --me synchronizes as thread C
+      Call!me!CSync?c ->
+      Sync?t2:diff(All,{me})?a?b!c?t3:diff(All,{me,t2})!b!a!c!me!c!a!b ->
+      Return!me!CSync!a!b ->
+      Lin(All,me)
+    )
+
+LinEvents(All,me)=union({
+  ev | ev<-{|Sync|},
+  let Sync.t1.a.b.c.t2.d.e.f.t3.h.i.j=ev within
+    countList(me,<t1,t2,t3>)==1
+},union({|Call.me,Return.me|}))
+
+Linearizers(All)= (|| me: All @ [LinEvents(All,me)]  Lin(All,me)) \ {|Sync|}
+\end{lstlisting}
+ABC/linattempts/lin2.csp
+\begin{lstlisting}
+--Further simplified linearizer
+--by simplifying the sync event using the spec process
+channel Sync: TypeThreadID.TypeThreadID.TypeThreadID.TypeData.TypeData.TypeData
+--Sync.t1.t2.t3.a.b.c corresponds to
+--Thread t1 calls ASync with parameter a and returns b.c
+--Thread t2 calls BSync with parameter b and returns a.c
+--Thread t3 calls CSync with parameter c and returns a.b
+
+--Linearizer for a process
+Lin(All,me)= (
+      --me synchronizes as thread A
+      Call!me!ASync?a ->
+      Sync!me?t2:diff(All,{me})?t3:diff(All,{me,t2})!a?b?c ->
+      Return!me!ASync!b!c ->
+      Lin(All,me)
+    ) [] (
+      --me synchronizes as thread B
+      Call!me!BSync?b ->
+      Sync?t2:diff(All,{me})!me?t3:diff(All,{me,t2})?a!b?c ->
+      Return!me!BSync!a!c ->
+      Lin(All,me)
+    ) [] (
+      --me synchronizes as thread C
+      Call!me!CSync?c ->
+      Sync?t2:diff(All,{me})?t3:diff(All,{me,t2})!me?a?b!c ->
+      Return!me!CSync!a!b ->
+      Lin(All,me)
+    )
+
+LinEvents(All,me)=union({
+  e | e <- {|Sync|},
+  let Sync.t1.t2.t3.a.b.c=e within
+    countList(me,<t1,t2,t3>)==1
+},{|Call.me,Return.me|})
+
+Linearizers(All)= (|| me: All @ [LinEvents(All,me)]  Lin(All,me)) \ {|Sync|}
+\end{lstlisting}
+ABC/linattempts/lin21.csp
+\begin{lstlisting}
+--A modified version of lin2
+--slow
+channel Sync: TypeThreadID.TypeThreadID.TypeThreadID.TypeData.TypeData.TypeData
+
+--Linearizer for a process
+Lin(All,me)= 
+  [] a: TypeData @ [] b: TypeData @ [] c: TypeData @
+  [] t2: diff(All,{me}) @ [] t3: diff(All,{me,t2}) @ (
+      --me synchronizes as thread A
+      Call!me!ASync!a ->
+      Sync!me!t2!t3!a!b!c ->
+      Return!me!ASync!b!c ->
+      Lin(All,me)
+    ) [] (
+      --me synchronizes as thread B
+      Call!me!BSync!b ->
+      Sync!t2!me!t3!a!b!c ->
+      Return!me!BSync!a!c ->
+      Lin(All,me)
+    ) [] (
+      --me synchronizes as thread C
+      Call!me!CSync!c ->
+      Sync!t2!t3!me!a!b!c ->
+      Return!me!CSync!a!b ->
+      Lin(All,me)
+    )
+LinEvents(All,me)=union({
+  e | e <- {|Sync|},
+  let Sync.t1.t2.t3.a.b.c=e within
+    countList(me,<t1,t2,t3>)>0
+},{|Call.me,Return.me|})
+Linearizers(All)= (|| me: All @ [LinEvents(All,me)]  Lin(All,me)) \ {|Sync|}
+\end{lstlisting}
+Barrier/Barrier.scala
+\begin{lstlisting}
+package synchronisationObject
+
+/** The trait for a barrier synchronisation. */
+trait BarrierT{
+  def sync: Unit
+}
+
+// ==================================================================
+
+/** The CSO barrier. */
+class Barrier(n: Int) extends io.threadcso.Barrier(n) with BarrierT
+
+// ==================================================================
+
+/** An obviously faulty barrier. */
+class FaultyBarrier(n: Int) extends BarrierT{
+  def sync = {} // return immediately!
+}
+
+// ==================================================================
+
+/** A faulty version that doesn't guard against spurious wake-ups. */
+class FaultyBarrier2(n: Int) extends BarrierT{
+  private var count = 0
+
+  def sync = synchronized{
+    count += 1
+    if(count == n){ count = 0; notifyAll() }
+    else wait() // This doesn't guard against spurious wake-ups, so is an
+                // error, but testing struggles to find it.
+  }
+}
+
+// ==================================================================
+
+/** Another faulty version.  */
+class FaultyBarrier3(n: Int) extends BarrierT{
+  private var count = 0
+  private var leaving = false
+
+  def sync = synchronized{
+    count += 1
+    if(count == n){ leaving = true; /* count -= 1;*/ notifyAll() }
+    else{ 
+      while(!leaving) wait()
+      count -= 1
+      if(count == 0) leaving = false
+    }
+  }
+  /* Note: if count is decremented in the "count == n" branch, then deadlock can
+   * arise, as follows.  (1) n-1 threads call sync and wait; (2) another
+   * thread calls sync and performs notifyAll(); (3) another thread calls sync
+   * and sets count = n and calls notifyAll(); (4) the waiting n-1 threads all
+   * leave, setting count = 0.  Then the number of other threads is not a
+   * multiple of n, so they deadlock. */
+} 
+
+// ==================================================================
+
+/** Another correct version (I think). */
+class Barrier2(n: Int) extends BarrierT{
+  private var count = 0 // The number of waiting threads.
+  private var leaving = false // Are we in the leaving phase?
+
+  def sync = synchronized{
+    while(leaving) wait() // Wait for previous round to finish
+    count += 1
+    if(count == n){ leaving = true; count -= 1; notifyAll() }
+    else{ 
+      while(!leaving) wait()
+      count -= 1
+      if(count == 0){ 
+        leaving = false; notifyAll() // Allow next round to continue. 
+      }
+    }
+  }
+}
+
+\end{lstlisting}
+Barrier/lin2.csp
+\begin{lstlisting}
+channel Sync
+
+Spec = Sync -> Spec
+
+Lin(All,me)=
+  STOP |~|
+  Call!me ->
+  Sync ->
+  Return!me ->
+  Lin(All,me)
+LinEvents(All,me)={|Sync,Call.me,Return.me|}
+Linearizers(All)= ((|| me: All @ [LinEvents(All,me)]  Lin(All,me)) [|{|Sync|}|] Spec) \ {|Sync|}
+\end{lstlisting}
+Barrier/common.csp
+\begin{lstlisting}
+include "../lib/common.csp"
+include "../lib/variable.csp"
+include "../lib/monitor.csp"
+
+datatype TypeThreadID = T1 | T2 | T3 | T4 | T5
+
+channel Call : TypeThreadID
+channel Return: TypeThreadID
+
+
+\end{lstlisting}
+Barrier/lin1.csp
+\begin{lstlisting}
+hide = True
+--TypeThreadIDArrangement=Arrangement(N, TypeThreadID)
+TypeThreadIDPermutation=PermutationInSet(TypeThreadID)
+channel Sync:TypeThreadIDPermutation
+
+Spec = Sync?perm:TypeThreadIDPermutation -> Spec
+
+Lin(All,me)=
+  STOP |~|
+  Call!me ->
+  Sync?perm ->
+  Return!me ->
+  Lin(All,me)
+  
+LinEvents(All,me)={|Sync,Call.me,Return.me|}
+Linearizers(All)= ((|| me: All @ [LinEvents(All,me)]  Lin(All,me)) [|{|Sync|}|] Spec) \ {|Sync|}
+
+
+\end{lstlisting}
+Barrier/faulty.csp
+\begin{lstlisting}
+include "common.csp"
+
+
+instance VarCount = ModuleVariable({0..card(TypeThreadID)},0)
+instance Monitor = ModuleMonitor(TypeThreadID)
+
+runWith(hideSpurious, hideInternal,p)=
+  VarCount::runWith(hideInternal,
+  Monitor::runWith(hideSpurious, hideInternal,
+    p
+  ))
+
+sync(me,NThread)=
+  Call!me ->
+  --synchronized
+  Monitor::enter(me);
+    --count+=1
+    VarCount::getValue?x ->
+    if x>=NThread then DIV else
+    VarCount::setValue!(x+1) -> (
+    --if(count==n)
+    if x+1==NThread then (
+      --count=0
+      VarCount::setValue!0 ->
+      --notifyAll()
+      Monitor::notifyAll(me)
+    ) else (
+      --wait()
+      Monitor::wait(me)
+    )
+  );
+  Monitor::exit(me);
+  Return!me ->
+  SKIP
+
+
+
+
+\end{lstlisting}
+Barrier/test.csp
+\begin{lstlisting}
+include "faulty.csp"
+include "lin2.csp"
+
+Thread(All,me)=chaosP(sync(me,card(All)))
+System(All) = runWith(True, True, ||| me:All @ Thread(All,me))
+
+System2=System({T1,T2})
+System3=System({T1,T2,T3})
+System4=System({T1,T2,T3,T4})
+System5=System({T1,T2,T3,T4,T5})
+
+Spec2Thread=Linearizers({T1,T2})
+Spec3Thread=Linearizers({T1,T2,T3})
+Spec4Thread=Linearizers({T1,T2,T3,T4})
+Spec5Thread=Linearizers({T1,T2,T3,T4,T5})
+
+assert Spec2Thread [T= System2
+assert Spec3Thread [T= System3
+assert Spec4Thread [T= System4
+assert Spec5Thread [T= System5
+
+assert Spec2Thread [F= System2
+assert Spec3Thread [F= System3
+assert Spec4Thread [F= System4
+assert Spec5Thread [F= System5
+
+\end{lstlisting}
+Barrier/correct.csp
+\begin{lstlisting}
+include "common.csp"
+
+
+instance VarCount = ModuleVariable({0..card(TypeThreadID)},0)
+instance VarLeaving = ModuleVariable(Bool,False)
+instance Monitor = ModuleMonitor(TypeThreadID)
+
+runWith(hideSpurious, hideInternal,p)=
+  VarCount::runWith(hideInternal,
+  VarLeaving::runWith(hideInternal,
+  Monitor::runWith(hideSpurious, hideInternal,
+    p
+  )))
+
+sync(me,NThread)=
+  Call!me ->
+  --synchronized
+  Monitor::enter(me);
+    --while(leaving) wait()
+    Monitor::whileWait(me, \ktrue,kfalse @
+      VarLeaving::getValue?leaving ->
+      if leaving then ktrue else kfalse
+    );
+    --count+=1
+    VarCount::getValue?x ->
+    if x>=NThread then DIV else
+    VarCount::setValue!(x+1) -> (
+    --if(count==n)
+    if x+1==NThread then (
+      --leaving=true
+      VarLeaving::setValue!True ->
+      --count-=1
+      VarCount::setValue!x ->
+      --notifyAll()
+      Monitor::notifyAll(me)
+    ) else (
+      --while(!leaving) wait()
+      Monitor::whileWait(me, \ktrue,kfalse @
+        VarLeaving::getValue?leaving ->
+        if (not leaving) then ktrue else kfalse
+      );
+      --count-=1
+      VarCount::getValue?y -> 
+      if y==0 then DIV else
+      VarCount::setValue!y-1 ->
+      --if(count==0)
+      if(y-1==0) then (
+        --leaving=false
+        VarLeaving::setValue!False ->
+        --notifyAll()
+        Monitor::notifyAll(me)
+      ) else SKIP
+    )
+  );
+  Monitor::exit(me);
+  Return!me ->
+  SKIP
+
+
+
+
+\end{lstlisting}
+BarrierCounter/lin2.csp
+\begin{lstlisting}
+channel Sync: TypeSeqNumber
+
+Spec(i) = Sync.i -> Spec((i+1)%M)
+
+Lin(All,me)=
+  STOP |~|
+  Call!me ->
+  Sync?mereturn ->
+  Return!me!mereturn ->
+  Lin(All,me)
+LinEvents(All,me)={|Call.me,Return.me,Sync|}
+Linearizers(All)= ((|| me: All @ [LinEvents(All,me)]  Lin(All,me)) [|{|Sync|}|] Spec(0)) \ {|Sync|}
+
+
+\end{lstlisting}
+BarrierCounter/common.csp
+\begin{lstlisting}
+include "../lib/common.csp"
+include "../lib/variable.csp"
+include "../lib/monitor.csp"
+include "../lib/semaphore.csp"
+
+datatype TypeThreadID = T1 | T2 | T3 | T4 | T5
+M=3
+TypeSeqNumber={0..M}
+channel Call : TypeThreadID
+channel Return: TypeThreadID.TypeSeqNumber
+
+
+\end{lstlisting}
+BarrierCounter/lin1.csp
+\begin{lstlisting}
+TypeThreadIDPermutation=PermutationInList(TypeThreadID)
+TypeReturns=ArrangementInList(NThread,TypeSeqNumber)
+channel Sync: TypeThreadIDPermutation. TypeReturns
+
+Spec(i) = Sync?perm!nElemList(NThread,i) -> Spec((i+1)%M)
+
+Lin(All,me)=
+  STOP |~|
+  Call!me ->
+  Sync?perms?returns ->
+  Return!me!nthList(indexList(me,perms),returns) ->
+  Lin(All,me)
+LinEvents(All,me)={|Call.me,Return.me,Sync|}
+Linearizers(All)= ((|| me: All @ [LinEvents(All,me)]  Lin(All,me)) [|{|Sync|}|] Spec(0)) \ {|Sync|}
+
+\end{lstlisting}
+BarrierCounter/correct1.csp
+\begin{lstlisting}
+include "common.csp"
+
+instance VarSeqNumber = ModuleVariable({0..M},0)
+instance VarCount = ModuleVariable({0..card(TypeThreadID)},0)
+instance VarLeaving = ModuleVariable(Bool,False)
+instance Monitor = ModuleMonitor(TypeThreadID)
+
+runWith(hideSpurious,hideInternal,p)=
+  VarSeqNumber::runWith(hideInternal,
+  VarCount::runWith(hideInternal,
+  VarLeaving::runWith(hideInternal,
+  Monitor::runWith(hideSpurious,hideInternal,
+    p
+  ))))
+
+sync(me,NThread)=
+  Call!me ->
+  --synchronized
+  Monitor::enter(me);
+    --while(leaving) wait()
+    Monitor::whileWait(me, \ktrue,kfalse @
+      VarLeaving::getValue?leaving ->
+      if leaving then ktrue else kfalse
+    );
+    --count+=1
+    VarCount::getValue?x ->
+    if x>=NThread then DIV else
+    VarCount::setValue!(x+1) -> (
+    --if(count==NThread)
+    if x+1==NThread then (
+      --leaving=true
+      VarLeaving::setValue!True ->
+      --count-=1
+      VarCount::setValue!x ->
+      --notifyAll()
+      Monitor::notifyAll(me);
+      --seqNumber
+      VarSeqNumber::getValue?ans->(
+        Monitor::exit(me);
+        Return!me!ans ->
+        SKIP
+      )
+    ) else (
+      --while(!leaving) wait()
+      Monitor::whileWait(me, \ktrue,kfalse @
+        VarLeaving::getValue?leaving ->
+        if (not leaving) then ktrue else kfalse
+      );
+      --count-=1
+      VarCount::getValue?y -> 
+      if y==0 then DIV else
+      VarCount::setValue!y-1 ->
+      --if(count==0)
+      if(y-1==0) then (
+        --leaving=false
+        VarLeaving::setValue!False ->
+        --notifyAll()
+        Monitor::notifyAll(me);
+        --seqNumber+=1
+        VarSeqNumber::getValue?z ->
+        VarSeqNumber::setValue!((z+1)%M) ->
+        --seqNumber-1
+        VarSeqNumber::getValue?ans->(
+          Monitor::exit(me);
+          Return!me!z ->
+          SKIP
+        )
+      ) else (
+        --seqNumber
+        VarSeqNumber::getValue?ans->(
+          Monitor::exit(me);
+          Return!me!ans ->
+          SKIP
+        )
+      )
+    )
+  )
+
+
+
+\end{lstlisting}
+BarrierCounter/correct2.csp
+\begin{lstlisting}
+include "common.csp"
+
+instance VarSeqNumber = ModuleVariable({0..M},0)
+instance VarWaiting = ModuleVariable({0..card(TypeThreadID)},0)
+instance WaitSem = ModuleSignallingSemaphore(TypeThreadID)
+instance Mutex = ModuleMutexSemaphore(TypeThreadID)
+
+runWith(hideSpurious,hideInternal,p)=
+  VarSeqNumber::runWith(hideInternal,
+  VarWaiting::runWith(hideInternal,
+  WaitSem::runWith(hideInternal,
+  Mutex::runWith(hideInternal,
+    p
+  ))))
+
+sync(me,NThread)=
+  Call!me ->
+  --mutex.down
+  Mutex::downChan!me ->
+  --val result = seqNumber
+  VarSeqNumber::getValue?result -> (
+    --if(waiting==NThread-1)
+    VarWaiting::getValue?x -> (
+    if x==NThread-1 then (
+      --waitSem.up
+      WaitSem::upChan!me ->
+      SKIP
+    ) else (
+      --waiting+=1
+      if x>=NThread then DIV else
+      VarWaiting::setValue!(x+1) ->
+      --mutex.up
+      Mutex::upChan!me ->
+      --waitSem.down
+      WaitSem::downChan!me ->
+      --waiting-=1
+      VarWaiting::getValue?y ->
+      if y==0 then DIV else
+      VarWaiting::setValue!(y-1) ->
+      if y-1==0 then (
+        --seqNumber+=1
+        VarSeqNumber::getValue?z ->
+        VarSeqNumber::setValue!((z+1)%M) ->
+        --mutex.up
+        Mutex::upChan!me ->
+        SKIP
+      ) else (
+        --waitSem.up
+        WaitSem::upChan!me ->
+        SKIP
+      )
+    ));
+    --result
+    Return!me!result ->
+    SKIP
+  )
+  
+
+\end{lstlisting}
+BarrierCounter/faulty.csp
+\begin{lstlisting}
+include "common.csp"
+
+instance VarSeqNumber = ModuleVariable({0..M},0)
+instance VarCount = ModuleVariable({0..card(TypeThreadID)},0)
+instance VarLeaving = ModuleVariable(Bool,False)
+instance Monitor = ModuleMonitor(TypeThreadID)
+
+runWith(hideSpurious,hideInternal,p)=
+  VarSeqNumber::runWith(hideInternal,
+  VarCount::runWith(hideInternal,
+  VarLeaving::runWith(hideInternal,
+  Monitor::runWith(hideSpurious,hideInternal,
+    p
+  ))))
+
+sync(me,NThread)=
+  Call!me ->
+  --synchronized
+  Monitor::enter(me);
+    --count+=1
+    VarCount::getValue?x ->
+    if x>=NThread then DIV else
+    VarCount::setValue!(x+1) -> (
+    --if(count==N)
+    if x+1==NThread then (
+      --leaving=true
+      VarLeaving::setValue!True ->
+      --notifyAll()
+      Monitor::notifyAll(me);
+      --seqNumber
+      VarSeqNumber::getValue?ans->(
+        Monitor::exit(me);
+        Return!me!ans ->
+        SKIP
+      )
+    ) else (
+      --while(!leaving) wait()
+      Monitor::whileWait(me, \ktrue,kfalse @
+        VarLeaving::getValue?leaving ->
+        if (not leaving) then ktrue else kfalse
+      );
+      --count-=1
+      VarCount::getValue?y -> 
+      if y==0 then DIV else
+      VarCount::setValue!y-1 ->
+      --if(count==0)
+      if(y-1==0) then (
+        --leaving=false
+        VarLeaving::setValue!False ->
+        --seqNumber+=1
+        VarSeqNumber::getValue?z ->
+        VarSeqNumber::setValue!((z+1)%M) ->
+        --seqNumber-1
+        VarSeqNumber::getValue?ans->(
+          Monitor::exit(me);
+          Return!me!z ->
+          SKIP
+        )
+      ) else (
+        --seqNumber
+        VarSeqNumber::getValue?ans->(
+          Monitor::exit(me);
+          Return!me!ans ->
+          SKIP
+        )
+      )
+    )
+  )
+
+
+
+\end{lstlisting}
+BarrierCounter/test.csp
+\begin{lstlisting}
+include "correct1.csp"
+include "lin2.csp"
+
+Thread(All,me)=chaosP(sync(me,card(All)))
+System(All) = runWith(True, True, ||| me:All @ Thread(All,me))
+
+System2=System({T1,T2})
+System3=System({T1,T2,T3})
+System4=System({T1,T2,T3,T4})
+System5=System({T1,T2,T3,T4,T5})
+
+Spec2Thread=Linearizers({T1,T2})
+Spec3Thread=Linearizers({T1,T2,T3})
+Spec4Thread=Linearizers({T1,T2,T3,T4})
+Spec5Thread=Linearizers({T1,T2,T3,T4,T5})
+
+assert Spec2Thread [T= System2
+assert Spec3Thread [T= System3
+assert Spec4Thread [T= System4
+assert Spec5Thread [T= System5
+
+assert Spec2Thread [F= System2
+assert Spec3Thread [F= System3
+assert Spec4Thread [F= System4
+assert Spec5Thread [F= System5
+
+\end{lstlisting}
+BarrierCounter/BarrierCounter.scala
+\begin{lstlisting}
+package synchronisationObject
+
+/** The trait for a barrier synchronisation with sequence number. */
+trait BarrierCounterT{
+  def sync: Int
+}
+
+// ==================================================================
+
+/** An implementation using a monitor. */
+class BarrierCounter(n: Int) extends BarrierCounterT{
+  private var seqNumber = 0 // the current sequence number
+  private var count = 0 // The number of waiting threads.
+  private var leaving = false // Are we in the leaving phase?
+
+  def sync = synchronized{
+    while(leaving) wait() // Wait for previous round to finish
+    count += 1
+    if(count == n){ leaving = true; count -= 1; notifyAll(); seqNumber }
+    else{ 
+      while(!leaving) wait()
+      count -= 1
+      if(count == 0){ 
+        leaving = false; notifyAll() // Allow next round to continue
+        seqNumber += 1; seqNumber-1 // Increment sequence number for next round
+      }
+      else seqNumber
+    }
+  }
+}
+
+// ==================================================================
+
+/** A faulty version.  */
+class FaultyBarrierCounter(n: Int) extends BarrierCounterT{
+  private var seqNumber = 0 // the current sequence number
+  private var count = 0
+  private var leaving = false
+
+  def sync = synchronized{
+    count += 1
+    if(count == n){ leaving = true; /* count -= 1;*/ notifyAll(); seqNumber }
+    else{ 
+      while(!leaving) wait()
+      count -= 1
+      if(count == 0){
+        leaving = false; seqNumber += 1; seqNumber-1 
+      }
+      else seqNumber
+    }
+  }
+  /* Note: if count is decremented in the "count == n" branch, then deadlock can
+   * arise, as follows.  (1) n-1 threads call sync and wait; (2) another
+   * thread calls sync and performs notifyAll(); (3) another thread calls sync
+   * and sets count = n and calls notifyAll(); (4) the waiting n-1 threads all
+   * leave, setting count = 0.  Then the number of other threads is not a
+   * multiple of n, so they deadlock. */
+} 
+
+// ==================================================================
+
+import io.threadcso._
+
+/* An implementation using semaphores. */
+class BarrierCounter2(n: Int) extends BarrierCounterT{
+  assert(n>1)
+  private var seqNumber = 0 // the current sequence number
+  private var waiting = 0 // number of processes currently waiting
+  private val waitSem = SignallingSemaphore()
+  private val mutex = MutexSemaphore()
+
+  def sync = {
+    mutex.down
+    val result = seqNumber
+    if(waiting == n-1){ waitSem.up; result }
+    else{ 
+      waiting += 1; mutex.up; waitSem.down // Wait until woken
+      waiting -= 1
+      if(waiting==0){ seqNumber += 1; mutex.up} else waitSem.up // pass the baton
+      result
+    }
+  }
+}
+    
+
+\end{lstlisting}
+Exchanger/Exchanger.scala
+\begin{lstlisting}
+package synchronisationObject
+
+/** The trait for exchangers. */
+trait ExchangerT[A]{
+  /** Exchange x with another thread. */
+  def exchange(x: A): A
+}
+
+// =======================================================
+
+class Exchanger[A] extends ExchangerT[A]{
+  /* The protocol proceeds in steps as follows.  Step 0: the first thread
+   * deposits its value and waits.  Step 1: the second thread reads the
+   * deposited value, deposits its value, and returns.  Step 2: the first
+   * thread reads the other thread's value. */
+
+  /** The step to happen next. */
+  private var step = 0
+
+  /** The current value being exchanged. */
+  private var data: A = _
+
+  def exchange(x: A) = synchronized{
+    while(step == 2) wait()  // (1)
+    if(step == 0){
+      data = x; step = 1 // deposit my value
+      while(step == 1) wait() // (2)
+      assert(step == 2); step = 0; notifyAll() // signal to thread at (1)
+      data
+    }
+    else{ // step = 1
+      val result = data; data = x; step = 2; 
+      notifyAll() // signal to thread at (2)
+      result
+    }
+  }
+}
+
+// =======================================================
+
+class FaultyExchanger[A] extends ExchangerT[A]{
+
+  /** The step to happen next. */
+  private var step = 0
+
+  /** The current value being exchanged. */
+  private var data: A = _
+
+  def exchange(x: A) = synchronized{
+    if(step == 0){
+      data = x; step = 1 // deposit my value
+      while(step == 1) wait() // (1)
+      step = 0; 
+      data
+    }
+    else{ // step = 1
+      val result = data; data = x; step = 0; 
+      notifyAll() // signal to thread at (1)
+      result
+    }
+  }
+}
+
+\end{lstlisting}
+Exchanger/lin.csp
+\begin{lstlisting}
+channel Sync: TypeThreadID. TypeData. TypeData. TypeThreadID. TypeData. TypeData
+-- Thread1: thread identity, function parameter, function return
+-- Thread2: thread identity, function parameter, function return
+
+-- Spec Process. 
+Spec(All) = 
+  Sync?t1:All?a?b?tb:diff(All,{t1})!b!a -> 
+  Spec(All)
+
+--Linearizer for a process, only accept Sync event regarding me between Call and Return
+Lin(All,me)=
+  STOP |~|
+  Call!me?meparam -> ((
+      Sync!me!meparam?mereturn?other:diff(All,{me})?oparam?oreturn ->
+      Return!me!mereturn ->
+      Lin(All,me)
+    )|~|(
+      Sync?other:diff(All,{me})?oparam?oreturn!me!meparam?mereturn ->
+      Return!me!mereturn ->
+      Lin(All,me)
+  ))
+LinEvents(All,me)=union({
+  e | e <- {|Sync|},
+  let Sync.t1.a.b.t2.c.d=e within
+    countList(me,<t1,t2>)==1 and member(t1,All) and member(t2,All)
+},{|Call.me,Return.me|})
+Linearizers(All)= ((|| me: All @ [LinEvents(All,me)] Lin(All,me)) [|{|Sync|}|] Spec(All)) \ {|Sync|}
+
+\end{lstlisting}
+Exchanger/common.csp
+\begin{lstlisting}
+include "../lib/common.csp"
+include "../lib/monitor.csp"
+include "../lib/variable.csp"
+
+datatype TypeThreadID = T1 | T2 | T3 | T4 | T5 | T6
+datatype TypeData = A | B | C | D
+
+channel Call : TypeThreadID.TypeData
+channel Return: TypeThreadID.TypeData
+
+\end{lstlisting}
+Exchanger/faulty.csp
+\begin{lstlisting}
+include "common.csp"
+
+instance Monitor = ModuleMonitor(TypeThreadID)
+instance Step = ModuleVariable({0,1,2}, 0)
+instance Data = ModuleUninitVariable(TypeData)
+
+exchange(me,datasend) = 
+  Monitor::enter(me);
+    --Start event for Linearizer
+    Call.me.datasend->
+    --if(step == 0)
+    Step::getValue?step -> if step==0 then (
+      --data = x;
+      Data::setValue!datasend -> 
+      --step = 1;
+      Step::setValue!1 ->
+      --while(step == 1) wait()
+      Monitor::whileWait(me, \ktrue,kfalse @
+        Step::getValue?step ->
+        if step==1 then ktrue else kfalse
+      );
+      --step = 0
+      Step::setValue!0 ->
+      --data
+      Data::getValue?res ->(
+      --Exit Monitor
+      Monitor::exit(me);
+      --Return result
+      Return.me.res -> 
+      SKIP
+    ))else(
+      --val result = data;
+      Data::getValue?res ->(
+      --data = x;
+      Data::setValue!datasend ->
+      --step = 0; 
+      Step::setValue!0 ->
+      --notifyAll()
+      Monitor::notifyAll(me);
+      --Exit Monitor
+      Monitor::exit(me);
+      --Return result
+      Return.me.res -> 
+      SKIP
+    ))
+
+runWith(hideSpurious, hideInternal, p)=
+  Monitor::runWith(hideSpurious, hideInternal,
+  Step::runWith(hideInternal,
+  Data::runWith(hideInternal,
+    p
+  )))
+\end{lstlisting}
+Exchanger/test.csp
+\begin{lstlisting}
+include "faulty.csp"
+include "lin.csp"
+
+Thread(me)=chaosP(|~| data:TypeData @ exchange(me,data))
+
+System(All) = runWith(True, True, ||| me:All @ Thread(me))
+
+System2 = System({T1,T2})
+System3 = System({T1,T2,T3})
+System4 = System({T1,T2,T3,T4})
+
+Spec2 = Linearizers({T1,T2})
+Spec3 = Linearizers({T1,T2,T3})
+Spec4 = Linearizers({T1,T2,T3,T4})
+
+assert Spec2 [T= System2
+assert Spec3 [T= System3
+assert Spec4 [T= System4
+
+assert Spec2 [F= System2
+assert Spec3 [F= System3
+assert Spec4 [F= System4
+\end{lstlisting}
+Exchanger/correct.csp
+\begin{lstlisting}
+include "common.csp"
+
+instance Monitor = ModuleMonitor(TypeThreadID)
+instance Step = ModuleVariable({0,1,2}, 0)
+instance Data = ModuleUninitVariable(TypeData)
+
+exchange(me,datasend) = 
+  --Start event for Linearizer
+  Call.me.datasend->
+  --Enter Synchronized
+  Monitor::enter(me);
+    --while(step == 2) wait()
+    Monitor::whileWait(me, \ktrue,kfalse @
+      Step::getValue?step ->
+      if step==2 then ktrue else kfalse
+    );
+    --if(step == 0)
+    Step::getValue?step -> if step==0 then (
+      --data = x;
+      Data::setValue!datasend -> 
+      --step = 1;
+      Step::setValue!1 ->
+      --while(step == 1) wait()
+      Monitor::whileWait(me, \ktrue,kfalse @
+        Step::getValue?step ->
+        if step==1 then ktrue else kfalse
+      );
+      --assert(step == 2)
+      Step::getValue?step ->
+      if step!=2 then div else
+      --step = 0
+      Step::setValue!0 ->
+      --notifyAll()
+      Monitor::notifyAll(me);
+      --data
+      Data::getValue?res ->(
+      --Exit Monitor
+      Monitor::exit(me);
+      --Return result
+      Return.me.res -> 
+      SKIP
+    ))else(
+      --val result = data;
+      Data::getValue?res -> (
+      --data = x;
+      Data::setValue!datasend ->
+      --step = 2; 
+      Step::setValue!2 ->
+      --notifyAll()
+      Monitor::notifyAll(me);
+      --Exit Monitor
+      Monitor::exit(me);
+      Return.me.res -> 
+      SKIP
+    ))
+
+runWith(hideSpurious, hideInternal, p)=
+  Monitor::runWith(hideSpurious, hideInternal,
+  Step::runWith(hideInternal,
+  Data::runWith(hideInternal,
+    p
+  )))
+
+\end{lstlisting}
+Filterchan/FilterChan.scala
+\begin{lstlisting}
+package synchronisationObject
+
+/** A filtering channel, where the receiver specifies a predicate over the values it is willing to receive. */
+trait FilterChanT[A]{
+  /** Send x on the channel. */
+  def send(x: A): Unit
+
+  /** Receive a value that satisfies p. */
+  def receive(p: A => Boolean): A
+}
+
+// =======================================================
+
+/** A correct implementation. */
+class FilterChan[A] extends FilterChanT[A]{
+  /** The current value being sent, if full = true. */
+  private var data: A = _
+
+  /** Is the value in data valid? */
+  private var full = false
+
+  def send(x: A): Unit = synchronized{
+    while(full) wait()
+    data = x; full = true; notifyAll()
+    while(full) wait()
+  }
+
+  def receive(p: A => Boolean): A = synchronized{
+    while(!full || !p(data)) wait()
+    val result = data; full = false
+    notifyAll()
+    result
+  }
+}
+
+// =======================================================
+
+/** A faulty implementation. */
+class FaultyFilterChan[A] extends FilterChanT[A]{
+  /** The current value being sent, if full = true. */
+  private var data: A = _
+
+  /** Is the value in data valid? */
+  private var full = false
+
+  def send(x: A): Unit = synchronized{
+    while(full) wait()
+    data = x; full = true; notifyAll()
+    while(full) wait()
+  }
+
+  def receive(p: A => Boolean): A = synchronized{
+    while(!full /* || !p(data) */) wait()
+    val result = data; full = false
+    notifyAll()
+    result
+  }
+}
+
+\end{lstlisting}
+Filterchan/lin.csp
+\begin{lstlisting}
+channel Sync: TypeThreadID.TypeParam.TypeReturn.TypeThreadID.TypeParam.TypeReturn
+
+Spec(All) = 
+  Sync?t1:All?(SendParam.x)!(SendReturn)?t2:diff(All,{t1})?recv:{RecvParam.p|p<-findPred(x)}!(RecvReturn.x) -> 
+  Spec(All)
+  
+Lin(All,me)=(
+  Call!me?sendparam ->
+  Sync!me!(sendparam)!(SendReturn)?other:diff(All,{me})?(recvparam)?(recvreturn) ->
+  Return!me!(SendReturn) ->
+  Lin(All,me)
+) |~| (
+  Call!me?recvparam ->
+  Sync?other:diff(All,{me})?sendparam?sendreturn!me!recvparam?recvreturn ->
+  Return!me!recvreturn ->
+  Lin(All,me)
+) |~| STOP
+LinEvents(All,me)=union({
+  ev | ev<-{|Sync|},
+  let Sync.t1.a.b.t2.c.d=ev within
+    countList(me,<t1,t2>)==1 and member(t1,All) and member(t2,All)
+},{|Call.me,Return.me|})
+Linearizers(All)= ((|| me: All @ [LinEvents(All,me)] Lin(All,me)) [|{|Sync|}|] Spec(All)) \ {|Sync|}
+
+\end{lstlisting}
+Filterchan/common.csp
+\begin{lstlisting}
+include "../lib/common.csp"
+include "../lib/monitor.csp"
+include "../lib/variable.csp"
+
+datatype TypeThreadID = T1 | T2 | T3 | T4
+datatype TypeData = A | B | C
+datatype TypePred = IsA | IsB | IsC
+
+--applyPred(f)(x)=f(x)
+applyPred(IsA)(x)=x==A
+applyPred(IsB)(x)=x==B
+applyPred(IsC)(x)=x==C
+
+--findPred(x) = {function f|f(x)=true} 
+findPred(x)={p|p<-TypePred,applyPred(p)(x)}
+
+--Type of parameter
+datatype TypeParam = SendParam.TypeData | RecvParam.TypePred
+--Type of function return
+datatype TypeReturn = SendReturn | RecvReturn.TypeData
+channel Call: TypeThreadID. TypeParam
+channel Return: TypeThreadID. TypeReturn
+
+\end{lstlisting}
+Filterchan/faulty.csp
+\begin{lstlisting}
+include "./common.csp"
+
+instance Monitor = ModuleMonitor(TypeThreadID)
+instance Full = ModuleVariable(Bool, False)
+instance Data = ModuleUninitVariable(TypeData)
+
+--------- Filter Chan
+
+send(me, x) = 
+  Call!me!(SendParam.x) ->
+  Monitor::synchronized(me,
+    --while(full) wait()
+    Monitor::whileWait(me, \ktrue,kfalse @
+      Full::getValue?full ->
+      if full then ktrue else kfalse
+    );
+    --data = x; full = true; notifyAll()
+    Data::setValue!x ->
+    Full::setValue!True ->
+    Monitor::notifyAll(me);
+    --while(full) wait()
+    Monitor::whileWait(me, \ktrue,kfalse @
+      Full::getValue?full ->
+      if full then ktrue else kfalse
+    )
+  );
+  Return!me!SendReturn ->
+  SKIP
+
+receive(me, p) = 
+  Call!me!(RecvParam.p) ->
+  Monitor::enter(me);
+    --while(!full || !p(data)) wait()
+    Monitor::whileWait(me, \ktrue,kfalse @
+      Full::getValue?full ->
+      Data::getValue?data ->
+      if (not full) then ktrue else kfalse
+    );
+    --val result = data; full = false
+    Full::setValue!False ->
+    Data::getValue?result ->(
+    --notifyAll()
+    Monitor::notifyAll(me);
+  Monitor::exit(me);
+  Return!me!(RecvReturn.result) ->
+  SKIP
+)
+
+runWith(hideSpurious, hideInternal, p) =
+  Monitor::runWith(hideSpurious,hideInternal,
+  Full::runWith(hideInternal,
+  Data::runWith(hideInternal,
+    p
+  )))
+\end{lstlisting}
+Filterchan/test.csp
+\begin{lstlisting}
+include "correct.csp"
+include "lin.csp"
+
+Thread(me) = chaosP(
+     (|~| x:TypeData @ send(me,x))
+  |~|(|~| p:TypePred @ receive(me,p)))
+System(All) = runWith(True, True, ||| me:All @ Thread(me))
+
+System2 = System({T1,T2})
+System3 = System({T1,T2,T3})
+System4 = System({T1,T2,T3,T4})
+
+Spec2 = Linearizers({T1,T2})
+Spec3 = Linearizers({T1,T2,T3})
+Spec4 = Linearizers({T1,T2,T3,T4})
+
+assert Spec2 [T= System2
+assert Spec3 [T= System3
+assert Spec4 [T= System4
+
+assert Spec2 [F= System2
+assert Spec3 [F= System3
+assert Spec4 [F= System4
+\end{lstlisting}
+Filterchan/correct.csp
+\begin{lstlisting}
+include "./common.csp"
+
+instance Monitor = ModuleMonitor(TypeThreadID)
+instance Full = ModuleVariable(Bool, False)
+instance Data = ModuleUninitVariable(TypeData)
+
+--------- Filter Chan
+
+send(me, x) = 
+  Call!me!(SendParam.x) ->
+  Monitor::synchronized(me,
+    --while(full) wait()
+    Monitor::whileWait(me, \ktrue,kfalse @
+      Full::getValue?full ->
+      if full then ktrue else kfalse
+    );
+    --data = x; full = true; notifyAll()
+    Data::setValue!x ->
+    Full::setValue!True ->
+    Monitor::notifyAll(me);
+    --while(full) wait()
+    Monitor::whileWait(me, \ktrue,kfalse @
+      Full::getValue?full ->
+      if full then ktrue else kfalse
+    )
+  );
+  Return!me!SendReturn ->
+  SKIP
+
+receive(me, p) = 
+  Call!me!(RecvParam.p) ->
+  Monitor::enter(me);
+    --while(!full || !p(data)) wait()
+    Monitor::whileWait(me, \ktrue,kfalse @
+      Full::getValue?full ->
+      Data::getValue?data ->
+      if (not full) or (not applyPred(p)(data)) then ktrue else kfalse
+    );
+    --val result = data; full = false
+    Full::setValue!False ->
+    Data::getValue?result ->(
+    --notifyAll()
+    Monitor::notifyAll(me);
+  Monitor::exit(me);
+  Return!me!(RecvReturn.result) ->
+  SKIP
+)
+
+runWith(hideSpurious, hideInternal, p) =
+  Monitor::runWith(hideSpurious, hideInternal,
+  Full::runWith(hideInternal,
+  Data::runWith(hideInternal,
+    p
+  )))
+\end{lstlisting}
+MenWoman/test.csp
+\begin{lstlisting}
+include "faulty.csp"
+include "lin.csp"
+
+Thread(me)=chaosP(
+  manSync(me) |~| womanSync(me)
+)
+System(All) = runWith(True, True, ||| me:All @ Thread(me))
+
+System2=System({T1,T2})
+System3=System({T1,T2,T3})
+System4=System({T1,T2,T3,T4})
+System5=System({T1,T2,T3,T4,T5})
+
+Spec2Thread=Linearizers({T1,T2})
+Spec3Thread=Linearizers({T1,T2,T3})
+Spec4Thread=Linearizers({T1,T2,T3,T4})
+Spec5Thread=Linearizers({T1,T2,T3,T4,T5})
+
+assert Spec2Thread [T= System2
+assert Spec3Thread [T= System3
+assert Spec4Thread [T= System4
+assert Spec5Thread [T= System5
+
+assert Spec2Thread [F= System2
+assert Spec3Thread [F= System3
+assert Spec4Thread [F= System4
+assert Spec5Thread [F= System5
+\end{lstlisting}
+MenWoman/faulty.csp
+\begin{lstlisting}
+include "common.csp"
+
+instance VarHim = ModuleVariable(TypeOptionThreadID,None)
+instance VarHer = ModuleVariable(TypeOptionThreadID,None)
+instance Monitor = ModuleMonitor(TypeThreadID)
+
+runWith(hideSpurious,hideInternal,p)=
+  VarHim::runWith(hideInternal,
+  VarHer::runWith(hideInternal,
+  Monitor::runWith(hideSpurious,hideInternal,
+    p
+  )))
+
+manSync(me) = 
+  Call!me!ManSync ->
+  --synchronized
+  Monitor::enter(me);
+    --while(him.nonEmpty) wait()
+    Monitor::whileWait(me, \ktrue,kfalse @
+      VarHim::getValue?x ->
+      if x!=None then ktrue else kfalse
+    );
+    --him=Some(me)
+    VarHim::setValue!(Some.me) ->
+    --notifyAll()
+    Monitor::notifyAll(me);
+    --while(her.isEmpty) wait()
+    Monitor::whileWait(me, \ktrue,kfalse @
+      VarHer::getValue?x ->
+      if x==None then ktrue else kfalse
+    );
+    --val Some(res)=her
+    VarHer::getValue?(Some.ans) ->
+    --her=None
+    VarHer::setValue!None ->(
+    --notifyAll()
+    Monitor::notifyAll(me);
+  --synchronized
+  Monitor::exit(me);
+  Return!me!ManSync!ans->
+  SKIP
+  )
+
+womanSync(me) = 
+  Call!me!WomanSync ->
+  --synchronized
+  Monitor::enter(me);
+    --while(her.nonEmpty) wait()
+    Monitor::whileWait(me, \ktrue,kfalse @
+      VarHer::getValue?x ->
+      if x!=None then ktrue else kfalse
+    );
+    --her=Some(me)
+    VarHer::setValue!(Some.me) ->
+    --notifyAll()
+    Monitor::notifyAll(me);
+    --while(him.isEmpty) wait()
+    Monitor::whileWait(me, \ktrue,kfalse @
+      VarHim::getValue?x ->
+      if x==None then ktrue else kfalse
+    );
+    --val Some(res)=him
+    VarHim::getValue?(Some.ans) ->
+    --him=None
+    VarHim::setValue!None ->(
+    --notifyAll()
+    Monitor::notifyAll(me);
+  --synchronized
+  Monitor::exit(me);
+  Return!me!WomanSync!ans->
+  SKIP
+  )
+\end{lstlisting}
+MenWoman/MenWomen.scala
+\begin{lstlisting}
+package synchronisationObject
+
+trait MenWomenT{
+  def manSync(me: Int): Int
+  def womanSync(me: Int): Int
+}
+
+// ==================================================================
+
+class MenWomen extends MenWomenT{
+  /* We proceed in stages.  Stage 0: man writes name and waits.  Stage 1: woman
+   * writes name, returns man's name.  Stage 2: man reads woman's name. */
+  private var stage = 0
+  private var him = -1
+  private var her = -1
+
+  def manSync(me: Int): Int = synchronized{
+    while(stage != 0) wait()         // (1)
+    him = me; stage = 1; notifyAll() // signal to waiting woman at (3)
+    while(stage != 2) wait           // (2)
+    stage = 0; notifyAll(); her      // signal to next man at (1)
+  }
+
+  def womanSync(me: Int): Int = synchronized{
+    while(stage != 1) wait                // (3)
+    her = me; stage = 2; notifyAll(); him // signal to man at (2)
+  }
+}
+
+// =======================================================
+
+/** This version is faulty. */
+class FaultyMenWomen extends MenWomenT{
+  private var him: Option[Int] = None
+  private var her: Option[Int] = None
+
+  def manSync(me: Int): Int = synchronized{
+    while(him.nonEmpty) wait()  // (1)
+    him = Some(me); notifyAll() // signal to waiting woman at (4)
+    while(her.isEmpty) wait()   // (2)
+    val Some(res) = her
+    her = None; notifyAll()     // signal to waiting woman at (3)
+    res
+  }
+
+  def womanSync(me: Int): Int = synchronized{
+    while(her.nonEmpty) wait()  // (3)
+    her = Some(me); notifyAll() // signal to waiting man at (2)
+    while(him.isEmpty) wait()   // (4)
+    val Some(res) = him
+    him = None; notifyAll()     // signal to waiting man at (1)
+    res
+  }
+
+}
+
+\end{lstlisting}
+MenWoman/correct.csp
+\begin{lstlisting}
+include "common.csp"
+
+
+instance VarStage = ModuleVariable({0,1,2},0) 
+instance VarHim = ModuleUninitVariable(TypeThreadID)
+instance VarHer = ModuleUninitVariable(TypeThreadID)
+instance Monitor = ModuleMonitor(TypeThreadID)
+
+runWith(hideSpurious,hideInternal,p)=
+  VarStage::runWith(hideInternal,
+  VarHim::runWith(hideInternal,
+  VarHer::runWith(hideInternal,
+  Monitor::runWith(hideSpurious,hideInternal,
+    p
+  ))))
+
+manSync(me) = 
+  Call!me!ManSync ->
+  --synchronized
+  Monitor::enter(me);
+    --while(stage != 0) wait()
+    Monitor::whileWait(me, \ktrue,kfalse @
+      VarStage::getValue?x ->
+      if x!=0 then ktrue else kfalse
+    );
+    --him=me
+    VarHim::setValue!me ->
+    --stage=1
+    VarStage::setValue!1 ->
+    --notifyAll()
+    Monitor::notifyAll(me);
+    --while(stage != 2) wait()
+    Monitor::whileWait(me, \ktrue,kfalse @
+      VarStage::getValue?x ->
+      if x!=2 then ktrue else kfalse
+    );
+    --stage=0
+    VarStage::setValue!0 ->
+    --notifyAll()
+    Monitor::notifyAll(me);
+    --her
+    VarHer::getValue?ans ->(
+  Monitor::exit(me);
+  Return!me!ManSync!ans->
+  SKIP
+  )
+
+womanSync(me)=
+  Call!me!WomanSync ->
+  --synchronized
+  Monitor::enter(me);
+    --while(stage != 1) wait()
+    Monitor::whileWait(me, \ktrue,kfalse @
+      VarStage::getValue?x ->
+      if x!=1 then ktrue else kfalse
+    );
+    --her=me
+    VarHer::setValue!me ->
+    --stage=2
+    VarStage::setValue!2 ->
+    --notifyAll()
+    Monitor::notifyAll(me);
+    --him
+    VarHim::getValue?ans ->(
+  Monitor::exit(me);
+  Return!me!WomanSync!ans->
+  SKIP
+  )
+\end{lstlisting}
+MenWoman/common.csp
+\begin{lstlisting}
+include "../lib/common.csp"
+include "../lib/variable.csp"
+include "../lib/monitor.csp"
+
+datatype TypeThreadID = T1 | T2 | T3 | T4 | T5
+datatype TypeOptionThreadID = None | Some.TypeThreadID
+datatype TypeOps = ManSync | WomanSync
+
+channel Call : TypeThreadID.TypeOps
+channel Return: TypeThreadID.TypeOps.TypeThreadID
+
+removeSome(Some.x)=x
+\end{lstlisting}
+MenWoman/lin.csp
+\begin{lstlisting}
+channel Sync: TypeThreadID.TypeThreadID.TypeThreadID.TypeThreadID
+--(Identity of thread calling ManSync).(Return of ManSync).(Identity of thread calling WomanSync).(Return of WomanSync)
+
+Spec(All) = Sync?man:All?woman:diff(All,{man})!woman!man -> Spec(All)
+
+--Linearizer for a process
+Lin(All,me)= (
+  Call!me!ManSync->
+  Sync!me?mereturn?other:diff(All,{me})?otherreturn ->
+  Return!me!ManSync!mereturn ->
+  Lin(All,me)
+)|~|(
+  Call!me!WomanSync ->
+  Sync?other:diff(All,{me})?otherreturn!me?mereturn ->
+  Return!me!WomanSync!mereturn ->
+  Lin(All,me)
+)|~|STOP
+LinEvents(All,me)=union({
+  ev | ev<-{|Sync|},
+  let Sync.t1.a.t2.b=ev within
+    countList(me,<t1,t2>)==1 and member(t1,All) and member(t2,All)
+},{|Call.me,Return.me|})
+Linearizers(All)= ((|| me: All @ [LinEvents(All,me)]  Lin(All,me)) [|{|Sync|}|] Spec(All)) \ {|Sync|}
+
+\end{lstlisting}
+TerminatingQueue/lin/test1.csp
+\begin{lstlisting}
+include "../common.csp"
+include "../queue_abc.csp"
+include "faulty3.csp"
+include "lin.csp"
+
+QUEUE_ERROR_ACTION = STOP
+
+Thread(NThread,me)= chaosP(
+  (|~| x:TypeData @ enqueue(NThread,me,x))
+  |~| dequeue(NThread,me)
+)
+System(All)=runWith(False,True,
+  (||| me:All @ Thread(card(All),me)) 
+)
+
+System1=System({T1})
+System2=System({T1,T2})
+System3=System({T1,T2,T3})
+System4=System({T1,T2,T3,T4})
+System5=System({T1,T2,T3,T4,T5})
+
+assert System2 :[divergence free]
+assert System3 :[divergence free]
+
+\end{lstlisting}
+TerminatingQueue/lin/faulty1.csp
+\begin{lstlisting}
+instance Monitor=ModuleMonitor(TypeThread)
+instance VarQueue=ModuleVariable(TypeQueue,qNewQueue)
+instance VarWaiting=ModuleVariable({0..5},0)
+instance VarDone=ModuleVariable(Bool,false)
+
+enqueue(NThread,me,x)=
+  Call!me!(EnqueueCall.x) ->
+  Monitor::synchronized(me,
+    --if(!done)
+    VarDone::getValue?done ->
+    if (not done) then (
+      --queue.enqueue(x), block until the queue is not full
+      VarQueue::getValue?q ->
+      if (not member(A,qValidEnqueue(q))) then QUEUE_ERROR_ACTION
+      else (
+        VarQueue::setValue!(qEnqueue(q,A)) ->
+        --if(waiting > 0) notify()
+        VarWaiting::getValue?waiting ->
+        if(waiting>0) then Monitor::notify(me) else SKIP
+    )) else SKIP
+  );
+  Return!me!(EnqueueReturn) ->
+  SKIP
+  
+dequeue(NThread,me)=
+  Call!me!(DequeueCall) ->
+  Monitor::enter(me);
+  --if(!done && queue.isEmpty)
+  VarDone::getValue?done ->
+  VarQueue::getValue?q ->
+  (if(not done and qEmpty(q)) then (
+    --if(waiting == numWorkers-1)
+    VarWaiting::getValue?x->
+    if(x>=NThread) then DIV
+    else if(x==NThread-1) then(
+      --done=true
+      VarDone::setValue!true->
+      --notifyAll
+      Monitor::notifyAll(me)
+    )else(
+      --waiting+=1
+      --if(x==NThread) then div else
+      VarWaiting::setValue!(x+1) ->
+      --while(queue.isEmpty && !done) wait()
+      Monitor::whileWait(me, \ktrue,kfalse @
+        VarQueue::getValue?q ->
+        VarDone::getValue?done ->
+        if(qEmpty(q) and not done) then ktrue else kfalse
+      );
+      --waiting -= 1
+      VarWaiting::getValue?y->
+      if y==0 then DIV else 
+      VarWaiting::setValue!(y-1)->
+      SKIP
+    )
+  )else SKIP);
+  --if(done) None else Some(queue.dequeue)
+  VarDone::getValue?done ->
+  if (done) then (
+    Monitor::exit(me);
+    Return!me!(DequeueReturnNone) ->
+    --the thread should stop any work
+    STOP
+  ) else (
+    VarQueue::getValue?q ->
+    if qEmpty(q) then DIV else
+    [] (ans, qtail): qDequeue(q) @
+    VarQueue::setValue!qtail ->
+    Monitor::exit(me);
+    Return!me!(DequeueReturn.ans) ->
+    SKIP
+)
+
+runWith(hideSpurious,hide,P)=
+  VarQueue::runWith(hide,
+  VarWaiting::runWith(hide,
+  VarDone::runWith(hide,
+  Monitor::runWith(hideSpurious,hide,
+    P
+  ))))
+\end{lstlisting}
+TerminatingQueue/lin/faulty2.csp
+\begin{lstlisting}
+instance Monitor=ModuleMonitor(TypeThread)
+instance VarQueue=ModuleVariable(TypeQueue,qNewQueue)
+instance VarWaiting=ModuleVariable({0..5},0)
+instance VarDone=ModuleVariable(Bool,false)
+
+enqueue(NThread,me,x)=
+  Call!me!(EnqueueCall.x) ->
+  Monitor::synchronized(me,
+    --if(!done)
+    VarDone::getValue?done ->
+    if (not done) then (
+      --queue.enqueue(x), block until the queue is not full
+      VarQueue::getValue?q ->
+      if (not member(x,qValidEnqueue(q))) then QUEUE_ERROR_ACTION
+      else (
+        VarQueue::setValue!(qEnqueue(q,x)) ->
+        --if(waiting > 0) notify()
+        VarWaiting::getValue?waiting ->
+        SKIP
+        --if(waiting>0) then Monitor::notify(me) else SKIP
+    )) else SKIP
+  );
+  Return!me!(EnqueueReturn) ->
+  SKIP
+  
+dequeue(NThread,me)=
+  Call!me!(DequeueCall) ->
+  Monitor::enter(me);
+  --if(!done && queue.isEmpty)
+  VarDone::getValue?done ->
+  VarQueue::getValue?q ->
+  (if(not done and qEmpty(q)) then (
+    --if(waiting == numWorkers-1)
+    VarWaiting::getValue?x->
+    if(x>=NThread) then DIV
+    else if(x==NThread-1) then(
+      --done=true
+      VarDone::setValue!true->
+      --notifyAll
+      Monitor::notifyAll(me)
+    )else(
+      --waiting+=1
+      --if(x==NThread) then div else
+      VarWaiting::setValue!(x+1) ->
+      --while(queue.isEmpty && !done) wait()
+      Monitor::whileWait(me, \ktrue,kfalse @
+        VarQueue::getValue?q ->
+        VarDone::getValue?done ->
+        if(qEmpty(q) and not done) then ktrue else kfalse
+      );
+      --waiting -= 1
+      VarWaiting::getValue?y->
+      if y==0 then DIV else 
+      VarWaiting::setValue!(y-1)->
+      SKIP
+    )
+  )else SKIP);
+  --if(done) None else Some(queue.dequeue)
+  VarDone::getValue?done ->
+  if (done) then (
+    Monitor::exit(me);
+    Return!me!(DequeueReturnNone) ->
+    --the thread should stop any work
+    STOP
+  ) else (
+    VarQueue::getValue?q ->
+    if qEmpty(q) then DIV else
+    [] (ans, qtail): qDequeue(q) @
+    VarQueue::setValue!qtail ->
+    Monitor::exit(me);
+    Return!me!(DequeueReturn.ans) ->
+    SKIP
+)
+
+runWith(hideSpurious,hide,P)=
+  VarQueue::runWith(hide,
+  VarWaiting::runWith(hide,
+  VarDone::runWith(hide,
+  Monitor::runWith(hideSpurious,hide,
+    P
+  ))))
+\end{lstlisting}
+TerminatingQueue/lin/faulty3.csp
+\begin{lstlisting}
+instance Monitor=ModuleMonitor(TypeThread)
+instance VarQueue=ModuleVariable(TypeQueue,qNewQueue)
+instance VarWaiting=ModuleVariable({0..5},0)
+instance VarDone=ModuleVariable(Bool,false)
+
+enqueue(NThread,me,x)=
+  Call!me!(EnqueueCall.x) ->
+  Monitor::synchronized(me,
+    --if(!done)
+    VarDone::getValue?done ->
+    if (not done) then (
+      --queue.enqueue(x), block until the queue is not full
+      VarQueue::getValue?q ->
+      if (not member(x,qValidEnqueue(q))) then QUEUE_ERROR_ACTION
+      else (
+        VarQueue::setValue!(qEnqueue(q,x)) ->
+        --if(waiting > 0) notify()
+        VarWaiting::getValue?waiting ->
+        if(waiting>0) then Monitor::notify(me) else SKIP
+    )) else SKIP
+  );
+  Return!me!(EnqueueReturn) ->
+  SKIP
+  
+dequeue(NThread,me)=
+  Call!me!(DequeueCall) ->
+  Monitor::enter(me);
+  --if(!done && queue.isEmpty)
+  VarDone::getValue?done ->
+  VarQueue::getValue?q ->
+  (if(not done and qEmpty(q)) then (
+    --if(waiting == numWorkers-1)
+    VarWaiting::getValue?x->
+    if(x>NThread) then DIV
+    else if(x==NThread) then(
+      --done=true
+      VarDone::setValue!true->
+      --notifyAll
+      Monitor::notifyAll(me)
+    )else(
+      --waiting+=1
+      --if(x==NThread) then div else
+      VarWaiting::setValue!(x+1) ->
+      --while(queue.isEmpty && !done) wait()
+      Monitor::whileWait(me, \ktrue,kfalse @
+        VarQueue::getValue?q ->
+        VarDone::getValue?done ->
+        if(qEmpty(q) and not done) then ktrue else kfalse
+      );
+      --waiting -= 1
+      VarWaiting::getValue?y->
+      if y==0 then DIV else 
+      VarWaiting::setValue!(y-1)->
+      SKIP
+    )
+  )else SKIP);
+  --if(done) None else Some(queue.dequeue)
+  VarDone::getValue?done ->
+  if (done) then (
+    Monitor::exit(me);
+    Return!me!(DequeueReturnNone) ->
+    --the thread should stop any work
+    STOP
+  ) else (
+    VarQueue::getValue?q ->
+    if qEmpty(q) then DIV else
+    [] (ans, qtail): qDequeue(q) @
+    VarQueue::setValue!qtail ->
+    Monitor::exit(me);
+    Return!me!(DequeueReturn.ans) ->
+    SKIP
+)
+
+runWith(hideSpurious,hide,P)=
+  VarQueue::runWith(hide,
+  VarWaiting::runWith(hide,
+  VarDone::runWith(hide,
+  Monitor::runWith(hideSpurious,hide,
+    P
+  ))))
+\end{lstlisting}
+TerminatingQueue/lin/lin.csp
+\begin{lstlisting}
+channel Sync: TypeThread.TypeCallParam.TypeReturnParam
+channel SyncShutDown
+
+Lin(All,me)=(
+  Call!me?enqueueCallObj:{|EnqueueCall|} ->
+  Sync!me!enqueueCallObj!EnqueueReturn ->
+  Return!me!EnqueueReturn ->
+  Lin(All,me)
+) |~| (
+  Call!me!DequeueCall -> ((
+    --Only return None when all linearizers reach here
+    --introduce another channel
+    SyncShutDown ->
+    --Without introducing another channel, but add Sync.anyThread.DequeueCall.DequeueReturnNone to linEvents
+    --Sync?t.DequeueCall.DequeueReturnNone ->
+    Return!me!(DequeueReturnNone) ->
+    STOP
+  )[](
+    Sync!me!DequeueCall?EnqueueReturnObj:{|DequeueReturn|} ->
+    Return!me!EnqueueReturnObj ->
+    Lin(All,me)  
+  ))
+) |~| STOP
+LinEvents(All,me)={|Sync.me,Call.me,Return.me,SyncShutDown|}
+Linearizers(All)=((|| me: All @ [LinEvents(All,me)] Lin(All,me)) [|{|Sync,SyncShutDown|}|] Spec(All,qNewQueue)) \ {|Sync,SyncShutDown|}
+
+Spec(All,q)=
+  (qValidEnqueue(q)!={} & [] x:qValidEnqueue(q) @ (
+    Sync?t:All!(EnqueueCall.x)!EnqueueReturn -> 
+    Spec(All,qEnqueue(q,x))
+  ))[]
+  (qDequeue(q)!={} & [](x,newq):qDequeue(q) @ (
+    Sync?t:All!(DequeueCall)!(DequeueReturn.x) ->
+    Spec(All,newq)
+  ))[]
+  (qDequeue(q)=={} & 
+    SyncShutDown ->
+    STOP
+  )
+
+\end{lstlisting}
+TerminatingQueue/lin/test2.csp
+\begin{lstlisting}
+include "../common.csp"
+include "../queue_abc.csp"
+include "correct.csp"
+include "lin.csp"
+
+QUEUE_ERROR_ACTION = DIV
+
+
+
+Thread(NThread,me)= chaosP(
+  (|~| x:TypeData @ enqueue(NThread,me,x))
+  |~| dequeue(NThread,me)
+)
+System(All)=runWith(False,True,
+  (||| me:All @ Thread(card(All),me)) 
+)
+
+SystemSpec(All)=Monitor::specWithSpurious(Linearizers(All))
+Spec1Thread=SystemSpec({T1})
+Spec2Thread=SystemSpec({T1,T2})
+Spec3Thread=SystemSpec({T1,T2,T3})
+Spec4Thread=SystemSpec({T1,T2,T3,T4})
+Spec5Thread=SystemSpec({T1,T2,T3,T4,T5})
+
+
+System1=System({T1})
+System2=System({T1,T2})
+System3=System({T1,T2,T3})
+System4=System({T1,T2,T3,T4})
+System5=System({T1,T2,T3,T4,T5})
+
+assert Spec2Thread [T= System2
+assert Spec3Thread [T= System3
+
+assert System({T1,T2}) :[divergence free]
+assert System({T1,T2,T3}) :[divergence free]
+
+assert Spec2Thread [F= System2
+assert Spec3Thread [F= System3
+
+\end{lstlisting}
+TerminatingQueue/lin/correct.csp
+\begin{lstlisting}
+instance Monitor=ModuleMonitor(TypeThread)
+instance VarQueue=ModuleVariable(TypeQueue,qNewQueue)
+instance VarWaiting=ModuleVariable({0..5},0)
+instance VarDone=ModuleVariable(Bool,false)
+
+enqueue(NThread,me,x)=
+  Call!me!(EnqueueCall.x) ->
+  Monitor::synchronized(me,
+    --if(!done)
+    VarDone::getValue?done ->
+    if (not done) then (
+      --queue.enqueue(x), block until the queue is not full
+      VarQueue::getValue?q ->
+      if (not member(x,qValidEnqueue(q))) then QUEUE_ERROR_ACTION
+      else (
+        VarQueue::setValue!(qEnqueue(q,x)) ->
+        --if(waiting > 0) notify()
+        VarWaiting::getValue?waiting ->
+        if(waiting>0) then Monitor::notify(me) else SKIP
+    )) else SKIP
+  );
+  Return!me!(EnqueueReturn) ->
+  SKIP
+  
+dequeue(NThread,me)=
+  Call!me!(DequeueCall) ->
+  Monitor::enter(me);
+  --if(!done && queue.isEmpty)
+  VarDone::getValue?done ->
+  VarQueue::getValue?q ->
+  (if(not done and qEmpty(q)) then (
+    --if(waiting == numWorkers-1)
+    VarWaiting::getValue?x->
+    if(x>=NThread) then DIV
+    else if(x==NThread-1) then(
+      --done=true
+      VarDone::setValue!true->
+      --notifyAll
+      Monitor::notifyAll(me)
+    )else(
+      --waiting+=1
+      --if(x==NThread) then div else
+      VarWaiting::setValue!(x+1) ->
+      --while(queue.isEmpty && !done) wait()
+      Monitor::whileWait(me, \ktrue,kfalse @
+        VarQueue::getValue?q ->
+        VarDone::getValue?done ->
+        if(qEmpty(q) and not done) then ktrue else kfalse
+      );
+      --waiting -= 1
+      VarWaiting::getValue?y->
+      if y==0 then DIV else 
+      VarWaiting::setValue!(y-1)->
+      SKIP
+    )
+  )else SKIP);
+  --if(done) None else Some(queue.dequeue)
+  VarDone::getValue?done ->
+  if (done) then (
+    Monitor::exit(me);
+    Return!me!(DequeueReturnNone) ->
+    --the thread should stop any work
+    STOP
+  ) else (
+    VarQueue::getValue?q ->
+    if qEmpty(q) then DIV else
+    [] (ans, qtail): qDequeue(q) @
+    VarQueue::setValue!qtail ->
+    Monitor::exit(me);
+    Return!me!(DequeueReturn.ans) ->
+    SKIP
+)
+
+runWith(hideSpurious,hide,P)=
+  VarQueue::runWith(hide,
+  VarWaiting::runWith(hide,
+  VarDone::runWith(hide,
+  Monitor::runWith(hideSpurious,hide,
+    P
+  ))))
+\end{lstlisting}
+TerminatingQueue/lp/common.csp
+\begin{lstlisting}
+include "../common.csp"
+module ModuleQueueVariable
+  Var(q) = getValue!q -> Var(q)
+        [] enqLP?t!q?x:qValidEnqueue(q) -> Var(qEnqueue(q,x))
+        [] qDequeue(q)!={} & ( [] (qhead,qtail):qDequeue(q) @
+           deqLP?t!q!qhead!qtail -> Var(qtail)
+        )
+exports
+  channel getValue: TypeQueue
+  runWith(hide,P) = (Var(qNewQueue) [|{|enqLP,deqLP,getValue|}|] P) \
+                    (if hide then {|getValue|} else {})
+endmodule
+
+--module ModuleQueueVariable1
+--  Var(value) = getValue!value -> Var(value)
+--            [] setValue?value -> Var(value)
+--exports
+--  runWith(hide,P) = (Var(qNewQueue)[[setValue.newq | me<-Typethread, newq<-TypeQueue]]
+--                      [|{|enqLP,deqLP,getValue|}|] P) \ (if hide then {|getValue|} else {})
+--  channel getValue, setValue: TypeQueue
+--endmodule
+
+
+instance VarQueue=ModuleQueueVariable
+instance VarWaiting=ModuleVariable({0..5},0)
+instance VarDone=ModuleVariable(Bool,false)
+
+channel enqLP: TypeThread.TypeQueue.TypeData            --Thread.Queue before enqueue.Data enqueued
+channel deqLP: TypeThread.TypeQueue.TypeData.TypeQueue  --Thread.Queue before dequeue.Data dequeued.Queue after dequeue
+
+--runVarQueueWith(hide,P)=
+
+runWith(hideSpurious,hide,P)=
+  VarQueue::runWith(hide,
+  VarWaiting::runWith(hide,
+  VarDone::runWith(hide,
+  Monitor::runWith(hideSpurious,hide,
+    P
+  ))))
+
+
+SpecT(All,q)=(
+  enqLP?t:All!q?x:qValidEnqueue(q) -> SpecT(All,qEnqueue(q,x))
+) [] (
+  [] (ans, qtail): qDequeue(q) @
+  deqLP?t:All!q!ans!qtail -> SpecT(All,qtail)
+) 
+
+SpecF(All,q)= if qDequeue(q)!={} then((
+  |~| t:All @
+  |~| x:qValidEnqueue(q) @
+  enqLP!t!q!x -> SpecF(All,qEnqueue(q,x))
+) |~| (
+  |~| t:All @
+  |~| (ans, qtail): qDequeue(q) @
+  deqLP!t!q!ans!qtail -> SpecF(All,qtail)
+)) else (
+  |~| t:All @
+  |~| x:qValidEnqueue(q) @
+  enqLP!t!q!x -> SpecF(All,qEnqueue(q,x))  
+)
+
+
+
+
+
+--SpecF(All,q)=
+--  if (qEmpty(q)) then (
+--        (enqLP?t:All!q?x:qValidEnqueue(q) -> SpecF(All,qEnqueue(q,x)))
+--    --|~| (wrongInput?t -> SpecF(diff(All,{t}),q)) 
+--  )else (
+--        (enqLP?t:All!q?x:qValidEnqueue(q) -> SpecF(All,qEnqueue(q,x)))
+--    --|~| (wrongInput?t -> SpecF(diff(All,{t}),q))
+--    |~| (|~| (ans, qtail): qDequeue(q) @ deqLP?t:All!q!ans!qtail -> SpecF(All,qtail))
+--  )
+\end{lstlisting}
+TerminatingQueue/lp/correct.csp
+\begin{lstlisting}
+enqueue(NThread,me,x)=
+  Monitor::synchronized(me,
+    --if(!done)
+    VarDone::getValue?done ->
+    if (not done) then (
+      --queue.enqueue(x), block until the queue is not full
+      VarQueue::getValue?q ->
+      if (not member(x,qValidEnqueue(q))) then DIV
+      else (
+        enqLP!me!q!x ->
+        --if(waiting > 0) notify()
+        VarWaiting::getValue?waiting ->
+        if(waiting>0) then Monitor::notify(me) else SKIP
+    )) else SKIP
+  )
+  
+dequeue(NThread,me)=
+  Monitor::enter(me);
+  --if(!done && queue.isEmpty)
+  VarDone::getValue?done ->
+  VarQueue::getValue?q ->
+  (if(not done and qEmpty(q)) then (
+    --if(waiting == numWorkers-1)
+    VarWaiting::getValue?x->
+    if(x>=NThread) then DIV
+    else if(x==NThread-1) then(
+      --done=true
+      VarDone::setValue!true->
+      --notifyAll
+      Monitor::notifyAll(me)
+    )else(
+      --waiting+=1
+      --if(x==NThread) then div else
+      VarWaiting::setValue!(x+1) ->
+      --while(queue.isEmpty && !done) wait()
+      Monitor::whileWait(me, \ktrue,kfalse @
+        VarQueue::getValue?q ->
+        VarDone::getValue?done ->
+        if(qEmpty(q) and not done) then ktrue else kfalse
+      );
+      --waiting -= 1
+      VarWaiting::getValue?y->
+      if y==0 then DIV else 
+      VarWaiting::setValue!(y-1)->
+      SKIP
+    )
+  )else SKIP);
+  --if(done) None else Some(queue.dequeue)
+  VarDone::getValue?done ->
+  if (done) then (
+    Monitor::exit(me);
+    --the thread should stop any work
+    STOP
+  ) else (
+    VarQueue::getValue?q ->
+    if qEmpty(q) then DIV else
+    [] (ans, qtail): qDequeue(q) @
+    deqLP!me!q!ans!qtail ->
+    Monitor::exit(me);
+    SKIP
+)
+\end{lstlisting}
+TerminatingQueue/lp/correct\_withcall.csp
+\begin{lstlisting}
+enqueue(NThread,me,x)=
+  Call!me!(EnqueueCall.x) ->
+  Monitor::synchronized(me,
+    --if(!done)
+    VarDone::getValue?done ->
+    if (not done) then (
+      --queue.enqueue(x), block until the queue is not full
+      VarQueue::getValue?q:qCanEnqueue(x) ->
+      enqLP!me!q!x ->
+      --if(waiting > 0) notify()
+      VarWaiting::getValue?waiting ->
+      if(waiting>0) then Monitor::notify(me) else SKIP
+    ) else SKIP
+  );
+  Return!me!(EnqueueReturn) ->
+  SKIP
+  
+dequeue(NThread,me)=
+  Call!me!(DequeueCall) ->
+  Monitor::enter(me);
+  --if(!done && queue.isEmpty)
+  VarDone::getValue?done ->
+  VarQueue::getValue?q ->
+  (if(not done and qEmpty(q)) then (
+    --if(waiting == numWorkers-1)
+    VarWaiting::getValue?x:{0..NThread-1}->
+    if(x==NThread-1) then(
+      --done=true
+      VarDone::setValue!true->
+      --notifyAll
+      Monitor::notifyAll(me)
+    )else(
+      --waiting+=1
+      --if(x==NThread) then div else
+      VarWaiting::setValue!(x+1) ->
+      --while(queue.isEmpty && !done) wait()
+      Monitor::whileWait(me, \ktrue,kfalse @
+        VarQueue::getValue?q ->
+        VarDone::getValue?done ->
+        if(qEmpty(q) and not done) then ktrue else kfalse
+      );
+      --waiting -= 1
+      VarWaiting::getValue?y:{1..NThread}->
+      --if (y==0) then div else
+      VarWaiting::setValue!(y-1)->
+      SKIP
+    )
+  )else SKIP);
+  --if(done) None else Some(queue.dequeue)
+  VarDone::getValue?done ->
+  if (done) then (
+    Monitor::exit(me);
+    Return!me!(DequeueReturnNone) ->
+    --the thread should stop any work
+    STOP
+  ) else (
+    VarQueue::getValue?q:{q|q<-TypeQueue, not qEmpty(q)} ->
+    --if qEmpty(q) then DIV else
+    [] (ans, qtail): qDequeue(q) @
+    --VarQueue::setValue!qtail ->
+    deqLP!me!q!ans!qtail ->
+    Monitor::exit(me);
+    Return!me!(DequeueReturn.ans) ->
+    SKIP
+)
+
+runWith(hideSpurious,hide,P)=
+  VarQueue::runWith(hide,
+  VarWaiting::runWith(hide,
+  VarDone::runWith(hide,
+  Monitor::runWith(hideSpurious,hide,
+    P
+  ))))
+\end{lstlisting}
+TerminatingQueue/lp/faulty1.csp
+\begin{lstlisting}
+enqueue(NThread,me,x)=
+  Monitor::synchronized(me,
+    --if(!done)
+    VarDone::getValue?done ->
+    if (not done) then (
+      --queue.enqueue(x), block until the queue is not full
+      VarQueue::getValue?q ->
+      if (not member(x,qValidEnqueue(q))) then DIV
+      else (
+        enqLP!me!q!A ->
+        --if(waiting > 0) notify()
+        VarWaiting::getValue?waiting ->
+        if(waiting>0) then Monitor::notify(me) else SKIP
+    )) else SKIP
+  )
+  
+dequeue(NThread,me)=
+  Monitor::enter(me);
+  --if(!done && queue.isEmpty)
+  VarDone::getValue?done ->
+  VarQueue::getValue?q ->
+  (if(not done and qEmpty(q)) then (
+    --if(waiting == numWorkers-1)
+    VarWaiting::getValue?x->
+    if(x>=NThread) then DIV
+    else if(x==NThread-1) then(
+      --done=true
+      VarDone::setValue!true->
+      --notifyAll
+      Monitor::notifyAll(me)
+    )else(
+      --waiting+=1
+      --if(x==NThread) then div else
+      VarWaiting::setValue!(x+1) ->
+      --while(queue.isEmpty && !done) wait()
+      Monitor::whileWait(me, \ktrue,kfalse @
+        VarQueue::getValue?q ->
+        VarDone::getValue?done ->
+        if(qEmpty(q) and not done) then ktrue else kfalse
+      );
+      --waiting -= 1
+      VarWaiting::getValue?y->
+      if y==0 then DIV else 
+      VarWaiting::setValue!(y-1)->
+      SKIP
+    )
+  )else SKIP);
+  --if(done) None else Some(queue.dequeue)
+  VarDone::getValue?done ->
+  if (done) then (
+    Monitor::exit(me);
+    --the thread should stop any work
+    STOP
+  ) else (
+    VarQueue::getValue?q ->
+    if qEmpty(q) then DIV else
+    [] (ans, qtail): qDequeue(q) @
+    deqLP!me!q!ans!qtail ->
+    Monitor::exit(me);
+    SKIP
+)
+\end{lstlisting}
+TerminatingQueue/lp/faulty2.csp
+\begin{lstlisting}
+enqueue(NThread,me,x)=
+  Monitor::synchronized(me,
+    --if(!done)
+    VarDone::getValue?done ->
+    if (not done) then (
+      --queue.enqueue(x), block until the queue is not full
+      VarQueue::getValue?q ->
+      if (not member(x,qValidEnqueue(q))) then DIV
+      else (
+        enqLP!me!q!x ->
+        --if(waiting > 0) notify()
+        VarWaiting::getValue?waiting ->
+        SKIP
+    )) else SKIP
+  )
+  
+dequeue(NThread,me)=
+  Monitor::enter(me);
+  --if(!done && queue.isEmpty)
+  VarDone::getValue?done ->
+  VarQueue::getValue?q ->
+  (if(not done and qEmpty(q)) then (
+    --if(waiting == numWorkers-1)
+    VarWaiting::getValue?x->
+    if(x>=NThread) then DIV
+    else if(x==NThread-1) then(
+      --done=true
+      VarDone::setValue!true->
+      --notifyAll
+      Monitor::notifyAll(me)
+    )else(
+      --waiting+=1
+      --if(x==NThread) then div else
+      VarWaiting::setValue!(x+1) ->
+      --while(queue.isEmpty && !done) wait()
+      Monitor::whileWait(me, \ktrue,kfalse @
+        VarQueue::getValue?q ->
+        VarDone::getValue?done ->
+        if(qEmpty(q) and not done) then ktrue else kfalse
+      );
+      --waiting -= 1
+      VarWaiting::getValue?y->
+      if y==0 then DIV else 
+      VarWaiting::setValue!(y-1)->
+      SKIP
+    )
+  )else SKIP);
+  --if(done) None else Some(queue.dequeue)
+  VarDone::getValue?done ->
+  if (done) then (
+    Monitor::exit(me);
+    --the thread should stop any work
+    STOP
+  ) else (
+    VarQueue::getValue?q ->
+    if qEmpty(q) then DIV else
+    [] (ans, qtail): qDequeue(q) @
+    deqLP!me!q!ans!qtail ->
+    Monitor::exit(me);
+    SKIP
+)
+\end{lstlisting}
+TerminatingQueue/lp/faulty3.csp
+\begin{lstlisting}
+enqueue(NThread,me,x)=
+  Monitor::synchronized(me,
+    --if(!done)
+    VarDone::getValue?done ->
+    if (not done) then (
+      --queue.enqueue(x), block until the queue is not full
+      VarQueue::getValue?q ->
+      if (not member(x,qValidEnqueue(q))) then DIV
+      else (
+        enqLP!me!q!x ->
+        --if(waiting > 0) notify()
+        VarWaiting::getValue?waiting ->
+        if(waiting>0) then Monitor::notify(me) else SKIP
+    )) else SKIP
+  )
+  
+dequeue(NThread,me)=
+  Monitor::enter(me);
+  --if(!done && queue.isEmpty)
+  VarDone::getValue?done ->
+  VarQueue::getValue?q ->
+  (if(not done and qEmpty(q)) then (
+    --if(waiting == numWorkers-1)
+    VarWaiting::getValue?x->
+    if(x>NThread) then DIV
+    else if(x=NThread) then(
+      --done=true
+      VarDone::setValue!true->
+      --notifyAll
+      Monitor::notifyAll(me)
+    )else(
+      --waiting+=1
+      --if(x==NThread) then div else
+      VarWaiting::setValue!(x+1) ->
+      --while(queue.isEmpty && !done) wait()
+      Monitor::whileWait(me, \ktrue,kfalse @
+        VarQueue::getValue?q ->
+        VarDone::getValue?done ->
+        if(qEmpty(q) and not done) then ktrue else kfalse
+      );
+      --waiting -= 1
+      VarWaiting::getValue?y->
+      if y==0 then DIV else 
+      VarWaiting::setValue!(y-1)->
+      SKIP
+    )
+  )else SKIP);
+  --if(done) None else Some(queue.dequeue)
+  VarDone::getValue?done ->
+  if (done) then (
+    Monitor::exit(me);
+    --the thread should stop any work
+    STOP
+  ) else (
+    VarQueue::getValue?q ->
+    if qEmpty(q) then DIV else
+    [] (ans, qtail): qDequeue(q) @
+    deqLP!me!q!ans!qtail ->
+    Monitor::exit(me);
+    SKIP
+)
+\end{lstlisting}
+TerminatingQueue/lp/test.csp
+\begin{lstlisting}
+include "common.csp"
+include "../queue_abc.csp"
+include "correct.csp"
+
+instance Monitor=ModuleMonitor(TypeThread, False)
+
+Spec1Thread=SpecT({T1},qNewQueue)
+Spec2Thread=SpecT({T1,T2},qNewQueue)
+Spec3Thread=SpecT({T1,T2,T3},qNewQueue)
+Spec4Thread=SpecT({T1,T2,T3,T4},qNewQueue)
+Spec5Thread=SpecT({T1,T2,T3,T4,T5},qNewQueue)
+
+
+InputRegulatorA=
+     enqLP?t?q!A -> InputRegulatorA
+  [] enqLP?t?q!B -> InputRegulatorABC 
+InputRegulatorABC=
+     enqLP?t?q!C -> InputRegulatorABC
+
+Thread(NThread,me)=
+  (|~| x:TypeData @ 
+    enqueue(NThread,me,x);Thread(NThread,me)
+  ) |~| (
+    dequeue(NThread,me);Thread(NThread,me)
+  )
+System(All)=runWith(True,True,
+  --((||| me:All @ Thread(card(All),me)) \ {|Call,Return|})
+  (||| me:All @ Thread(card(All),me))
+    [|{|enqLP|}|] InputRegulatorA
+)
+SystemWithSpuriousEvent(All)=runWith(False,True,
+  (||| me:All @ Thread(card(All),me)) 
+    [|{|enqLP|}|] InputRegulatorA
+)
+
+--Trivial Simple Thread Case
+System1=System({T1}) \ {|Call,Return|}
+System2=System({T1,T2}) \ {|Call,Return|}
+System3=System({T1,T2,T3}) \ {|Call,Return|}
+System4=System({T1,T2,T3,T4}) \ {|Call,Return|}
+System5=System({T1,T2,T3,T4,T5}) \ {|Call,Return|}
+
+assert Spec1Thread [T= System1
+assert Spec2Thread [T= System2
+assert Spec3Thread [T= System3
+assert Spec4Thread [T= System4
+assert Spec5Thread [T= System5
+
+assert SpecF({T1},qNewQueue) [F= System1
+\end{lstlisting}

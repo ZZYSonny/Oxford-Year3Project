@@ -6,10 +6,12 @@ channel Sync:TypeThreadIDPermutation
 Spec = Sync?perm:TypeThreadIDPermutation -> Spec
 
 Lin(All,me)=
+  STOP |~|
   Call!me ->
   Sync?perm ->
   Return!me ->
   Lin(All,me)
+  
 LinEvents(All,me)={|Sync,Call.me,Return.me|}
 Linearizers(All)= ((|| me: All @ [LinEvents(All,me)]  Lin(All,me)) [|{|Sync|}|] Spec) \ {|Sync|}
 

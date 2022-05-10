@@ -3,6 +3,7 @@ channel Sync
 Spec = Sync -> Spec
 
 Lin(All,me)=
+  STOP |~|
   Call!me ->
   Sync ->
   Return!me ->

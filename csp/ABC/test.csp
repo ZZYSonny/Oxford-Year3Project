@@ -1,45 +1,26 @@
 include "correct.csp"
-include "lin1.csp"
+include "lin.csp"
 
-fSyncForever(me,f)=runP(|~|x:TypeData @ f(me,x))
-rSyncForever(me)=runP(|~|x:TypeData @ (SyncA(me,x) |~| SyncB(me,x) |~| SyncC(me,x)))
 
---test a system with 3 thread
---where thread T1,T2,T3 does ASync, BSync, CSync respectively
-System1 = runWith(True,
-    fSyncForever(T1,SyncA) |||
-    fSyncForever(T2,SyncB) |||
-    fSyncForever(T3,SyncC)
-)
-Spec3Thread = Linearizers({T1, T2, T3})
---test the graph size of the spec process
-assert Spec3Thread [T= Spec3Thread
-assert System1 [T= System1
-assert Spec3Thread [T= System1
-assert System1 :[deadlock free]
+Thread(me)=chaosP(|~|x:TypeData @ (
+    SyncA(me,x) 
+|~| SyncB(me,x) 
+|~| SyncC(me,x)
+))
+System(All) = runWith(True, ||| me:All @ Thread(me))
 
---test a system with 4 thread
---where thread T1,T2,T3,T4 does ASync, BSync, CSync,ASync respectively
-System2 = runWith(True,
-    fSyncForever(T1,SyncA) |||
-    fSyncForever(T2,SyncB) |||
-    fSyncForever(T3,SyncC) |||
-    fSyncForever(T4,SyncA)
-)
-Spec4Thread = Linearizers({T1, T2, T3, T4})
-assert Spec4Thread [T= Spec4Thread
-assert System2 [T= System2
-assert Spec4Thread [T= System2
-assert System2 :[deadlock free]
+System3=System({T1,T2,T3})
+System4=System({T1,T2,T3,T4})
+System5=System({T1,T2,T3,T4,T5})
 
---test a system with 4 thread
---where thread T1,T2,T3,T4 does ASync, BSync, CSync,ASync respectively
-System3 = runWith(True,
-    rSyncForever(T1) |||
-    rSyncForever(T2) |||
-    rSyncForever(T3) |||
-    rSyncForever(T4)
-)
-assert Spec4Thread [T= System3
---not checking deadlock free here because it is possible that
---all threads does the same kind of synchronization
+Spec3Thread=Linearizers({T1,T2,T3})
+Spec4Thread=Linearizers({T1,T2,T3,T4})
+Spec5Thread=Linearizers({T1,T2,T3,T4,T5})
+
+assert Spec3Thread [T= System3
+assert Spec4Thread [T= System4
+assert Spec5Thread [T= System5
+
+assert Spec3Thread [F= System3
+assert Spec4Thread [F= System4
+assert Spec5Thread [F= System5

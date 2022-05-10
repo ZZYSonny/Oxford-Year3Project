@@ -3,8 +3,8 @@ include "../lib/variable.csp"
 include "../lib/monitor.csp"
 include "../lib/semaphore.csp"
 
-datatype TypeThreadID = T1 | T2 | T3
-M=2
+datatype TypeThreadID = T1 | T2 | T3 | T4 | T5
+M=3
 TypeSeqNumber={0..M}
 channel Call : TypeThreadID
 channel Return: TypeThreadID.TypeSeqNumber

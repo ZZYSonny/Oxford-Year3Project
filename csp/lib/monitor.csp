@@ -1,4 +1,4 @@
-module ModuleMonitor(TypeThreadID, allowSpurious)
+module ModuleMonitor(TypeThreadID)
   channel
     Notify, NotifyAll, Exit, Wait,
     WaitNotify, WaitEnter, SpuriousWake: TypeThreadID
@@ -94,12 +94,9 @@ exports
 
   --wait()
   wait(me) =
-    Wait.me -> 
-    if allowSpurious then (
+    Wait.me -> (
       (WaitNotify.me -> WaitEnter.me -> SKIP)
     [](SpuriousWake.me -> WaitEnter.me -> SKIP)
-    ) else (
-      (WaitNotify.me -> WaitEnter.me -> SKIP)
     )
   
   whileWait(me,cond) =
