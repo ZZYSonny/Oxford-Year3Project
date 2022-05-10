@@ -1,0 +1,54 @@
+include "./common.csp"
+
+instance Monitor = ModuleMonitor(TypeThreadID)
+instance Full = ModuleVariable(Bool, False)
+instance Data = ModuleUninitVariable(TypeData)
+
+--------- Filter Chan
+
+send(me, x) = 
+  Call!me!(SendParam.x) ->
+  Monitor::synchronized(me,
+    --while(full) wait()
+    Monitor::whileWait(me, \ktrue,kfalse @
+      Full::getValue?full ->
+      if full then ktrue else kfalse
+    );
+    --data = x; full = true; notifyAll()
+    Data::setValue!x ->
+    Full::setValue!True ->
+    Monitor::notifyAll(me);
+    --while(full) wait()
+    Monitor::whileWait(me, \ktrue,kfalse @
+      Full::getValue?full ->
+      if full then ktrue else kfalse
+    )
+  );
+  Return!me!SendReturn ->
+  SKIP
+
+receive(me, p) = 
+  Call!me!(RecvParam.p) ->
+  Monitor::enter(me);
+    --while(!full || !p(data)) wait()
+    Monitor::whileWait(me, \ktrue,kfalse @
+      Full::getValue?full ->
+      Data::getValue?data ->
+      if (not full) then ktrue else kfalse
+    );
+    --val result = data; full = false
+    Full::setValue!False ->
+    Data::getValue?result ->(
+    --notifyAll()
+    Monitor::notifyAll(me);
+  Monitor::exit(me);
+  Return!me!(RecvReturn.result) ->
+  SKIP
+)
+
+runWith(hideSpurious, hideInternal, p) =
+  Monitor::runWith(hideSpurious,hideInternal,
+  Full::runWith(hideInternal,
+  Data::runWith(hideInternal,
+    p
+  )))

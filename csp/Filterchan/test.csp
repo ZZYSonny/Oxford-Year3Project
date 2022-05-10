@@ -1,0 +1,23 @@
+include "correct.csp"
+include "lin.csp"
+
+Thread(me) = chaosP(
+     (|~| x:TypeData @ send(me,x))
+  |~|(|~| p:TypePred @ receive(me,p)))
+System(All) = runWith(True, True, ||| me:All @ Thread(me))
+
+System2 = System({T1,T2})
+System3 = System({T1,T2,T3})
+System4 = System({T1,T2,T3,T4})
+
+Spec2 = Linearizers({T1,T2})
+Spec3 = Linearizers({T1,T2,T3})
+Spec4 = Linearizers({T1,T2,T3,T4})
+
+assert Spec2 [T= System2
+assert Spec3 [T= System3
+assert Spec4 [T= System4
+
+assert Spec2 [F= System2
+assert Spec3 [F= System3
+assert Spec4 [F= System4
