@@ -1,32 +1,31 @@
-\contentsline {section}{\numberline {1}Introduction}{1}{}%
-\contentsline {subsection}{\numberline {1.1}Thesis Overview}{1}{}%
-\contentsline {subsection}{\numberline {1.2}Synchronization linearizability test}{2}{}%
-\contentsline {subsection}{\numberline {1.3}Checking safety property using CSP}{3}{}%
-\contentsline {subsection}{\numberline {1.4}Checking liveness property using CSP}{4}{}%
-\contentsline {subsection}{\numberline {1.5}Related work}{4}{}%
-\contentsline {section}{\numberline {2}Common Objects}{5}{}%
-\contentsline {subsection}{\numberline {2.1}Shared Variable}{5}{}%
-\contentsline {subsection}{\numberline {2.2}Semaphore}{5}{}%
-\contentsline {subsection}{\numberline {2.3}Monitor}{7}{}%
-\contentsline {subsubsection}{\numberline {2.3.1}JVM Monitor}{7}{}%
-\contentsline {subsubsection}{\numberline {2.3.2}Monitor Module}{8}{}%
-\contentsline {section}{\numberline {3}MenWomen}{13}{}%
-\contentsline {subsection}{\numberline {3.1}Implementation}{13}{}%
-\contentsline {subsection}{\numberline {3.2}Linearization Test}{14}{}%
-\contentsline {subsection}{\numberline {3.3}A faulty version}{17}{}%
-\contentsline {section}{\numberline {4}ABC}{19}{}%
-\contentsline {subsection}{\numberline {4.1}Implementation}{19}{}%
-\contentsline {subsection}{\numberline {4.2}Testing}{19}{}%
-\contentsline {subsubsection}{\numberline {4.2.1}Speeding up model compilation}{22}{}%
-\contentsline {subsection}{\numberline {4.3}Faulty version}{24}{}%
-\contentsline {subsubsection}{\numberline {4.3.1}Explanation of the error case}{25}{}%
-\contentsline {subsection}{\numberline {4.4}Explicit linearization point test}{26}{}%
-\contentsline {section}{\numberline {5}Terminating Queue}{28}{}%
-\contentsline {subsection}{\numberline {5.1}Implementation}{28}{}%
-\contentsline {subsection}{\numberline {5.2}Linearization Testing}{30}{}%
-\contentsline {subsection}{\numberline {5.3}Faulty Implementation}{33}{}%
-\contentsline {subsection}{\numberline {5.4}Test with another queue}{34}{}%
-\contentsline {section}{\numberline {6}Other objects}{36}{}%
-\contentsline {section}{\numberline {7}Conclusion}{37}{}%
-\contentsline {section}{\numberline {8}Reference}{38}{}%
-\contentsline {section}{\numberline {9}Appendix}{39}{}%
+\contentsline {section}{\numberline {1}Introduction}{1}{section.1}%
+\contentsline {subsection}{\numberline {1.1}Thesis Overview}{2}{subsection.1.1}%
+\contentsline {subsection}{\numberline {1.2}Synchronization linearizability test}{2}{subsection.1.2}%
+\contentsline {subsection}{\numberline {1.3}Checking safety property using CSP}{4}{subsection.1.3}%
+\contentsline {subsection}{\numberline {1.4}Checking liveness property using CSP}{5}{subsection.1.4}%
+\contentsline {subsection}{\numberline {1.5}Related work}{5}{subsection.1.5}%
+\contentsline {section}{\numberline {2}Common Objects}{6}{section.2}%
+\contentsline {subsection}{\numberline {2.1}Shared Variable}{6}{subsection.2.1}%
+\contentsline {subsection}{\numberline {2.2}Semaphore}{7}{subsection.2.2}%
+\contentsline {subsection}{\numberline {2.3}Monitor}{8}{subsection.2.3}%
+\contentsline {subsubsection}{\numberline {2.3.1}JVM Monitor}{8}{subsubsection.2.3.1}%
+\contentsline {subsubsection}{\numberline {2.3.2}Monitor Module}{9}{subsubsection.2.3.2}%
+\contentsline {section}{\numberline {3}MenWomen}{14}{section.3}%
+\contentsline {subsection}{\numberline {3.1}Implementation}{14}{subsection.3.1}%
+\contentsline {subsection}{\numberline {3.2}Linearization Test}{15}{subsection.3.2}%
+\contentsline {subsection}{\numberline {3.3}A faulty version}{19}{subsection.3.3}%
+\contentsline {section}{\numberline {4}ABC}{21}{section.4}%
+\contentsline {subsection}{\numberline {4.1}Implementation}{21}{subsection.4.1}%
+\contentsline {subsection}{\numberline {4.2}Testing}{24}{subsection.4.2}%
+\contentsline {subsubsection}{\numberline {4.2.1}Speeding up model compilation}{25}{subsubsection.4.2.1}%
+\contentsline {subsection}{\numberline {4.3}Faulty version}{27}{subsection.4.3}%
+\contentsline {subsubsection}{\numberline {4.3.1}Explanation of the error case}{27}{subsubsection.4.3.1}%
+\contentsline {subsection}{\numberline {4.4}Explicit signaling point test}{28}{subsection.4.4}%
+\contentsline {section}{\numberline {5}Terminating Queue}{31}{section.5}%
+\contentsline {subsection}{\numberline {5.1}Implementation}{31}{subsection.5.1}%
+\contentsline {subsection}{\numberline {5.2}Linearization Testing}{33}{subsection.5.2}%
+\contentsline {subsection}{\numberline {5.3}Faulty Implementation}{37}{subsection.5.3}%
+\contentsline {subsection}{\numberline {5.4}Test with another queue}{37}{subsection.5.4}%
+\contentsline {section}{\numberline {6}Other objects}{40}{section.6}%
+\contentsline {section}{\numberline {7}Conclusion}{41}{section.7}%
+\contentsline {section}{\numberline {8}Reference}{42}{section.8}%

@@ -30,7 +30,7 @@ SyncA(me,avalue) =
   aClear::downChan!me ->
   --a = me
   --VarA::setValue!avalue ->
-  LP1!me!avalue ->
+  SP1!me!avalue ->
   --bClear.up
   bClear::upChan!me ->
   --aSignal.down
@@ -38,7 +38,7 @@ SyncA(me,avalue) =
   --(b,c)
   --VarB::getValue?b ->
   --VarC::getValue?c ->
-  LP4!me?b?c ->
+  SP4!me?b?c ->
   --bSignal.up
   bSignal::upChan!me ->
   SKIP
@@ -48,7 +48,7 @@ SyncB(me,bvalue) =
   bClear::downChan!me ->
   --b=me
   --VarB::setValue!bvalue ->
-  LP2!me!bvalue->
+  SP2!me!bvalue->
   --cClear.up
   cClear::upChan!me ->
   --bSignal.down
@@ -56,7 +56,7 @@ SyncB(me,bvalue) =
   --(a,c)
   --VarA::getValue?a ->
   --VarC::getValue?c ->
-  LP5!me?a?c ->
+  SP5!me?a?c ->
   --cSignal.up
   cSignal::upChan!me ->
   SKIP
@@ -66,7 +66,7 @@ SyncC(me,cvalue) =
   cClear::downChan!me ->
   --c = me
   --VarC::setValue!cvalue ->
-  LP3!me!cvalue ->
+  SP3!me!cvalue ->
   --aSignal.up
   aSignal::upChan!me ->
   --cSignal.down
@@ -74,17 +74,17 @@ SyncC(me,cvalue) =
   --(a,b)
   --VarA::getValue?a ->
   --VarB::getValue?b ->
-  LP6!me?a?b ->
+  SP6!me?a?b ->
   --aClear.up
   aClear::upChan!me ->
   SKIP
 
 
 Spec(All) = 
-    LP1?t1:All?a ->
-    LP2?t2:All?b ->
-    LP3?t3:All?c ->
-    LP4!t1!b!c ->
-    LP5!t2!a!c ->
-    LP6!t3!a!b ->
+    SP1?t1:All?a ->
+    SP2?t2:All?b ->
+    SP3?t3:All?c ->
+    SP4!t1!b!c ->
+    SP5!t2!a!c ->
+    SP6!t3!a!b ->
     Spec(All)

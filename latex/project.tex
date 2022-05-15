@@ -1,4 +1,8 @@
 \documentclass[a4paper, 12pt]{article}
+\usepackage{setspace} 
+\doublespacing
+\usepackage[margin=3cm]{geometry}
+\usepackage{hyperref}
 \usepackage{cite}
 \usepackage{listing}
 \usepackage{csp}
@@ -15,24 +19,43 @@
 %\renewcommand\floatpagefraction{0.1}
 
 \begin{document}
-Abstract
+\pagestyle{empty}
+%TC:ignore
+\begin{center}
+  ⠀\\⠀\\⠀\\⠀\\⠀\\⠀\\
+  \begin{huge}
+    Model Checking concurrent objects
+  \end{huge}
 
-Concurrent objects are convenient tools for programmers. With concurrent objects, programmers can write code with multiple threads as if they are writing a single-threaded code. However, it is crucial to know the correctness of concurrent objects. In this thesis, we study a technique to justify the correctness of synchronization objects. We first present CSP models for common concurrent primitives according to their behaviours. We then systematically build several concurrent objects from their Scala sources. We make assertions of these synchronization objects with a technique derived from linearizability testing. We find these assertions can effectively find bugs in a concurrent datatype and provide a history to give more context for the developer. 
+  Submit Time: Trinity Term, 2022 
 
+  Degree: Part B, Computer Science
+
+  Candidate Number: 1043026
+
+  Word count(excluding figure): 9167
+\end{center}
+%TC:endignore
 \newpage
 
+Abstract
+
+Concurrent objects are convenient tools for programmers. With concurrent objects, programmers can write code with multiple threads as if they are writing a single-threaded code. However, it is crucial to know the correctness of concurrent objects. In this thesis, we study a technique to justify the correctness of synchronization objects. We first present CSP models for common concurrent primitives according to their behaviors. We then systematically build several concurrent objects from their Scala sources. We make assertions of these synchronization objects with a technique derived from linearizability testing. We find these assertions can effectively find bugs in a concurrent datatype and provide a history to give more context for the developer. 
+
+\newpage
 
 \tableofcontents
 \newpage
 \clearpage
 \setcounter{page}{1}
+\pagestyle{plain}
 \section{Introduction}
 %What is a concurrent datatype
 Concurrent objects are convenient tools for programmers. With concurrent datatypes, programmers can write code with multiple threads as if they are writing a single-threaded code. However, it is crucial to know the correctness of concurrent objects. If the implementation of a concurrent object is wrong, then code using the concurrent object is very likely to be faulty. 
 
-The \CSPM{Channel} object is one synchronization object commonly used in Go. The channel object can be used to share data from one process to another process. A process can send data to another process by calling \CSPM{send} with the data to share. Likewise, a process can receive data from other processes by calling \CSPM{receive} function. In Go and Communicating Scala Object package, channels are unbuffered by default. If there is no process to receive the data, the sending process blocks until a process is willing to receive its data. Similarly, a receiving process blocks until a process sends some data. 
+The \CSPM{Channel} object is one synchronization object commonly used in Go. The channel object can be used to share data from one process to another process. A process can send data to another process by calling \CSPM{send} with the data to share. Likewise, a process can receive data from other processes by calling the \CSPM{receive} function. In Go and Communicating Scala Object package, channels are unbuffered by default. If there is no process to receive the data, the sending process blocks until a process is willing to receive its data. Similarly, a receiving process blocks until a process sends some data. 
 
-\begin{scalafloat}{menwomen.scala.interface}{Interface of a Channel object}
+\begin{scalafloat}{menwomen.channel.interface}{Interface of a Channel object}
 trait Channel{
   def send(data: Int): Int
   def receive(): Int
@@ -48,7 +71,7 @@ In the remaining part of Section 1, we describe the correctness condition for a 
 
 In section 2, we build CSP modules for common concurrent primitives such as shared variables, monitors and semaphores.
 
-Starting from section 3, we use the linearization test technique to distinguish correct and faulty implementation for several synchronization objects. We first implement the synchronization object in CSP according to its Scala source code. Then we write specifications for a system using the synchronization object and carry out the tests.
+Starting from section 3, we use the linearization test technique to distinguish correct and faulty implementation for several synchronization objects from \cite{ObjectRepo}. We first implement the synchronization object in CSP according to its Scala source code. Then we write specifications for a system using the synchronization object and carry out the tests.
 
 \subsection{Synchronization linearizability test}
 %Describe lin point
@@ -71,7 +94,7 @@ Scheduling is one of the reasons validating a history can be complicated. In Fig
 \svginline{chan.timeline.deschedule}{Visualized history of T3 get descheduled}
 
 \subsection{Checking safety property using CSP} 
-The history observed by the linearizability framework can be captured as a trace in CSP. A \CSPM{Call} event in CSP represents the start of a function call in the observed history. A \CSPM{Return} event represents the returning of a function call. For the safety property, we check that set of all possible histories of a testing system is a subset of all correct histories. In CSP, this corresponds to an assertion that a testing system trace refines a specification of systems using the synchronization object. 
+The history observed by the linearizability framework can be captured as a trace in CSP. A \CSPM{Call} event in CSP represents the start of a function call in the observed history. A \CSPM{Return} event represents the returning of a function call. For the safety property, we check that set of all possible histories of a testing system is a subset of all correct histories. In CSP, this corresponds to an assertion that a testing system trace refines a specification of systems using the synchronization object. And we can use FDR \cite{fdr} to check the assertion. 
 
 A generic and scalable system is used as the testing system. Each process in the testing system can call any function from the concurrent object with any arguments allowed. Each process must be allowed to terminate. Otherwise, the testing system only models a system that runs forever, given that there is no deadlock. We shall see how this affects bug finding in a concurrent datatype in later objects.
 
@@ -83,17 +106,18 @@ We shall see a concrete implementation of a testing system and a specification p
 For liveness property, we check the same generic and scalable testing system refines the same specification process, but in the failure model. One could use a datatype-specific specification process that does not explicitly use any synchronization points. However, reusing the linearizer process is easier. 
 
 \subsection{Related work}
-Testing for Linearizability \cite{linearizability-testing} presents a framework to test concurrent datatypes. As described in earlier subsections, the testing framework uses observations of histories and is unlikely to exhaust all possible histories of a system or check a infinite size history. However, the linearization test can exhaust all finite and infinite histories of a system using FDR's state machine. 
+Testing for Linearizability \cite{linearizability-testing} describes a framework to test concurrent datatypes. The testing framework uses observations of histories. As the observed system does not generate traces in a specific order, the framework may use a long time to exhaust all histories. Also, the justifying algorithm cannot check infinite traces. However, the linearization test can check all finite and infinite histories of a system using FDR's state machine. 
 
-There are also runtime programming tools to detect race conditions and deadlocks in concurrent code. Thread Sanitizer \cite{threadsanitizer} detects race conditions and deadlocks in C++ and Go when the program is running. Like linearizability testing, runtime programming tools is unlikely to exhaust all possible histories. 
+There are also runtime programming tools to detect race conditions and deadlocks in concurrent code. Thread Sanitizer \cite{threadsanitizer} detects race conditions and deadlocks in C++ and Go when the program is running. Runtime checkers often bring extra overheads, which may not represent the real-world scenario. Also, a test with runtime programming tools is neither unlikely to exhaust all possible histories efficiently. 
 
-In Chapter 19 of Understanding Concurrent Systems \cite{ucs-book}, the author describes a CSP model for shared variables and provides a tool to analyze shared variable programs. This project further supports analyzing program using more synchronizations, such as monitor and semaphores.
+In Chapter 19 of Understanding Concurrent Systems \cite{ucs-book}, the author describes a CSP model for shared variables and provides a tool to analyze shared variable programs. This project further supports analyzing programs using more synchronizations, such as monitors and semaphores.
 
+\newpage
 \section{Common Objects}
 \subsection{Shared Variable}
 The usage of shared variables is common in concurrent datatypes. For example, some concurrent datatypes may temporarily store the identity of a waiting process. However, CSP is more like a functional programming language and does not support mutable variables. 
 
-A recursive process in CSP can capture the behaviour of a shared variable. The recursive process holds the value of the variable in its parameter. At any time, the variable process is willing to answer a query for the variable value in channel \CSPM{getValue}. Alternatively, the process can receive an update on the variable value in channel \CSPM{getValue}, after which the function recurses with the new variable value.
+A recursive process in CSP can capture the behavior of a shared variable. The recursive process holds the value of the variable in its parameter. At any time, the variable process is willing to answer a query for the variable value in channel \CSPM{getValue}. Alternatively, the process can receive an update on the variable value in channel \CSPM{getValue}, after which the function recurses with the new variable value.
 
 Because it is natural for a concurrent datatype to use multiple shared variables, the global variable is implemented as a CSP module in Figure \ref{globalvar.csp} to allow better code reuse. The module requires two parameters. \CSPM{TypeValue} is the set of possible values for the variable, and \CSPM{initialValue} is the value before any process modifies the variable. An uninitialized variable module is also available in the same Figure \ref{globalvar.csp}, with the only difference that the variable non-deterministically chooses an initial value from \CSPM{TypeValue} at start time. \CSPM{runWith} is a convenient helper function to run a given process \CSPM{P} with the \CSPM{Var} process. If the parameter \CSPM{hide} is true, \CSPM{runWith} function hides all events introduced by the shared variable. In later chapters, we will see how the \CSPM{runWith} function helps reduce the code complexity of the synchronization object implementation.
 
@@ -136,27 +160,22 @@ System = VarA::runWith(false,P|||Q)
 \subsection{Semaphore}
 A Semaphore is a simple but powerful concurrent primitive. This thesis shall describe and use a simplified binary semaphore from \cite{CPinJava}, which removes interrupts and timeout operations. 
 
-A binary semaphore can either be raised or lowered. A \CSPM{up} function call raises the semaphore regardless of the semaphore state. If a process calls the \CSPM{down} method when the semaphore is raised, the semaphore becomes lowered. However, if the semaphore is unraised, the process waits until another process calls \CSPM{up} and proceeds to put down the semaphore. Depending on the initial state of the semaphore, a binary semaphore can be further categorized as a mutex semaphore or a signalling semaphore.
+A binary semaphore can either be raised or lowered. A \CSPM{up} function call raises the semaphore regardless of the semaphore state. If a process calls the \CSPM{down} method when the semaphore is raised, the semaphore becomes lowered. However, if the semaphore is unraised, the process waits until another process calls \CSPM{up} and proceeds to put down the semaphore. Depending on the initial state of the semaphore, a binary semaphore can be further categorized as a mutex semaphore or a signaling semaphore.
 
-Modelling a semaphore is straightforward in CSP. Figure \ref{semaphore.csp} is the CSP semaphore module. A process may call \CSPM{up} function or \CSPM{down} function via channel \CSPM{upChan} or channel \CSPM{downChan} respectively. The semaphore is modelled by a process implemented by two mutually recursive functions \CSPM{Semaphore(True)} and \CSPM{Semaphore(False)}. The semaphore process representing an unraised state accepts a \CSPM{upChan} event by any process and proceeds to the raised process. The semaphore process representing a raised state can either accept a \CSPM{upChan} event and recurse to the raised process, or accept a \CSPM{downChan} event and proceed to the unraised process.
+Modeling a semaphore is straightforward in CSP. Figure \ref{semaphore.csp} is the CSP semaphore module. A process may call \CSPM{up} function or \CSPM{down} function via channel \CSPM{upChan} or channel \CSPM{downChan} respectively. The semaphore is modelled by a process implemented by two mutually recursive functions \CSPM{Semaphore(True)} and \CSPM{Semaphore(False)}. The semaphore process representing an unraised state accepts a \CSPM{upChan} event by any process and proceeds to the raised process. The semaphore process representing a raised state can either accept a \CSPM{upChan} event and recurse to the raised process, or accept a \CSPM{downChan} event and proceed to the unraised process.
 
 Like the shared variable in the earlier subsection, the semaphore is encapsulated in a CSP module. To create a semaphore, one needs to supply two arguments. \CSPM{TypeThreadID} is the set of identities of processes that use this semaphore. \CSPM{initialState} is a boolean value indicating the starting state of the semaphore. If \CSPM{initialState} is true, the semaphore is raised initially. Otherwise, the semaphore is lowered. 
 \begin{cspfloat}{semaphore.csp}{The binary semaphore module in CSP}
-module ModuleSemaphore(TypeThreadID, initialState)
+  module ModuleSemaphore(TypeThreadID, initialState)  
   --Raised
-  Semaphore(True) = downChan?id -> Semaphore(False)
-                   [] upChan?id -> Semaphore(True)
-  --Unraised
-  Semaphore(False)= upChan?id   -> Semaphore(True)
-  
+  Semaphore(cur) = if(cur) then downChan?id -> Semaphore(False)
+                            else upChan?id   -> Semaphore(True)
   chanset = {|upChan, downChan|}
 exports
-  --runWith::(Bool,Proc) -> Proc
   runWith(hide,P) = (Semaphore(initialState) [| chanset |] P) \ 
-                     (if hide then chanset else {})
+                      (if hide then chanset else {})
   channel upChan, downChan: TypeThreadID
-endmodule
-\end{cspfloat}
+endmodule\end{cspfloat}
 
 \subsection{Monitor}
 \subsubsection{JVM Monitor}
@@ -184,9 +203,9 @@ class MonitorExample {
 \subsubsection{Monitor Module}
 The monitor process has two states and behaves differently in two states, captured by two processes in Figure \ref{monitor.csp.1}.
 
-When there is no running process, the behaviour of the monitor is captured by the CSP process \CSPM{inactive}, with parameter \CSPM{waiting} being the set of waiting processes. The monitor can allow a process to run synchronized code with a \CSPM{waitEnter} event. Or, the monitor can spuriously wake a process with a \CSPM{SpuriousWake} event, and the spuriously waken process behaves like a normally waken process.
+When there is no running process, the behavior of the monitor is captured by the CSP process \CSPM{inactive}, with parameter \CSPM{waiting} being the set of waiting processes. The monitor can allow a process to run synchronized code with a \CSPM{waitEnter} event. Or, the monitor can spuriously wake a process with a \CSPM{SpuriousWake} event, and the spuriously waken process behaves like a normally waken process.
 
-When there is a running process, the behaviour of the monitor is captured by the CSP process \CSPM{active}, with parameter \CSPM{cur} being the identity of the process running \CSPM{synchronized} block, and \CSPM{waiting} being the set of the waiting process. The monitor process should respond to method calls from the running process \CSPM{cur}, and the monitor should not allow another process to obtain the monitor lock. In \CSPM{active} state, the monitor can also spuriously wake a waiting process. 
+When there is a running process, the behavior of the monitor is captured by the CSP process \CSPM{active}, with parameter \CSPM{cur} being the identity of the process running \CSPM{synchronized} block, and \CSPM{waiting} being the set of the waiting process. The monitor process should respond to method calls from the running process \CSPM{cur}, and the monitor should not allow another process to obtain the monitor lock. In \CSPM{active} state, the monitor can also spuriously wake a waiting process. 
 
 On the client process side, most functions are implemented by simply synchronizing with the monitor on an event. For example, before entering the \CSPM{synchronized} block, the process sends a \CSPM{WaitEnter} event. The only exception is the \CSPM{wait} function, as after being notified, the process needs to resume execution. The process first sends a \CSPM{wait} event to tell the monitor that it is waiting and release the monitor lock. The monitor then receives a \CSPM{waitNotify} or \CSPM{spuiousWake} event, for being notified. Then the process reobtains the monitor lock with a \CSPM{waitEnter} event. 
 
@@ -218,7 +237,7 @@ There are two design choices worth mentioning in the implementation of the monit
 
 First, note that both \CSPM{WaitNotify} and \CSPM{SpuriousWake} events come from the monitor process instead of directly synchronizing with the currently running process. When a process calls \CSPM{notify} or \CSPM{notifyAll}, it needs to synchronize with the monitor process. This is because the running process does not know how many processes are waiting. If the monitor is implemented the other way, the notifying process will block if there is no waiting process. Similarly, a process calling \CSPM{notifyAll} does not know how many processes it should wake up. 
 
-Secondly, a monitor can introduce divergence by repetitively spuriously waking up a waiting process, whose condition keeps unsatisfied and never changes. This is an unwanted behaviour in failure testing. So the monitor module has an extra parameter \CSPM{disableSpurious} to disable spurious wakeups. 
+Secondly, a monitor can introduce divergence by repetitively spuriously waking up a waiting process, whose condition keeps unsatisfied and never changes. This is an unwanted behavior in failure testing. So the monitor module has an extra parameter \CSPM{disableSpurious} to disable spurious wakeups. 
 
 
 \begin{cspfloat}{monitor.csp.1}{The CSP Monitor Module - Part 1 - the monitor process}
@@ -305,7 +324,7 @@ endmodule
 
 \newpage
 \section{MenWomen}
-The MenWomen object is a classical problem from the concurrent programming course. In the problem, some processes need to pair off and share identities between the paired processes. Figure \ref{menwomen.scala.interface} is the interface of the MenWomen object. A process can call \CSPM{manSync} from the object to pair with a process calling \CSPM{womanSync}. Also a process can call \CSPM{womanSync} from the object to pair with another process calling \CSPM{manSync}. For simplicity, if a process is calling \CSPM{manSync}, we shall call it a man process. Similarly, a process calling \CSPM{manSync} is called a woman process.
+The MenWomen object is a classical problem from the concurrent programming course. In the problem, some processes need to pair off and share identities between the paired processes. Figure \ref{menwomen.scala.interface} is the interface of the MenWomen object. A process can call \CSPM{manSync} from the object to pair with a process calling \CSPM{womanSync}. Also, a process can call \CSPM{womanSync} from the object to pair with another process calling \CSPM{manSync}. For simplicity, if a process is calling \CSPM{manSync}, we shall call it a man process. Similarly, a process calling \CSPM{manSync} is called a woman process.
 
 \begin{scalafloat}{menwomen.scala.interface}{Scala Interface of the MenWomen object}
 trait MenWomenT{
@@ -322,7 +341,7 @@ One way to implement the MenWomen object is to use a monitor and a shared variab
   \item In stage $2$, the waiting man process in stage $0$ is wakened up by the woman process in stage $1$. The man process notifies all waiting processes and returns the value of \CSPM{her}.
 \end{itemize}
 
-The code snippet in Figure \ref{menwomen.scala.correct} is a Scala implementation of the MenWomen process using a monitor by Gavin Lowe. With the shared variable and monitor module, the Scala code is further translated to a CSP code in Figure \ref{menwomen.csp.correct}. With the convention described in the introduction section, every function call begins with a Call event containing all parameters. And every function call ends with a Return event containing the return value.
+The code snippet in Figure \ref{menwomen.scala.correct} is a Scala implementation of the MenWomen process using a monitor. With the shared variable and monitor module, the Scala code is further translated to a CSP code in Figure \ref{menwomen.csp.correct}. With the convention described in the introduction section, every function call begins with a Call event containing all parameters. And every function call ends with a Return event containing the return value.
 
 \begin{scalafloat}{menwomen.scala.correct}{A correct MenWomen object implementation in Scala}
 class MenWomen extends MenWomenT{
@@ -409,12 +428,12 @@ System(All)=runWith(True,True,||| me:All @ Thread(me))
   Spec(All) = Sync?man:All?woman:diff(All,{man})!woman!man -> Spec(All)
 \end{cspinline}
   
-A \CSPM{Sync} event takes four parameters, the identity of the man process, the return value of the man process, the identity of the woman process, the return value of the woman process. For each synchronization, the spec proecess ensure two properties. First, synchronization occurs between two different processes. Second, the return value of each participating process is the identity of the other participating process. 
+A \CSPM{Sync} event takes four parameters, the identity of the man process, the return value of the man process, the identity of the woman process, and the return value of the woman process. For each synchronization, the spec process ensures two properties. First, synchronization occurs between two different processes. Second, the return value of each participating process is the identity of the other participating process. 
 
 
-A linearizer ensures two properties. The return value of a function call comes from the synchronization. And the synchronization point occurs sometime during the function call. The \CSPM{Linearizer} function for \CSPM{MenWomen} achieves this by two branches of CSP processes, each representing a method in the object. Each branch starts with a \CSPM{Call} event, then a \CSPM{Sync} event with its identity, and finally a \CSPM{Return} event which computes from the \CSPM{Sync} event. In addition to the two branches, the linearizer process should be able to \CSPM{STOP} to match the behaviour in the testing system.
+A linearizer ensures two properties. The return value of a function call comes from the synchronization. And the synchronization point occurs sometime during the function call. The \CSPM{Linearizer} function for \CSPM{MenWomen} achieves this by two branches of CSP processes, each representing a method in the object. Each branch starts with a \CSPM{Call} event, then a \CSPM{Sync} event with its identity, and finally a \CSPM{Return} event which computes from the \CSPM{Sync} event. In addition to the two branches, the linearizer process should be able to \CSPM{STOP} to match the behavior in the testing system.
 
-Finally, \CSPM{Linearizer(All)} composites the \CSPM{Sync} specification with the linearizer processes so that the \CSPM{Sync} events are valid according to the \CSPM{Sync} specification and \CSPM{Sync} events are agreed by both participating process. The latter property is achieved using replicated generalized parallel. By the semantic of the replicated generalized parallel, when a process wants to perform an event, the process must synchronize all other processes which can perform this event. Figure \ref{menwomen.lin.simple} visualizes a trace generated by \CSPM{Linearizers({T1,T2})} by the FDR debugging window. When a linearizer performs \CSPM{Call} and \CSPM{Return}, the linearizer does not synchronize with any process. When \CSPM{linearizer(T1)} performs \CSPM{Sync.T1.T2.T2.T1}, \CSPM{linearizer(T2)} and \CSPM{Spec} must also perform the \CSPM{Sync} event.
+Finally, \CSPM{Linearizer(All)} composites the \CSPM{Sync} specification with the linearizer processes so that the \CSPM{Sync} events are valid according to the \CSPM{Sync} specification and \CSPM{Sync} events are agreed by both participating process. The latter property is achieved using replicated generalized parallel, described in \cite{fdrmanual}. By the semantic of the replicated generalized parallel, when a process wants to perform an event, the process must synchronize all other processes which can perform this event. Figure \ref{menwomen.lin.simple} visualizes a trace generated by \CSPM{Linearizers({T1,T2})} by the FDR debugging window. When a linearizer performs \CSPM{Call} and \CSPM{Return}, the linearizer does not synchronize with any process. When \CSPM{linearizer(T1)} performs \CSPM{Sync.T1.T2.T2.T1}, \CSPM{linearizer(T2)} and \CSPM{Spec} must also perform the \CSPM{Sync} event.
 \svginline{menwomen.lin.simple}{FDR Visualization of traces of a man process and a woman process synchronizing}
 
 All above properties suffice to show that \CSPM{Linearizers(All)} generates all traces that correspond to a valid history and that \CSPM{Linearizers} is a valid specification process for the testing system. Informally, for any valid history, a linearizability test can find a set of synchronization points, which corresponds to a trace of the specification for \CSPM{Sync} events. Furthermore, the valid history can be obtained by adding respective call and return events around synchronization points. 
@@ -478,7 +497,7 @@ class FaultyMenWomen extends MenWomenT{
 }
 \end{scalafloat}
 
-The safeness property test shows that this implementation handles scheduling carelessly. This implementation fails the test \CSPM{Spec2Thread [T= System2}, and FDR provides a trace that violates the safeness specification, shown in Figure \ref{menwomen.faulty.trace}. FDR further allows the user to expand the hidden $\tau$ events in the testing system, which are normally processes' interactions with shared variables and the monitor. By understanding the expanded trace in CSP, we can find a equivalent way to trigger the bug in Scala.
+The safeness property test shows that this implementation handles scheduling carelessly. This implementation fails the test \CSPM{Spec2Thread [T= System2}, and FDR provides a trace that violates the safeness specification, shown in Figure \ref{menwomen.faulty.trace}. FDR further allows the user to expand the hidden $\tau$ events in the testing system, which are normally processes' interactions with shared variables and the monitor. By understanding the expanded trace in CSP, we can find an equivalent way to trigger the bug in Scala.
 
 \svginlinescaled{menwomen.faulty.trace}{0.95}{Trace}
 
@@ -594,7 +613,7 @@ SyncA(me,avalue) =
 \end{cspfloat}
 
 \subsection{Testing}
-Similar for the MenWomen object, a testing system is defined through any number of working processes and a specification is built from a \CSPM{Sync} channel, linearizer processes, and a synchronization alphabet set. 
+Similar to the MenWomen object, a testing system is defined through any number of working processes and a specification is built from a \CSPM{Sync} channel, linearizer processes, and a synchronization alphabet set. 
 
 One key difference of the \CSPM{ABC} object is that processes can call with any argument from the set \CSPM{TypeData}, whereas in \CSPM{MenWomen} object, processes can only call with their identity. Inside \CSPM{chaosP}, the processes also choose an argument with General Non-Deterministic Choice. 
 
@@ -608,7 +627,7 @@ Thread(me)=chaosP( |~| x:TypeData @ (
 
 The testing specification uses the same component, the \CSPM{Sync} channel, linearizer processes, and linEventns. The definition of \CSPM{Sync} channel is shown in Figure \ref{abc.csp.sync}. The event $Sync.t_1.a.b.c.t_2.d.e.f.t_3.g.h.i$ represents the synchronizations between three threads, $t_1,t_2,t_3$. Process $t_1$ calls \CSPM{aSync} with $a$ and returns $(b,c)$. The second process $t_2$ calls \CSPM{bSync} with $d$ and returns $(e,f)$. And the last process $t_3$ calls \CSPM{cSync} with $g$ and returns $(h,i)$. The Sync specification process, shown in the same figure, checks that in each \CSPM{Sync} events, the return value of each process is the pair of arguments of the two other function call. 
 
-Figure \ref{abc.csp.lin} is the definition of a linearizer process, written a similar format with the MenWomen object.
+Figure \ref{abc.csp.lin} is the definition of a linearizer process, written a similar format to the MenWomen object.
 
 \begin{cspfloat}{abc.csp.sync}{Definition of Sync channel and specification of Sync event}
 --thread identity calling ASync. ASync parameter a. ASync return pair (b,c)
@@ -717,56 +736,60 @@ For the test \CSPM{Spec4Thread [T= System4}, FDR displays a trace of the testing
   \item Now $T_A$ returns with $(b,c)$ from the second round, which may not be the argument of \CSPM{bSync} and \CSPM{cSync} in the first round.
 \end{itemize}
 
-\subsection{Explicit linearization point test}
-In this section, we describe another fast testing technique. In explicit synchronization test, one first understands the implementation of the object and finds synchronization point, where synchronization occurs between processes. Then based on the observation, one writes the specification for the these synchronization point. Finally, one checks that a testing system with only LP events visible refines the specification for LP.
+\subsection{Explicit signaling point test}
+In this section, we describe a faster testing technique. In the explicit signal test, one first observes the objects and makes a hypothesis on the order of signal points, where one process sends data to another process. Then one uses CSP model to check signal points actually signal in the hypothsised order, and correspond to each of the calls and returns.  
 
-From the source code of the ABC object, synchronizations occur in six places. The first three synchronizations occur when processes set the respective shared variables before raising semaphores. The other synchronizations occur when the processes read the shared variables after lowering semaphores. For every synchronization, the respective CSP lines are replaced with a \CSPM{LP} event and the shared variable module is adapted to listen on the \CSPM{LP} event. Figure \ref{abc.explicit.async} is the definition of LP events and the implementation of \CSPM{SyncA}. 
+In the correct implementation of the ABC object, six signal points should occur in order during each round of synchronization. The A-process, the B-process, and the C-process set the shared variable \CSPM{a}, \CSPM{b}, and \CSPM{c} in turn before raising respective semaphore. Then the A-process, B-process, and the C-process read the shared variable in turn after lowering the respective semaphore. 
+
+To check if the signal points actually occur in order, we perform a trace refinement test. In the implementation, we replace every piece of signaling code with a signal event. For example, in \CSPM{SyncA} shown in Figure \ref{abc.explicit.async}, \CSPM{a=me} is replaced with a \CSPM{SP1} event, and \CSPM{(b,c)} is replaced with a \CSPM{SP4} events. The variable modules are also modified to support reading and writing on corresponding signal point events.
+
+The specification process, shown in Figure \ref{abc.explicit.sync}, is a process that repeats the six signal point events in order, with the extra constraint that the last three \CSPM{SP} events match the first three \CSPM{SP} events.
+
 \begin{cspfloat}{abc.explicit.async}{aSync function in explicit linearization point testing}
 SyncA(me,avalue) =
   --aClear.down
   aClear::downChan!me ->
   --a = me
-  LP1!me!avalue ->
+  SP1!me!avalue ->
   --bClear.up
   bClear::upChan!me ->
   --aSignal.down
   aSignal::downChan!me ->
   --(b,c)
-  LP4!me!bvalue!cvalue ->
+  SP4!me!bvalue!cvalue ->
   --bSignal.up
   bSignal::upChan!me ->
   SKIP
 \end{cspfloat}
 
-The specification for the \CSPM{LP} events is simple. As described earlier in the section, the synchronization between process occurs in a fixed order. Initially only A-process is able to proceed to set the shared variable, then the B-process and the C-process can proceed in turn. In the second round the A-process, B-process, C-process reads the shared variables in turn. Figure \ref{abc.explicit.sync} is the specification process of \CSPM{LP} events. 
-
-\begin{cspfloat}{abc.explicit.sync}{123}
+\begin{cspfloat}{abc.explicit.sync}{The specification process of explicit signal point test}
 spec(All) = 
-  LP1?t1:All?a ->
-  LP2?t2:diff(All,{t1})?b ->
-  LP3?t3:diff(All,{t1,t2})?c ->
-  LP4!t1!b!c ->
-  LP5!t2!a!c ->
-  LP6!t3!a!b ->
+  SP1?t1:All?a ->
+  SP2?t2:diff(All,{t1})?b ->
+  SP3?t3:diff(All,{t1,t2})?c ->
+  SP4!t1!b!c ->
+  SP5!t2!a!c ->
+  SP6!t3!a!b ->
   spec(All)
 \end{cspfloat}
 
-Immediately we can see the specification process is much simpler than the process in linearization testing. But how fast is the explicit synchronization test? We use FDR to find the size of the state machine of the specification and testing system when three processes are involved. The sizes are organized in the table below. 
+Immediately we can see the specification process is much simpler than the specification process in linearization testing. But how fast is the explicit synchronization test? We use the number of states and transitions reported by FDR as indicators of the complexity of the process and test. Specifically the test \CSPM{Spec[T=Spec} and \CSPM{System[T=System} indicate the complexity of the specification process and the testing system. And the test \CSPM{Spec[T=System} indicates the complexity of the actual testing. We use three processes in the test and the statistics are organized in the table below.
 
 \begin{adjustbox}{width=\columnwidth,center}
-\begin{tabular}{c c c c c}
+\begin{tabular}{|c | c c | c c|}
   \hline
-  & \multicolumn{2}{c}{Linearization test} & \multicolumn{2}{c}{Explicit Synchronization test} \\ \hline
-  & Specification & Testing System & Specification & Testing System \\ \hline
-  States      & $4*10^6$ & $4*10^5$ & $2*10^3$ & $1*10^5$\\ \hline
-  Transitions & $1*10^7$ & $2*10^6$ & $1*10^4$ & $6*10^5$\\ \hline
+  & \multicolumn{2}{|c|}{State} & \multicolumn{2}{|c|}{Transition} \\ \hline
+  & Linearization & Explicit signal & Linearization & Explicit signal \\ \hline
+  \CSPM{Spec[T=Spec}      & $1.02*10^5$ & $1.75*10^2$ & $2.91*10^5$ & $2.23*10^2$\\ \hline
+  \CSPM{System[T=System}  & $3.81*10^5$ & $1.24*10^5$ & $1.65*10^6$ & $5.60*10^5$\\ \hline
+  \CSPM{Spec[T=System}    & $3.81*10^5$ & $1.24*10^5$ & $1.65*10^6$ & $5.60*10^5$\\ \hline
 \end{tabular}
 \end{adjustbox}
 \newline
 
-As we can see from the table, the state machine of the specification process is much smaller in the explicit synchronization test. It is no surprise because the specification process in the explicit synchronization test is a simple recursive process. The state machine of the testing system is slightly smaller because the \CSPM{Call} and \CSPM{Return} events are removed in the explicit linearization test, and code execution is never interrupted by another process's return. 
+As we can see from the table, the state machine of the specification process is much smaller in the explicit synchronization test. It is no surprise because the specification process in the explicit synchronization test is a simple recursive process. The state machine of the testing system is slightly smaller because the \CSPM{Call} and \CSPM{Return} events are removed. In the linearization test, the \CSPM{Return} events can be delayed and occur in the trace of later synchronization, which can make the testing system more complicated. The simpler specification and testing system makes the explicit signal test fast.  
 
-However, the drawback of the explicit synchronization test is that it needs to be done on a per implementation basis. In the faulty implementation, the assumption on synchronization has changed. So the testing for correct implementation cannot be directly applied to the faulty implementation. 
+However, the drawback of the explicit synchronization test is that it needs to be done on a per implementation basis. In the faulty implementation, the signal events no longer occur in the same order. As a result,  a new test needs to be written. 
 
 \newpage
 \section{Terminating Queue}
@@ -979,7 +1002,7 @@ For safeness and liveness testing, we use the normal setup, in which the spuriou
 \subsection{Faulty Implementation}
 In this section, we use the linearization test to distinguish the correct implementation with three faulty implementations. In the first faulty implementation, \CSPM{enqueue} operation always adds \CSPM{A} to the internal queue regardless of the parameter of \CSPM{enqueue}. In the second faulty implementation, \CSPM{enqueue} method \CSPM{notify} does not wake up a process waiting to dequeue. The third implementation has a miss-by-one error. In \CSPM{dequeue}, A process checks \CSPM{waiting==numWorker} before incrementing \CSPM{waiting}. The result is shown in the table below.
 
-\begin{tabular}{c c c c}
+\begin{tabular}{|c | c | c | c|}
     \hline
     & Divergence Free & Trace Refinement & Failure Refinement \\ \hline
     Correct & Pass & Pass & Pass \\ \hline
@@ -992,13 +1015,17 @@ In this section, we use the linearization test to distinguish the correct implem
 With no surprise, the correct implementation passes all tests. The first faulty implementation fails all tests. The second faulty implementation fails only when spurious wakeups are disabled, as the missing \CSPM{notify} can be compensated by some "coincidental" spurious wakeup. It shows that when testing an object that internally uses a monitor, one should test it with spurious wake and without spurious wakeups from the monitor. The third faulty implementation shows a similar pattern. Because of the miss-by-one error, the last process will not terminate the queue. As a result, all processes refuse to return. However, as spurious wakeups can cause divergence, the failure model is unable to capture this error. 
 
 \subsection{Test with another queue}
-In this section, we apply the same tests with a different finite-state queue, which has infinite capacity but requires the element enqueued in A*BC* form. The queue is adapted from \cite{ABC}. If the test succeeds, the queue should not duplicate an element, reorder the enqueued element or miss an element with infinite data. 
+In this section, we perform a more general test on the correct and faulty implementation by using an unbounded queue. We used the A*BC* queue trick from \cite{ABC}. The A*BC* queue does not have a capacity limit, but only accepts enqueuing of some \CSPM{A}, a single \CSPM{B}, and some \CSPM{C}. 
 
-When the A*BC* queue accepted some \CSPM{A} but no \CSPM{B}, the queue can enqueue an \CSPM{A} or a \CSPM{B}, but not a \CSPM{C}. When the queue accepted a \CSPM{B} or a \CSPM{C}, the queue can only enqueue a \CSPM{C} element. 
+The trick is applicable because the terminating queue is data independent. The terminating queue only stores elements in the internal queue and does not perform any operation on the element received. 
+
+There are three properties we can check from A*BC* terminating queue. First, the terminating queue should not duplicate any element. Otherwise, B may be duplicated, which fails refinement testing. Secondly, the terminating queue should not miss any element. Otherwise, B may be missed. Finally, when the terminating queue holds \CSPM{B}, the queue must be non-empty. Thus the queue should not terminate in this case.
+
+To implement the A*BC* terminating queue, all we need to do is to implement a regular A*BC* queue and import the regular A*BC* in the A*BC* terminating queue. This is possible because the existing implementation of the terminating queue used a modularized queue that can be easily replaced. 
 
 Dequeue operation can be non-deterministic in this queue. For example, the state \CSPM{QAsB0C} represents a queue with zero or more \CSPM{A} followed by a \CSPM{B}. A queue in state \CSPM{QAsB0C} accepts an dequeue of \CSPM{A} and an dequeue of \CSPM{B}. The state of the A*BC* queue is further split into empty states and non-empty states. For example, the state \CSPM{Q0C} is an empty state and rejects all dequeue operations. As shown in Figure \ref{queue.csp.abcqueue}, the implementation of the A*BC* queue is written in the same interface as the capacity-limited queue.
 
-When the divergence free test, trace refinement test and the failure refinment test is applied on a system using the A*BC* queue, the test result shows a same pattern as earlier test on capacity limited queue. 
+When the divergence-free test, trace refinement test and failure refinement test are applied to a system using the A*BC* queue, the test result shows the same pattern as the earlier test on capacity limited queue. 
 \begin{cspfloat}{queue.csp.abcqueue}{CSP Implementation of capacity-limited queue}
 datatype TypeQueue= Q0A | QAAs | QAsB0C | QAsBCCs | Q0C  | QCCs
 qEmpty(Q0A)=True
@@ -1029,9 +1056,9 @@ qDequeue(QCCs)={(C,Q0C),(C,QCCs)}
 qDequeue(_)={}
 \end{cspfloat}
 
-\newpage
+\newpage⠀\newpage
 \section{Other objects}
-There are several synchronization object we tested in the project, but testing on these object are not presented in this project due to the word limit. In this section we briefly describe their interface. Interested readers can refer to the appendix section for the CSP code of these objects.
+There are several synchronization objects we tested in the project, but testing on these object are not presented in this project due to the word limit. In this section, we briefly describe their interface. Interested readers can refer to Anonymous Github Repository at \url{https://anonymous.4open.science/r/Oxford-Year3Project-8DEC}
 
 Barrier is another synchronization object commonly used in concurrent programming. A \CSPM{sync} call returns only after all processes using the barrier calls \CSPM{sync}. 
 \begin{scalafloat}{other.barrier}{}
@@ -1074,9 +1101,9 @@ For future work, one can build CSP models for synchronization objects from other
 \bibliographystyle{alpha}
 \bibliography{project}
 
-\newpage
-\section{Appendix}
+%\newpage
+%\section{Appendix}
 %TC:ignore
-\input{source}
+%\input{source}
 %TC:endignore
 \end{document}

@@ -40,12 +40,10 @@ exports
 endmodule
 
 
-module ModuleSemaphore(TypeThreadID, initialState)
+module ModuleSemaphore(TypeThreadID, initialState)  
   --Raised
-  Semaphore(True) = downChan?id -> Semaphore(False)
-  --Unraised
-  Semaphore(False)= upChan?id   -> Semaphore(True)
-  
+  Semaphore(cur) = if(cur) then downChan?id -> Semaphore(False)
+                           else upChan?id   -> Semaphore(True)
   chanset = {|upChan, downChan|}
 exports
   runWith(hide,P) = (Semaphore(initialState) [| chanset |] P) \ 
